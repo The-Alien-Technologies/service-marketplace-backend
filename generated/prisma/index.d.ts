@@ -81,14 +81,6 @@ export const ThemePreference: {
 export type ThemePreference = (typeof ThemePreference)[keyof typeof ThemePreference]
 
 
-export const PreferredUnits: {
-  METRIC: 'METRIC',
-  IMPERIAL: 'IMPERIAL'
-};
-
-export type PreferredUnits = (typeof PreferredUnits)[keyof typeof PreferredUnits]
-
-
 export const ExperienceLevel: {
   BEGINNER: 'BEGINNER',
   INTERMEDIATE: 'INTERMEDIATE',
@@ -143,10 +135,6 @@ export const SubscriptionStatus: typeof $Enums.SubscriptionStatus
 export type ThemePreference = $Enums.ThemePreference
 
 export const ThemePreference: typeof $Enums.ThemePreference
-
-export type PreferredUnits = $Enums.PreferredUnits
-
-export const PreferredUnits: typeof $Enums.PreferredUnits
 
 export type ExperienceLevel = $Enums.ExperienceLevel
 
@@ -1500,7 +1488,6 @@ export namespace Prisma {
     notificationsEnabled: boolean | null
     marketingNotifications: boolean | null
     preferredLanguage: string | null
-    preferredUnits: $Enums.PreferredUnits | null
     isProfilePublic: boolean | null
     dataAnalyticsEnabled: boolean | null
     status: $Enums.UserStatus | null
@@ -1549,7 +1536,6 @@ export namespace Prisma {
     notificationsEnabled: boolean | null
     marketingNotifications: boolean | null
     preferredLanguage: string | null
-    preferredUnits: $Enums.PreferredUnits | null
     isProfilePublic: boolean | null
     dataAnalyticsEnabled: boolean | null
     status: $Enums.UserStatus | null
@@ -1598,7 +1584,6 @@ export namespace Prisma {
     notificationsEnabled: number
     marketingNotifications: number
     preferredLanguage: number
-    preferredUnits: number
     isProfilePublic: number
     dataAnalyticsEnabled: number
     status: number
@@ -1659,7 +1644,6 @@ export namespace Prisma {
     notificationsEnabled?: true
     marketingNotifications?: true
     preferredLanguage?: true
-    preferredUnits?: true
     isProfilePublic?: true
     dataAnalyticsEnabled?: true
     status?: true
@@ -1708,7 +1692,6 @@ export namespace Prisma {
     notificationsEnabled?: true
     marketingNotifications?: true
     preferredLanguage?: true
-    preferredUnits?: true
     isProfilePublic?: true
     dataAnalyticsEnabled?: true
     status?: true
@@ -1757,7 +1740,6 @@ export namespace Prisma {
     notificationsEnabled?: true
     marketingNotifications?: true
     preferredLanguage?: true
-    preferredUnits?: true
     isProfilePublic?: true
     dataAnalyticsEnabled?: true
     status?: true
@@ -1893,7 +1875,6 @@ export namespace Prisma {
     notificationsEnabled: boolean
     marketingNotifications: boolean
     preferredLanguage: string
-    preferredUnits: $Enums.PreferredUnits
     isProfilePublic: boolean
     dataAnalyticsEnabled: boolean
     status: $Enums.UserStatus
@@ -1961,7 +1942,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: boolean
-    preferredUnits?: boolean
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: boolean
@@ -2014,7 +1994,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: boolean
-    preferredUnits?: boolean
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: boolean
@@ -2063,7 +2042,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: boolean
-    preferredUnits?: boolean
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: boolean
@@ -2112,7 +2090,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: boolean
-    preferredUnits?: boolean
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: boolean
@@ -2120,7 +2097,7 @@ export namespace Prisma {
     lastActiveAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "email" | "emailVerified" | "password" | "passwordResetOtp" | "passwordResetExpires" | "passwordResetAttempts" | "role" | "firstName" | "lastName" | "displayName" | "username" | "avatar" | "bio" | "dateOfBirth" | "timezone" | "phoneNumber" | "countryCode" | "phoneVerified" | "googleId" | "appleId" | "facebookId" | "twitterId" | "hasCompletedOnboarding" | "onboardingCompletedAt" | "profileCompleteness" | "serviceProviderExperienceLevel" | "isServiceProviderVerified" | "serviceProviderVerifiedAt" | "isPremium" | "subscriptionStatus" | "subscriptionTier" | "subscriptionStartDate" | "subscriptionEndDate" | "themePreference" | "notificationsEnabled" | "marketingNotifications" | "preferredLanguage" | "preferredUnits" | "isProfilePublic" | "dataAnalyticsEnabled" | "status" | "lastLoginAt" | "lastActiveAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "email" | "emailVerified" | "password" | "passwordResetOtp" | "passwordResetExpires" | "passwordResetAttempts" | "role" | "firstName" | "lastName" | "displayName" | "username" | "avatar" | "bio" | "dateOfBirth" | "timezone" | "phoneNumber" | "countryCode" | "phoneVerified" | "googleId" | "appleId" | "facebookId" | "twitterId" | "hasCompletedOnboarding" | "onboardingCompletedAt" | "profileCompleteness" | "serviceProviderExperienceLevel" | "isServiceProviderVerified" | "serviceProviderVerifiedAt" | "isPremium" | "subscriptionStatus" | "subscriptionTier" | "subscriptionStartDate" | "subscriptionEndDate" | "themePreference" | "notificationsEnabled" | "marketingNotifications" | "preferredLanguage" | "isProfilePublic" | "dataAnalyticsEnabled" | "status" | "lastLoginAt" | "lastActiveAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     addresses?: boolean | User$addressesArgs<ExtArgs>
     interests?: boolean | User$interestsArgs<ExtArgs>
@@ -2178,7 +2155,6 @@ export namespace Prisma {
       notificationsEnabled: boolean
       marketingNotifications: boolean
       preferredLanguage: string
-      preferredUnits: $Enums.PreferredUnits
       isProfilePublic: boolean
       dataAnalyticsEnabled: boolean
       status: $Enums.UserStatus
@@ -2650,7 +2626,6 @@ export namespace Prisma {
     readonly notificationsEnabled: FieldRef<"User", 'Boolean'>
     readonly marketingNotifications: FieldRef<"User", 'Boolean'>
     readonly preferredLanguage: FieldRef<"User", 'String'>
-    readonly preferredUnits: FieldRef<"User", 'PreferredUnits'>
     readonly isProfilePublic: FieldRef<"User", 'Boolean'>
     readonly dataAnalyticsEnabled: FieldRef<"User", 'Boolean'>
     readonly status: FieldRef<"User", 'UserStatus'>
@@ -7773,7 +7748,6 @@ export namespace Prisma {
     notificationsEnabled: 'notificationsEnabled',
     marketingNotifications: 'marketingNotifications',
     preferredLanguage: 'preferredLanguage',
-    preferredUnits: 'preferredUnits',
     isProfilePublic: 'isProfilePublic',
     dataAnalyticsEnabled: 'dataAnalyticsEnabled',
     status: 'status',
@@ -7983,20 +7957,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'PreferredUnits'
-   */
-  export type EnumPreferredUnitsFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PreferredUnits'>
-    
-
-
-  /**
-   * Reference to a field of type 'PreferredUnits[]'
-   */
-  export type ListEnumPreferredUnitsFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PreferredUnits[]'>
-    
-
-
-  /**
    * Reference to a field of type 'UserStatus'
    */
   export type EnumUserStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'UserStatus'>
@@ -8113,7 +8073,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFilter<"User"> | boolean
     marketingNotifications?: BoolFilter<"User"> | boolean
     preferredLanguage?: StringFilter<"User"> | string
-    preferredUnits?: EnumPreferredUnitsFilter<"User"> | $Enums.PreferredUnits
     isProfilePublic?: BoolFilter<"User"> | boolean
     dataAnalyticsEnabled?: BoolFilter<"User"> | boolean
     status?: EnumUserStatusFilter<"User"> | $Enums.UserStatus
@@ -8165,7 +8124,6 @@ export namespace Prisma {
     notificationsEnabled?: SortOrder
     marketingNotifications?: SortOrder
     preferredLanguage?: SortOrder
-    preferredUnits?: SortOrder
     isProfilePublic?: SortOrder
     dataAnalyticsEnabled?: SortOrder
     status?: SortOrder
@@ -8220,7 +8178,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFilter<"User"> | boolean
     marketingNotifications?: BoolFilter<"User"> | boolean
     preferredLanguage?: StringFilter<"User"> | string
-    preferredUnits?: EnumPreferredUnitsFilter<"User"> | $Enums.PreferredUnits
     isProfilePublic?: BoolFilter<"User"> | boolean
     dataAnalyticsEnabled?: BoolFilter<"User"> | boolean
     status?: EnumUserStatusFilter<"User"> | $Enums.UserStatus
@@ -8272,7 +8229,6 @@ export namespace Prisma {
     notificationsEnabled?: SortOrder
     marketingNotifications?: SortOrder
     preferredLanguage?: SortOrder
-    preferredUnits?: SortOrder
     isProfilePublic?: SortOrder
     dataAnalyticsEnabled?: SortOrder
     status?: SortOrder
@@ -8329,7 +8285,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolWithAggregatesFilter<"User"> | boolean
     marketingNotifications?: BoolWithAggregatesFilter<"User"> | boolean
     preferredLanguage?: StringWithAggregatesFilter<"User"> | string
-    preferredUnits?: EnumPreferredUnitsWithAggregatesFilter<"User"> | $Enums.PreferredUnits
     isProfilePublic?: BoolWithAggregatesFilter<"User"> | boolean
     dataAnalyticsEnabled?: BoolWithAggregatesFilter<"User"> | boolean
     status?: EnumUserStatusWithAggregatesFilter<"User"> | $Enums.UserStatus
@@ -8706,7 +8661,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -8758,7 +8712,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -8810,7 +8763,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -8862,7 +8814,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -8914,7 +8865,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -8963,7 +8913,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -9012,7 +8961,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -9480,13 +9428,6 @@ export namespace Prisma {
     not?: NestedEnumThemePreferenceFilter<$PrismaModel> | $Enums.ThemePreference
   }
 
-  export type EnumPreferredUnitsFilter<$PrismaModel = never> = {
-    equals?: $Enums.PreferredUnits | EnumPreferredUnitsFieldRefInput<$PrismaModel>
-    in?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    notIn?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    not?: NestedEnumPreferredUnitsFilter<$PrismaModel> | $Enums.PreferredUnits
-  }
-
   export type EnumUserStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.UserStatus | EnumUserStatusFieldRefInput<$PrismaModel>
     in?: $Enums.UserStatus[] | ListEnumUserStatusFieldRefInput<$PrismaModel>
@@ -9570,7 +9511,6 @@ export namespace Prisma {
     notificationsEnabled?: SortOrder
     marketingNotifications?: SortOrder
     preferredLanguage?: SortOrder
-    preferredUnits?: SortOrder
     isProfilePublic?: SortOrder
     dataAnalyticsEnabled?: SortOrder
     status?: SortOrder
@@ -9624,7 +9564,6 @@ export namespace Prisma {
     notificationsEnabled?: SortOrder
     marketingNotifications?: SortOrder
     preferredLanguage?: SortOrder
-    preferredUnits?: SortOrder
     isProfilePublic?: SortOrder
     dataAnalyticsEnabled?: SortOrder
     status?: SortOrder
@@ -9673,7 +9612,6 @@ export namespace Prisma {
     notificationsEnabled?: SortOrder
     marketingNotifications?: SortOrder
     preferredLanguage?: SortOrder
-    preferredUnits?: SortOrder
     isProfilePublic?: SortOrder
     dataAnalyticsEnabled?: SortOrder
     status?: SortOrder
@@ -9812,16 +9750,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumThemePreferenceFilter<$PrismaModel>
     _max?: NestedEnumThemePreferenceFilter<$PrismaModel>
-  }
-
-  export type EnumPreferredUnitsWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.PreferredUnits | EnumPreferredUnitsFieldRefInput<$PrismaModel>
-    in?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    notIn?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    not?: NestedEnumPreferredUnitsWithAggregatesFilter<$PrismaModel> | $Enums.PreferredUnits
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumPreferredUnitsFilter<$PrismaModel>
-    _max?: NestedEnumPreferredUnitsFilter<$PrismaModel>
   }
 
   export type EnumUserStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -10188,10 +10116,6 @@ export namespace Prisma {
     set?: $Enums.ThemePreference
   }
 
-  export type EnumPreferredUnitsFieldUpdateOperationsInput = {
-    set?: $Enums.PreferredUnits
-  }
-
   export type EnumUserStatusFieldUpdateOperationsInput = {
     set?: $Enums.UserStatus
   }
@@ -10492,13 +10416,6 @@ export namespace Prisma {
     not?: NestedEnumThemePreferenceFilter<$PrismaModel> | $Enums.ThemePreference
   }
 
-  export type NestedEnumPreferredUnitsFilter<$PrismaModel = never> = {
-    equals?: $Enums.PreferredUnits | EnumPreferredUnitsFieldRefInput<$PrismaModel>
-    in?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    notIn?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    not?: NestedEnumPreferredUnitsFilter<$PrismaModel> | $Enums.PreferredUnits
-  }
-
   export type NestedEnumUserStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.UserStatus | EnumUserStatusFieldRefInput<$PrismaModel>
     in?: $Enums.UserStatus[] | ListEnumUserStatusFieldRefInput<$PrismaModel>
@@ -10652,16 +10569,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumThemePreferenceFilter<$PrismaModel>
     _max?: NestedEnumThemePreferenceFilter<$PrismaModel>
-  }
-
-  export type NestedEnumPreferredUnitsWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: $Enums.PreferredUnits | EnumPreferredUnitsFieldRefInput<$PrismaModel>
-    in?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    notIn?: $Enums.PreferredUnits[] | ListEnumPreferredUnitsFieldRefInput<$PrismaModel>
-    not?: NestedEnumPreferredUnitsWithAggregatesFilter<$PrismaModel> | $Enums.PreferredUnits
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedEnumPreferredUnitsFilter<$PrismaModel>
-    _max?: NestedEnumPreferredUnitsFilter<$PrismaModel>
   }
 
   export type NestedEnumUserStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -10992,7 +10899,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -11043,7 +10949,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -11110,7 +11015,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -11161,7 +11065,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -11252,7 +11155,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -11303,7 +11205,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -11393,7 +11294,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -11444,7 +11344,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -11524,7 +11423,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -11575,7 +11473,6 @@ export namespace Prisma {
     notificationsEnabled?: boolean
     marketingNotifications?: boolean
     preferredLanguage?: string
-    preferredUnits?: $Enums.PreferredUnits
     isProfilePublic?: boolean
     dataAnalyticsEnabled?: boolean
     status?: $Enums.UserStatus
@@ -11642,7 +11539,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
@@ -11693,7 +11589,6 @@ export namespace Prisma {
     notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
     marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
     preferredLanguage?: StringFieldUpdateOperationsInput | string
-    preferredUnits?: EnumPreferredUnitsFieldUpdateOperationsInput | $Enums.PreferredUnits
     isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
     dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
     status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus

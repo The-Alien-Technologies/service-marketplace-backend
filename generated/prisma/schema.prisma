@@ -35,11 +35,6 @@ enum ThemePreference {
   SYSTEM
 }
 
-enum PreferredUnits {
-  METRIC
-  IMPERIAL
-}
-
 enum ExperienceLevel {
   BEGINNER
   INTERMEDIATE
@@ -122,7 +117,6 @@ model User {
   notificationsEnabled   Boolean         @default(true)
   marketingNotifications Boolean         @default(false)
   preferredLanguage      String          @default("en")
-  preferredUnits         PreferredUnits  @default(METRIC)
   isProfilePublic        Boolean         @default(false)
   dataAnalyticsEnabled   Boolean         @default(true)
 

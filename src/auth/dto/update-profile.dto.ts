@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsBoolean, IsEnum, IsDateString, IsUrl } from 'class-validator';
-import { ThemePreference, PreferredUnits } from '../../../generated/prisma';
+import { ThemePreference } from '../../../generated/prisma';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -57,10 +57,6 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   preferredLanguage?: string;
-
-  @IsOptional()
-  @IsEnum(PreferredUnits)
-  preferredUnits?: PreferredUnits;
 
   @IsOptional()
   @IsBoolean()

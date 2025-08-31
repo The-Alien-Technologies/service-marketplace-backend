@@ -161,7 +161,6 @@ exports.Prisma.UserScalarFieldEnum = {
   notificationsEnabled: 'notificationsEnabled',
   marketingNotifications: 'marketingNotifications',
   preferredLanguage: 'preferredLanguage',
-  preferredUnits: 'preferredUnits',
   isProfilePublic: 'isProfilePublic',
   dataAnalyticsEnabled: 'dataAnalyticsEnabled',
   status: 'status',
@@ -259,11 +258,6 @@ exports.ThemePreference = exports.$Enums.ThemePreference = {
   LIGHT: 'LIGHT',
   DARK: 'DARK',
   SYSTEM: 'SYSTEM'
-};
-
-exports.PreferredUnits = exports.$Enums.PreferredUnits = {
-  METRIC: 'METRIC',
-  IMPERIAL: 'IMPERIAL'
 };
 
 exports.UserStatus = exports.$Enums.UserStatus = {
