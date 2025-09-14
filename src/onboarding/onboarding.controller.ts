@@ -16,6 +16,7 @@ import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OnboardingService } from './onboarding.service';
+import { OnboardingStatusService } from './onboarding-status.service';
 import {
   UpdateLocationDto,
   UpdateProfileDto,
@@ -28,7 +29,17 @@ import { ResponseUtil } from '../common/utils/response.util';
 @Controller('onboarding')
 @UseGuards(JwtAuthGuard)
 export class OnboardingController {
-  constructor(private readonly onboardingService: OnboardingService) {}
+  constructor(
+    private readonly onboardingService: OnboardingService,
+    private readonly onboardingStatusService: OnboardingStatusService,
+  ) {}
+
+  @Get('status')
+  async getOnboardingStatus(@Req() req: Request) {
+    const user = await this.onboardingService.getUserWithRelations(req.currentUser.id);
+    const status = this.onboardingStatusService.getOnboardingStatus(user);
+    return ResponseUtil.success(status, 'Onboarding status retrieved successfully');
+  }
 
   @Put('location')
   async updateLocation(@Req() req: Request, @Body() locationDto: UpdateLocationDto) {
@@ -148,9 +159,4 @@ export class OnboardingController {
       );
   }
 
-  @Get('status')
-  async getOnboardingStatus(@Req() req: Request) {
-      const status = await this.onboardingService.getOnboardingStatus(req.currentUser.id);
-      return ResponseUtil.success(status, 'Onboarding status retrieved successfully');
-  }
 }

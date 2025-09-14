@@ -9,24 +9,19 @@ import { User, UserStatus } from '../../generated/prisma';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userData: RegisterDto): Promise<User> {
+  async create(userData: Partial<RegisterDto> & { firstName: string; lastName: string; password: string }): Promise<User> {
     // Check if user already exists
     const existingUser = await this.findByEmail(userData.email);
     if (existingUser) {
       throw new ConflictException({ message: 'User with this email already exists' });
     }
 
-    // Check username uniqueness if provided
-    if (userData.username) {
-      const existingUsername = await this.findByUsername(userData.username);
-      if (existingUsername) {
-        throw new ConflictException({ message: 'Username already taken' });
-      }
-    }
-
     return this.prisma.user.create({
       data: {
-        ...userData,
+        email: userData.email,
+        password: userData.password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         status: UserStatus.ACTIVE,
         emailVerified: false,
       },
@@ -138,6 +133,17 @@ export class UsersService {
       where: { id: userId },
       data: {
         passwordResetAttempts: {
+          increment: 1,
+        },
+      },
+    });
+  }
+
+  async incrementEmailVerificationAttempts(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerificationAttempts: {
           increment: 1,
         },
       },

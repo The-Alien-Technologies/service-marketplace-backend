@@ -8,11 +8,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UsersModule } from '../users/users.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
 import { EmailService } from '../common/services/email.service';
 
 @Module({
   imports: [
     UsersModule,
+    OnboardingModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { OnboardingController } from './onboarding.controller';
 import { OnboardingService } from './onboarding.service';
+import { OnboardingStatusService } from './onboarding-status.service';
 import { FileUploadService } from '../common/services/file-upload.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { memoryStorage } from 'multer';
@@ -17,7 +18,7 @@ import { memoryStorage } from 'multer';
     }),
   ],
   controllers: [OnboardingController],
-  providers: [OnboardingService, FileUploadService],
-  exports: [OnboardingService],
+  providers: [OnboardingService, OnboardingStatusService, FileUploadService],
+  exports: [OnboardingService, OnboardingStatusService],
 })
 export class OnboardingModule {}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email Address</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            width: 60px;
+            height: 60px;
+            background-color: #16a34a;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .logo::after {
+            content: '';
+            width: 24px;
+            height: 24px;
+            background-color: white;
+            border-radius: 4px;
+            transform: rotate(45deg);
+        }
+        .otp-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #16a34a;
+            text-align: center;
+            letter-spacing: 8px;
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f0f9ff;
+            border-radius: 8px;
+            border: 2px dashed #16a34a;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo"></div>
+        <h1>Verify Your Email Address</h1>
+    </div>
+
+    <p>Welcome to Pavodah! To complete your registration, please verify your email address using the code below:</p>
+
+    <div class="otp-code">{{otpCode}}</div>
+
+    <p>This verification code will expire in <strong>{{expiresInMinutes}} minutes</strong>.</p>
+
+    <div class="warning">
+        <strong>Security Notice:</strong> If you didn't create an account with Pavodah, please ignore this email. Your email address will not be used without verification.
+    </div>
+
+    <p>If you're having trouble with verification, you can request a new code or contact our support team.</p>
+
+    <div class="footer">
+        <p>Best regards,<br>The Pavodah Team</p>
+        <p>
+            <a href="mailto:support@pavodah.com">support@pavodah.com</a><br>
+            This is an automated email, please do not reply directly to this message.
+        </p>
+    </div>
+</body>
+</html>

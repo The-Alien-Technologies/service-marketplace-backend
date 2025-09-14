@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminSeeder } from './admin.seeder';
+import { CategoriesSeeder } from './categories.seeder';
 
 @Injectable()
 export class SeederService {
@@ -7,6 +8,7 @@ export class SeederService {
 
   constructor(
     private adminSeeder: AdminSeeder,
+    private categoriesSeeder: CategoriesSeeder,
   ) {}
 
   async runAllSeeders(): Promise<void> {
@@ -14,6 +16,7 @@ export class SeederService {
 
     try {
       await this.adminSeeder.seed();
+      await this.categoriesSeeder.seed();
 
       this.logger.log('Database seeding completed successfully');
     } catch (error) {

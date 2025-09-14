@@ -93,6 +93,7 @@ export class EmailService {
     });
   }
 
+
   private async renderTemplate(templateName: string, data: any): Promise<string> {
     try {
       const templatePath = path.join(this.templatesPath, templateName);
@@ -143,8 +144,20 @@ export class EmailService {
   }
 
   async sendEmailVerificationOtp(email: string, otpCode: string, userName?: string): Promise<void> {
-    // Future implementation for email verification
-    this.logger.log(`Email verification OTP would be sent to ${email} with code ${otpCode}`);
+    const templateData = {
+      otpCode: otpCode,
+      expiresInMinutes: 10,
+    };
+
+    const html = await this.renderTemplate('email-verification.hbs', templateData);
+    const text = await this.renderTemplate('email-verification.txt', templateData);
+
+    await this.sendEmail({
+      to: [email],
+      subject: 'Verify Your Email Address - Pavodah',
+      html,
+      text,
+    });
   }
 
   private async sendEmailWithAws(options: EmailOptions): Promise<void> {

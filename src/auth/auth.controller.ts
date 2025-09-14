@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Req, Put, Delete, Patch, HttpCode, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, Put, Delete, Patch, HttpCode, UseGuards, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -78,7 +78,70 @@ export class AuthController {
   }
 
   @Public()
+  @Post('verify-email')
+  async verifyEmail(@Body() verifyOtpDto: VerifyOtpDto) {
+    const result = await this.authService.verifyEmailOtp(verifyOtpDto.email, verifyOtpDto.otpCode);
+
+    if (result.valid) {
+      return ResponseUtil.success({ valid: true }, 'Email verified successfully');
+    } else {
+      // Return proper error response with 400 status code
+      const attemptsLeft = result.attemptsLeft;
+      const errorMessage = attemptsLeft !== undefined 
+        ? `Invalid verification code. ${attemptsLeft} attempts remaining.`
+        : 'Invalid verification code.';
+      
+      throw new BadRequestException({
+        message: errorMessage,
+        attemptsLeft: result.attemptsLeft,
+      });
+    }
+  }
+
+  @Public()
   @HttpCode(200)
+  @Post('resend-email-verification')
+  async resendEmailVerification(@Body() body: { email: string }) {
+    await this.authService.resendEmailVerificationOtp(body.email);
+    return ResponseUtil.success(null, 'Verification code sent to your email');
+  }
+
+  @Public()
+  @HttpCode(200)
+  @Post('send-phone-verification')
+  async sendPhoneVerification(@Body() body: { phoneNumber: string }) {
+    await this.authService.sendPhoneVerificationOtp(body.phoneNumber);
+    return ResponseUtil.success(null, 'Verification code sent to your phone');
+  }
+
+  @Public()
+  @Post('verify-phone')
+  async verifyPhone(@Body() body: { phoneNumber: string; otpCode: string }) {
+    const result = await this.authService.verifyPhoneOtp(body.phoneNumber, body.otpCode);
+    
+    if (result.valid) {
+      return ResponseUtil.success({ valid: true }, 'Phone number verified successfully');
+    } else {
+      const attemptsLeft = result.attemptsLeft;
+      const errorMessage = attemptsLeft !== undefined
+        ? `Invalid verification code. ${attemptsLeft} attempts remaining.`
+        : 'Invalid verification code.';
+      throw new BadRequestException({
+        message: errorMessage,
+        attemptsLeft: result.attemptsLeft,
+      });
+    }
+  }
+
+  @Public()
+  @HttpCode(200)
+  @Post('resend-phone-verification')
+  async resendPhoneVerification(@Body() body: { phoneNumber: string }) {
+    await this.authService.resendPhoneVerificationOtp(body.phoneNumber);
+    return ResponseUtil.success(null, 'Verification code sent to your phone');
+  }
+
+  @Public()
   @Post('verify-password-reset-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     const result = await this.authService.verifyPasswordResetOtp(verifyOtpDto.email, verifyOtpDto.otpCode);
@@ -86,13 +149,16 @@ export class AuthController {
     if (result.valid) {
       return ResponseUtil.success({ valid: true }, 'OTP code is valid');
     } else {
-      return ResponseUtil.success(
-        {
-          valid: false,
-          attemptsLeft: result.attemptsLeft,
-        },
-        'Invalid OTP code',
-      );
+      // Return proper error response with 400 status code
+      const attemptsLeft = result.attemptsLeft;
+      const errorMessage = attemptsLeft !== undefined 
+        ? `Invalid OTP code. ${attemptsLeft} attempts remaining.`
+        : 'Invalid OTP code.';
+      
+      throw new BadRequestException({
+        message: errorMessage,
+        attemptsLeft: result.attemptsLeft,
+      });
     }
   }
 

@@ -6,66 +6,64 @@ export class CategoriesSeeder {
   constructor(private prisma: PrismaService) {}
 
   async seed() {
+    // Check if categories already exist
+    const existingCategories = await this.prisma.category.count();
+    if (existingCategories > 0) {
+      console.log('Categories already exist, skipping seeding');
+      return;
+    }
+
+    console.log('Seeding categories...');
     const categories = [
       {
         name: 'Plumbing',
         description: 'Plumbing installation, repair, and maintenance services',
         isActive: true,
-        sortOrder: 1,
       },
       {
         name: 'Electrical',
         description: 'Electrical installation, repair, and maintenance services',
         isActive: true,
-        sortOrder: 2,
       },
       {
         name: 'Painting',
         description: 'Interior and exterior painting services',
         isActive: true,
-        sortOrder: 3,
       },
       {
         name: 'Carpentry',
         description: 'Wood work, furniture making, and repair services',
         isActive: true,
-        sortOrder: 4,
       },
       {
         name: 'Cleaning',
         description: 'House cleaning and maintenance services',
         isActive: true,
-        sortOrder: 5,
       },
       {
         name: 'Beauty & Wellness',
         description: 'Beauty, spa, and wellness services',
         isActive: true,
-        sortOrder: 6,
       },
       {
         name: 'Tutoring',
         description: 'Educational and tutoring services',
         isActive: true,
-        sortOrder: 7,
       },
       {
         name: 'Photography',
         description: 'Photography and videography services',
         isActive: true,
-        sortOrder: 8,
       },
       {
         name: 'Catering',
         description: 'Food and catering services',
         isActive: true,
-        sortOrder: 9,
       },
       {
         name: 'Transportation',
         description: 'Transportation and delivery services',
         isActive: true,
-        sortOrder: 10,
       },
     ];
 

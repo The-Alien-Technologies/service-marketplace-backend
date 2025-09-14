@@ -68,21 +68,24 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Auth & Basic Info
-  email                 String    @unique
-  emailVerified         Boolean   @default(false)
-  password              String?
-  passwordResetOtp      String?
-  passwordResetExpires  DateTime?
-  passwordResetAttempts Int       @default(0)
-  role                  Role      @default(USER)
-  firstName             String?
-  lastName              String?
-  displayName           String?
-  username              String?   @unique
-  avatar                String?
-  bio                   String?
-  dateOfBirth           DateTime?
-  timezone              String    @default("UTC")
+  email                     String    @unique
+  emailVerified             Boolean   @default(false)
+  emailVerificationOtp      String?
+  emailVerificationExpires  DateTime?
+  emailVerificationAttempts Int       @default(0)
+  password                  String?
+  passwordResetOtp          String?
+  passwordResetExpires      DateTime?
+  passwordResetAttempts     Int       @default(0)
+  role                      Role      @default(USER)
+  firstName                 String?
+  lastName                  String?
+  displayName               String?
+  username                  String?   @unique
+  avatar                    String?
+  bio                       String?
+  dateOfBirth               DateTime?
+  timezone                  String    @default("UTC")
 
   // Phone & Verification
   phoneNumber   String?

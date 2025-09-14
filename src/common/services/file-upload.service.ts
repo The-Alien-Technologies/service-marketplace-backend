@@ -37,22 +37,22 @@ export class FileUploadService {
   private provider: FileUploadProvider;
 
   constructor(private configService: ConfigService) {
-    this.provider = this.configService.get<FileUploadProvider>(
-      'FILE_UPLOAD_PROVIDER',
-      FileUploadProvider.SUPABASE,
-    );
-
-    // Initialize Supabase client
-    if (this.provider === FileUploadProvider.SUPABASE) {
-      const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-      const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
-
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error('Supabase URL and KEY are required when using Supabase provider');
-      }
-
+    // Check if Supabase is configured
+    const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+    const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
+    
+    if (supabaseUrl && supabaseKey) {
+      // Supabase is properly configured
+      this.provider = FileUploadProvider.SUPABASE;
       this.supabaseClient = createClient(supabaseUrl, supabaseKey);
+      this.logger.log('Using Supabase file upload provider');
+    } else {
+      // Fallback to LOCAL provider for development
+      this.provider = FileUploadProvider.LOCAL;
+      this.logger.warn('Supabase not configured, using LOCAL file upload provider');
     }
+    
+    this.logger.log(`File upload provider initialized: ${this.provider}`);
   }
 
   async uploadFile(
@@ -63,28 +63,43 @@ export class FileUploadService {
     // Validate file
     this.validateFile(file, options);
 
-    switch (this.provider) {
+    this.logger.log(`Using file upload provider: ${this.provider}`);
+
+    // Normalize provider to uppercase for comparison
+    const normalizedProvider = typeof this.provider === 'string' ? this.provider.toUpperCase() : this.provider;
+    
+    switch (normalizedProvider) {
+      case 'SUPABASE':
       case FileUploadProvider.SUPABASE:
         return this.uploadToSupabase(file, category, options);
+      case 'AWS_S3':
       case FileUploadProvider.AWS_S3:
         return this.uploadToS3(file, category, options);
+      case 'LOCAL':
       case FileUploadProvider.LOCAL:
         return this.uploadToLocal(file, category, options);
       default:
-        throw new BadRequestException('Unsupported file upload provider');
+        this.logger.error(`Unknown provider: ${this.provider}, available providers: ${Object.values(FileUploadProvider)}`);
+        throw new BadRequestException(`Unsupported file upload provider: ${this.provider}`);
     }
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
-    switch (this.provider) {
+    // Normalize provider to uppercase for comparison
+    const normalizedProvider = typeof this.provider === 'string' ? this.provider.toUpperCase() : this.provider;
+    
+    switch (normalizedProvider) {
+      case 'SUPABASE':
       case FileUploadProvider.SUPABASE:
         return this.deleteFromSupabase(fileUrl);
+      case 'AWS_S3':
       case FileUploadProvider.AWS_S3:
         return this.deleteFromS3(fileUrl);
+      case 'LOCAL':
       case FileUploadProvider.LOCAL:
         return this.deleteFromLocal(fileUrl);
       default:
-        throw new BadRequestException('Unsupported file upload provider');
+        throw new BadRequestException(`Unsupported file upload provider: ${this.provider}`);
     }
   }
 
@@ -197,13 +212,63 @@ export class FileUploadService {
     category: FileCategory,
     options: FileUploadOptions,
   ): Promise<FileUploadResult> {
-    // TODO: Implement local file upload
-    throw new BadRequestException('Local provider not implemented yet');
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    try {
+      // Create uploads directory structure
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      const categoryDir = path.join(uploadsDir, category);
+      const folderDir = options.folder ? path.join(categoryDir, options.folder) : categoryDir;
+      
+      // Ensure directories exist
+      await fs.mkdir(folderDir, { recursive: true });
+      
+      // Generate file name
+      const fileName = this.generateFileName(file.originalname, options.generateUniqueName);
+      const filePath = path.join(folderDir, fileName);
+      
+      // Write file to disk
+      await fs.writeFile(filePath, file.buffer);
+      
+      // Generate public URL (for development)
+      const relativePath = path.relative(path.join(process.cwd(), 'uploads'), filePath);
+      const publicUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+      
+      return {
+        url: publicUrl,
+        fileName: fileName,
+        fileSize: file.size,
+        fileType: file.mimetype,
+      };
+    } catch (error) {
+      this.logger.error('Local upload error:', error);
+      throw new BadRequestException(`Failed to upload file locally: ${error.message}`);
+    }
   }
 
   private async deleteFromLocal(fileUrl: string): Promise<void> {
-    // TODO: Implement local file delete
-    throw new BadRequestException('Local provider not implemented yet');
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    try {
+      // Convert URL back to file path
+      const relativePath = fileUrl.replace('/uploads/', '');
+      const filePath = path.join(process.cwd(), 'uploads', relativePath);
+      
+      // Check if file exists and delete it
+      try {
+        await fs.access(filePath);
+        await fs.unlink(filePath);
+        this.logger.log(`Deleted local file: ${filePath}`);
+      } catch (error) {
+        // File doesn't exist, which is fine
+        this.logger.warn(`File not found for deletion: ${filePath}`);
+      }
+    } catch (error) {
+      this.logger.error('Local delete error:', error);
+      // Don't throw error for delete operations to avoid breaking the flow
+    }
   }
 
   // Utility methods for common file operations

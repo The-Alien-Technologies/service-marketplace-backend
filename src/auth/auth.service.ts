@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../common/services/email.service';
+import { OnboardingStatusService } from '../onboarding/onboarding-status.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { SocialAuthDto } from './dto/social-auth.dto';
@@ -33,10 +34,11 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
     private configService: ConfigService,
+    private onboardingStatusService: OnboardingStatusService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponse> {
-    const { firstName, lastName, email, password, username } = registerDto;
+    const { email, password } = registerDto;
 
     // Check if user exists
     const existingUser = await this.usersService.findByEmail(email);
@@ -44,25 +46,17 @@ export class AuthService {
       throw new ConflictException({ message: 'User with this email already exists'});
     }
 
-    // Check username uniqueness if provided
-    if (username) {
-      const existingUsername = await this.usersService.findByUsername(username);
-      if (existingUsername) {
-        throw new ConflictException({ message: 'Username already taken' });
-      }
-    }
-
     // Hash password
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user
+    // Create user with minimal data - other fields will be updated during onboarding
     const user = await this.usersService.create({
-      firstName,
-      lastName,
       email,
-      username,
       password: hashedPassword,
+      // Set default values for required fields that will be updated later
+      firstName: '',
+      lastName: '',
     });
 
     // Generate tokens
@@ -72,8 +66,11 @@ export class AuthService {
     // Update last login
     await this.usersService.updateLastActivity(user.id);
 
+    // Generate and send email verification OTP
+    await this.sendEmailVerificationOtp(user.id, user.email);
+
     // Send welcome email (async, don't wait for it to complete)
-    this.sendWelcomeEmailAsync(user.email, user?.firstName || 'User');
+    this.sendWelcomeEmailAsync(user.email, 'User');
 
     return {
       user: this.sanitizeUser(user),
@@ -281,6 +278,127 @@ export class AuthService {
     await this.usersService.updateLastActivity(user.id);
 
     return { token, refreshToken };
+  }
+
+  async sendEmailVerificationOtp(userId: string, email: string): Promise<void> {
+    // Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set expiration time (10 minutes from now)
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    // Update user with OTP
+    await this.usersService.updateProfile(userId, {
+      emailVerificationOtp: otpCode,
+      emailVerificationExpires: expiresAt,
+      emailVerificationAttempts: 0,
+    } as any);
+
+    // Send email with OTP
+    try {
+      await this.emailService.sendEmailVerificationOtp(email, otpCode);
+      this.logger.log(`Email verification OTP sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send email verification OTP to ${email}:`, error);
+      // Don't throw error - user can request resend
+    }
+  }
+
+  async verifyEmailOtp(email: string, otpCode: string): Promise<{ valid: boolean; attemptsLeft?: number }> {
+    // Validate OTP format
+    if (!this.emailService.isValidOtpFormat(otpCode)) {
+      return { valid: false };
+    }
+
+    // Find user by email
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      return { valid: false };
+    }
+
+    // Check if OTP matches
+    if (user.emailVerificationOtp !== otpCode) {
+      // Increment failed attempts
+      await this.usersService.incrementEmailVerificationAttempts(user.id);
+      const attemptsLeft = Math.max(0, 5 - (user.emailVerificationAttempts + 1));
+      return { valid: false, attemptsLeft };
+    }
+
+    // Check if OTP is expired
+    if (!user.emailVerificationExpires || user.emailVerificationExpires < new Date()) {
+      return { valid: false };
+    }
+
+    // Check if account is active
+    if (user.status !== UserStatus.ACTIVE) {
+      return { valid: false };
+    }
+
+    // OTP is valid - mark email as verified and clear OTP
+    await this.usersService.updateProfile(user.id, {
+      emailVerified: true,
+      emailVerificationOtp: null,
+      emailVerificationExpires: null,
+      emailVerificationAttempts: 0,
+    } as any);
+
+    return { valid: true };
+  }
+
+  async resendEmailVerificationOtp(email: string): Promise<void> {
+    // Find user by email
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return;
+    }
+
+    // Check if email is already verified
+    if (user.emailVerified) {
+      return;
+    }
+
+    // Check rate limiting (don't allow resend more than once per minute)
+    if (user.emailVerificationExpires && user.emailVerificationExpires > new Date()) {
+      const timeSinceLastSend = new Date().getTime() - (user.emailVerificationExpires.getTime() - 10 * 60 * 1000);
+      if (timeSinceLastSend < 60 * 1000) { // Less than 1 minute
+        throw new BadRequestException({ message: 'Please wait before requesting another verification code' });
+      }
+    }
+
+    // Send new OTP
+    await this.sendEmailVerificationOtp(user.id, user.email);
+  }
+
+  async sendPhoneVerificationOtp(phoneNumber: string): Promise<void> {
+    // For now, use fixed '123456' code
+    const otpCode = '123456';
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    // TODO: Store phone verification in database
+    // For now, we'll just log it
+    this.logger.log(`Phone verification OTP for ${phoneNumber}: ${otpCode}`);
+    
+    // TODO: Send via AWS SNS
+    // await this.snsService.sendSMS(phoneNumber, `Your Pavodah verification code: ${otpCode}`);
+  }
+
+  async verifyPhoneOtp(phoneNumber: string, otpCode: string): Promise<{ valid: boolean; attemptsLeft?: number }> {
+    // For now, accept only '123456'
+    if (otpCode === '123456') {
+      this.logger.log(`Phone verification successful for ${phoneNumber}`);
+      return { valid: true };
+    } else {
+      this.logger.log(`Phone verification failed for ${phoneNumber} with code ${otpCode}`);
+      return { valid: false, attemptsLeft: 4 }; // Mock attempts left
+    }
+  }
+
+  async resendPhoneVerificationOtp(phoneNumber: string): Promise<void> {
+    // TODO: Add rate limiting logic similar to email
+    await this.sendPhoneVerificationOtp(phoneNumber);
   }
 
   async refreshTokenFromRefreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {

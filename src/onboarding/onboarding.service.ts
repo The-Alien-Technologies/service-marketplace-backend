@@ -21,6 +21,27 @@ export class OnboardingService {
     private readonly fileUploadService: FileUploadService,
   ) {}
 
+  async getUserWithRelations(userId: string): Promise<User> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        addresses: true,
+        interests: {
+          include: {
+            category: true,
+          },
+        },
+        verificationDocuments: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
   async updateLocation(userId: string, locationDto: UpdateLocationDto): Promise<UserAddress> {
     // Check if user exists
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
