@@ -36,23 +36,61 @@ export class FileUploadService {
   private supabaseClient: SupabaseClient;
   private provider: FileUploadProvider;
 
-  constructor(private configService: ConfigService) {
-    // Check if Supabase is configured
+  constructor(private readonly configService: ConfigService) {
+    // Get the configured provider, default to LOCAL for development
+    const configuredProvider = this.configService.get<string>('FILE_UPLOAD_PROVIDER', FileUploadProvider.LOCAL);
+    
+    // Validate and set the provider
+    if (Object.values(FileUploadProvider).includes(configuredProvider as FileUploadProvider)) {
+      this.provider = configuredProvider as FileUploadProvider;
+    } else {
+      this.logger.warn(`Invalid FILE_UPLOAD_PROVIDER: ${configuredProvider}, falling back to LOCAL`);
+      this.provider = FileUploadProvider.LOCAL;
+    }
+
+    // Initialize the appropriate client based on provider
+    this.initializeProvider();
+    
+    this.logger.log(`File upload provider initialized: ${this.provider}`);
+  }
+
+  private initializeProvider(): void {
+    switch (this.provider) {
+      case FileUploadProvider.SUPABASE:
+        this.initializeSupabase();
+        break;
+      case FileUploadProvider.AWS_S3:
+        this.initializeS3();
+        break;
+      case FileUploadProvider.LOCAL:
+        this.logger.log('Using LOCAL file upload provider');
+        break;
+      default:
+        this.logger.error(`Unknown provider: ${this.provider}`);
+        this.provider = FileUploadProvider.LOCAL;
+        this.logger.log('Falling back to LOCAL provider');
+    }
+  }
+
+  private initializeSupabase(): void {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
     
-    if (supabaseUrl && supabaseKey) {
-      // Supabase is properly configured
-      this.provider = FileUploadProvider.SUPABASE;
-      this.supabaseClient = createClient(supabaseUrl, supabaseKey);
-      this.logger.log('Using Supabase file upload provider');
-    } else {
-      // Fallback to LOCAL provider for development
+    if (!supabaseUrl || !supabaseKey) {
+      this.logger.error('Supabase provider selected but SUPABASE_URL or SUPABASE_KEY not configured');
       this.provider = FileUploadProvider.LOCAL;
-      this.logger.warn('Supabase not configured, using LOCAL file upload provider');
+      this.logger.warn('Falling back to LOCAL provider');
+      return;
     }
-    
-    this.logger.log(`File upload provider initialized: ${this.provider}`);
+
+    this.supabaseClient = createClient(supabaseUrl, supabaseKey);
+    this.logger.log('Supabase client initialized successfully');
+  }
+
+  private initializeS3(): void {
+    // TODO: Initialize AWS S3 client when implemented
+    this.logger.warn('AWS S3 provider not implemented yet, falling back to LOCAL');
+    this.provider = FileUploadProvider.LOCAL;
   }
 
   async uploadFile(
@@ -64,18 +102,12 @@ export class FileUploadService {
     this.validateFile(file, options);
 
     this.logger.log(`Using file upload provider: ${this.provider}`);
-
-    // Normalize provider to uppercase for comparison
-    const normalizedProvider = typeof this.provider === 'string' ? this.provider.toUpperCase() : this.provider;
     
-    switch (normalizedProvider) {
-      case 'SUPABASE':
+    switch (this.provider) {
       case FileUploadProvider.SUPABASE:
         return this.uploadToSupabase(file, category, options);
-      case 'AWS_S3':
       case FileUploadProvider.AWS_S3:
         return this.uploadToS3(file, category, options);
-      case 'LOCAL':
       case FileUploadProvider.LOCAL:
         return this.uploadToLocal(file, category, options);
       default:
@@ -85,17 +117,11 @@ export class FileUploadService {
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
-    // Normalize provider to uppercase for comparison
-    const normalizedProvider = typeof this.provider === 'string' ? this.provider.toUpperCase() : this.provider;
-    
-    switch (normalizedProvider) {
-      case 'SUPABASE':
+    switch (this.provider) {
       case FileUploadProvider.SUPABASE:
         return this.deleteFromSupabase(fileUrl);
-      case 'AWS_S3':
       case FileUploadProvider.AWS_S3:
         return this.deleteFromS3(fileUrl);
-      case 'LOCAL':
       case FileUploadProvider.LOCAL:
         return this.deleteFromLocal(fileUrl);
       default:

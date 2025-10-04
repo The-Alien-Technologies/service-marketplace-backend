@@ -65,6 +65,7 @@ EMAIL_PROVIDER="AWS" # or "RESEND"
 AWS_REGION="us-east-1"
 AWS_ACCESS_KEY_ID="your-aws-access-key"
 AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
+AWS_BUCKET="your-aws-s3-bucket" # Optional: for file storage
 FROM_EMAIL="noreply@servicemarketplace.com"
 
 # Or for Resend

@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsEnum } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
@@ -7,4 +7,8 @@ export class RegisterDto {
   @IsNotEmpty()
   @MinLength(6)
   password: string;
+
+  @IsOptional()
+  @IsEnum(['USER', 'SERVICE_PROVIDER'], { message: 'Role must be either USER or SERVICE_PROVIDER' })
+  role?: 'USER' | 'SERVICE_PROVIDER';
 }

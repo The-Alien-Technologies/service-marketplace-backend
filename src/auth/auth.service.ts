@@ -38,7 +38,7 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponse> {
-    const { email, password } = registerDto;
+    const { email, password, role = 'USER' } = registerDto;
 
     // Check if user exists
     const existingUser = await this.usersService.findByEmail(email);
@@ -54,6 +54,7 @@ export class AuthService {
     const user = await this.usersService.create({
       email,
       password: hashedPassword,
+      role,
       // Set default values for required fields that will be updated later
       firstName: '',
       lastName: '',

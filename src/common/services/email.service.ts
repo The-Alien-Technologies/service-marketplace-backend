@@ -214,7 +214,7 @@ export class EmailService {
 
     try {
       const result = await this.resendClient.emails.send(config);
-      this.logger.log(`Email sent successfully to ${to}. MessageId: ${result.data.id}`);
+      this.logger.log(`Email sent successfully to ${to}. MessageId: ${result.data}`);
     } catch (error) {
       this.logger.error(`Failed to send email to ${to} with Resend:`, error);
       throw new Error(`Failed to send email to ${to}`);
