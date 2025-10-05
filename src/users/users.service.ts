@@ -22,6 +22,7 @@ export class UsersService {
         password: userData.password,
         firstName: userData.firstName,
         lastName: userData.lastName,
+        role: userData.role || 'USER',
         status: UserStatus.ACTIVE,
         emailVerified: false,
       },
@@ -29,68 +30,44 @@ export class UsersService {
   }
 
   async createFromSocialAuth(socialAuthDto: SocialAuthDto): Promise<User> {
-    const { provider, providerId, email, firstName, lastName, displayName, avatar } = socialAuthDto;
+    const { provider, providerId, email, role } = socialAuthDto;
+
+    // Only support Google for now
+    if (provider !== SocialProvider.GOOGLE) {
+      throw new ConflictException({ message: 'Only Google authentication is supported' });
+    }
 
     // Check if user already exists by email
     let user = await this.findByEmail(email);
 
     if (user) {
-      // User exists, update social provider info
+      // User exists, update Google provider info and last login
       const updateData: any = {
+        googleId: providerId,
         lastLoginAt: new Date(),
         lastActiveAt: new Date(),
       };
 
-      // Set provider-specific ID
-      switch (provider) {
-        case SocialProvider.GOOGLE:
-          updateData.googleId = providerId;
-          break;
-        case SocialProvider.APPLE:
-          updateData.appleId = providerId;
-          break;
-        case SocialProvider.FACEBOOK:
-          updateData.facebookId = providerId;
-          break;
-        case SocialProvider.TWITTER:
-          updateData.twitterId = providerId;
-          break;
-      }
-
-      // Update user with social provider info
+      // Update user with Google provider info
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: updateData,
       });
     } else {
-      // Create new user from social auth
+      // Create new user from Google social auth with minimal data
       const createData: any = {
         email,
-        firstName: firstName || null,
-        lastName: lastName || null,
-        displayName: displayName || null,
-        avatar: avatar || null,
-        emailVerified: true,
+        firstName: '', // Empty initially, will be filled during onboarding
+        lastName: '', // Empty initially, will be filled during onboarding
+        googleId: providerId,
+        emailVerified: true, // Google accounts are pre-verified
         status: UserStatus.ACTIVE,
+        role: role || 'USER', // Use role from frontend or default to USER
         lastLoginAt: new Date(),
         lastActiveAt: new Date(),
+        hasCompletedOnboarding: false,
+        displayName: socialAuthDto.displayName || null,
       };
-
-      // Set provider-specific ID
-      switch (provider) {
-        case SocialProvider.GOOGLE:
-          createData.googleId = providerId;
-          break;
-        case SocialProvider.APPLE:
-          createData.appleId = providerId;
-          break;
-        case SocialProvider.FACEBOOK:
-          createData.facebookId = providerId;
-          break;
-        case SocialProvider.TWITTER:
-          createData.twitterId = providerId;
-          break;
-      }
 
       user = await this.prisma.user.create({
         data: createData,
@@ -160,24 +137,14 @@ export class UsersService {
   }
 
   async findBySocialProvider(provider: SocialProvider, providerId: string): Promise<User | null> {
-    const where: any = {};
-
-    switch (provider) {
-      case SocialProvider.GOOGLE:
-        where.googleId = providerId;
-        break;
-      case SocialProvider.APPLE:
-        where.appleId = providerId;
-        break;
-      case SocialProvider.FACEBOOK:
-        where.facebookId = providerId;
-        break;
-      case SocialProvider.TWITTER:
-        where.twitterId = providerId;
-        break;
+    // Only support Google for now
+    if (provider !== SocialProvider.GOOGLE) {
+      return null;
     }
 
-    return this.prisma.user.findFirst({ where });
+    return this.prisma.user.findFirst({ 
+      where: { googleId: providerId } 
+    });
   }
 
   async updateProfile(userId: string, updateData: UpdateProfileDto): Promise<User> {

@@ -2,9 +2,6 @@ import { IsEmail, IsNotEmpty, IsOptional, IsEnum, IsString, IsUrl } from 'class-
 
 export enum SocialProvider {
   GOOGLE = 'google',
-  APPLE = 'apple',
-  FACEBOOK = 'facebook',
-  TWITTER = 'twitter',
 }
 
 export class SocialAuthDto {
@@ -14,10 +11,20 @@ export class SocialAuthDto {
 
   @IsNotEmpty()
   @IsString()
-  providerId: string; // The ID from the social provider
+  accessToken: string;
 
+  @IsOptional()
+  @IsString()
+  idToken?: string;
+
+  // These fields will be populated after token validation
+  @IsOptional()
+  @IsString()
+  providerId?: string;
+
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsOptional()
   @IsString()
@@ -38,4 +45,8 @@ export class SocialAuthDto {
   @IsOptional()
   @IsString()
   supabaseUserId?: string; // Supabase user ID for reference
+
+  @IsOptional()
+  @IsString()
+  role?: 'USER' | 'SERVICE_PROVIDER'; // Intended user role from frontend
 }

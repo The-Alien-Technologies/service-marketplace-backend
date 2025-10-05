@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 
@@ -34,6 +35,7 @@ export enum FileCategory {
 export class FileUploadService {
   private readonly logger = new Logger(FileUploadService.name);
   private supabaseClient: SupabaseClient;
+  private s3Client: S3Client;
   private provider: FileUploadProvider;
 
   constructor(private readonly configService: ConfigService) {
@@ -88,9 +90,25 @@ export class FileUploadService {
   }
 
   private initializeS3(): void {
-    // TODO: Initialize AWS S3 client when implemented
-    this.logger.warn('AWS S3 provider not implemented yet, falling back to LOCAL');
-    this.provider = FileUploadProvider.LOCAL;
+    const awsRegion = this.configService.get<string>('AWS_REGION');
+    const awsAccessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
+    const awsSecretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
+    
+    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
+      this.logger.error('AWS S3 provider selected but AWS credentials not configured');
+      this.provider = FileUploadProvider.LOCAL;
+      this.logger.warn('Falling back to LOCAL provider');
+      return;
+    }
+
+    this.s3Client = new S3Client({
+      region: awsRegion,
+      credentials: {
+        accessKeyId: awsAccessKeyId,
+        secretAccessKey: awsSecretAccessKey,
+      },
+    });
+    this.logger.log('AWS S3 client initialized successfully');
   }
 
   async uploadFile(
@@ -224,13 +242,63 @@ export class FileUploadService {
     category: FileCategory,
     options: FileUploadOptions,
   ): Promise<FileUploadResult> {
-    // TODO: Implement AWS S3 upload
-    throw new BadRequestException('AWS S3 provider not implemented yet');
+    try {
+      const bucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME');
+      if (!bucketName) {
+        throw new BadRequestException('AWS S3 bucket name not configured');
+      }
+
+      const fileName = this.generateFileName(file.originalname, options.generateUniqueName);
+      const key = options.folder ? `${options.folder}/${fileName}` : `${category}/${fileName}`;
+
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      });
+
+      await this.s3Client.send(command);
+
+      // Generate public URL
+      const region = this.configService.get<string>('AWS_REGION');
+      const publicUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+
+      return {
+        url: publicUrl,
+        fileName: fileName,
+        fileSize: file.size,
+        fileType: file.mimetype,
+      };
+    } catch (error) {
+      this.logger.error('Failed to upload to S3:', error);
+      throw new BadRequestException('Failed to upload file to S3 storage');
+    }
   }
 
   private async deleteFromS3(fileUrl: string): Promise<void> {
-    // TODO: Implement AWS S3 delete
-    throw new BadRequestException('AWS S3 provider not implemented yet');
+    try {
+      const bucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME');
+      if (!bucketName) {
+        throw new BadRequestException('AWS S3 bucket name not configured');
+      }
+
+      // Extract key from URL
+      const url = new URL(fileUrl);
+      const key = url.pathname.substring(1); // Remove leading slash
+
+      const command = new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+
+      await this.s3Client.send(command);
+      this.logger.log(`Deleted S3 file: ${key}`);
+    } catch (error) {
+      this.logger.error('Failed to delete from S3:', error);
+      throw new BadRequestException('Failed to delete file from S3 storage');
+    }
   }
 
   private async uploadToLocal(

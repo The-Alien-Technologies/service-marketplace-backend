@@ -4,17 +4,21 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleAuthService } from './services/google-auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshJwtStrategy } from './strategies/refresh-jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UsersModule } from '../users/users.module';
 import { OnboardingModule } from '../onboarding/onboarding.module';
 import { EmailService } from '../common/services/email.service';
+import { SmsService } from '../common/services/sms.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [
     UsersModule,
     OnboardingModule,
+    PrismaModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -26,7 +30,7 @@ import { EmailService } from '../common/services/email.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RefreshJwtStrategy, RolesGuard, EmailService],
+  providers: [AuthService, GoogleAuthService, JwtStrategy, RefreshJwtStrategy, RolesGuard, EmailService, SmsService],
   exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}

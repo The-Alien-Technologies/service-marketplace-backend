@@ -223,6 +223,18 @@ exports.Prisma.VerificationDocumentScalarFieldEnum = {
   reviewedBy: 'reviewedBy'
 };
 
+exports.Prisma.PhoneVerificationScalarFieldEnum = {
+  id: 'id',
+  phoneNumber: 'phoneNumber',
+  otpCode: 'otpCode',
+  attempts: 'attempts',
+  maxAttempts: 'maxAttempts',
+  expiresAt: 'expiresAt',
+  verified: 'verified',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -294,7 +306,8 @@ exports.Prisma.ModelName = {
   UserAddress: 'UserAddress',
   Category: 'Category',
   UserInterest: 'UserInterest',
-  VerificationDocument: 'VerificationDocument'
+  VerificationDocument: 'VerificationDocument',
+  PhoneVerification: 'PhoneVerification'
 };
 
 /**

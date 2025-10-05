@@ -3,10 +3,13 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../common/services/email.service';
+import { SmsService } from '../common/services/sms.service';
 import { OnboardingStatusService } from '../onboarding/onboarding-status.service';
+import { GoogleAuthService } from './services/google-auth.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { SocialAuthDto } from './dto/social-auth.dto';
+import { SocialAuthDto, SocialProvider } from './dto/social-auth.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -33,8 +36,11 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private smsService: SmsService,
     private configService: ConfigService,
     private onboardingStatusService: OnboardingStatusService,
+    private googleAuthService: GoogleAuthService,
+    private prisma: PrismaService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponse> {
@@ -120,12 +126,48 @@ export class AuthService {
 
   async socialAuth(socialAuthDto: SocialAuthDto): Promise<AuthResponse> {
     try {
+      let userInfo;
+
+      // Validate tokens based on provider
+      if (socialAuthDto.provider === SocialProvider.GOOGLE) {
+        // Always validate with Google's servers for security
+        this.logger.log('Validating Google tokens with Google servers');
+        
+        if (!socialAuthDto.accessToken) {
+          throw new BadRequestException({ message: 'Access token is required for Google authentication' });
+        }
+        
+        // Validate tokens with Google's servers
+        userInfo = await this.googleAuthService.validateTokens(
+          socialAuthDto.accessToken,
+          socialAuthDto.idToken
+        );
+
+        console.log({userInfo});
+        
+        this.logger.log(`Google token validation successful for user: ${userInfo.email}`);
+      } else {
+        throw new BadRequestException({ message: `Provider ${socialAuthDto.provider} not supported` });
+      }
+
+          // Create the validated social auth DTO
+          const validatedSocialAuthDto: SocialAuthDto = {
+            ...socialAuthDto,
+            providerId: userInfo.id,
+            email: userInfo.email,
+            firstName: userInfo.given_name,
+            lastName: userInfo.family_name,
+            displayName: userInfo.name,
+            avatar: userInfo.picture,
+            role: socialAuthDto.role, // Pass through the role from frontend
+          };
+
       // Check if user exists before creating/updating
-      const existingUser = await this.usersService.findByEmail(socialAuthDto.email);
+      const existingUser = await this.usersService.findByEmail(validatedSocialAuthDto.email!);
       const isNewUser = !existingUser;
 
       // Create or update user from social auth
-      const user = await this.usersService.createFromSocialAuth(socialAuthDto);
+      const user = await this.usersService.createFromSocialAuth(validatedSocialAuthDto);
 
       // Send welcome email for new users only
       if (isNewUser) {
@@ -143,9 +185,14 @@ export class AuthService {
         refreshToken,
       };
     } catch (error) {
+      this.logger.error('Social authentication failed:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new BadRequestException({ message: 'Social authentication failed' });
     }
   }
+
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<void> {
     const { email } = forgotPasswordDto;
@@ -373,33 +420,135 @@ export class AuthService {
   }
 
   async sendPhoneVerificationOtp(phoneNumber: string): Promise<void> {
-    // For now, use fixed '123456' code
-    const otpCode = '123456';
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+    try {
+      // Format phone number to E.164 format
+      const formattedPhoneNumber = this.smsService.formatPhoneNumber(phoneNumber);
+      
+      // Generate 6-digit OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
 
-    // TODO: Store phone verification in database
-    // For now, we'll just log it
-    this.logger.log(`Phone verification OTP for ${phoneNumber}: ${otpCode}`);
-    
-    // TODO: Send via AWS SNS
-    // await this.snsService.sendSMS(phoneNumber, `Your Pavodah verification code: ${otpCode}`);
+      // Delete any existing verification for this phone number
+      await this.prisma.phoneVerification.deleteMany({
+        where: { phoneNumber: formattedPhoneNumber },
+      });
+
+      // Store phone verification in database
+      await this.prisma.phoneVerification.create({
+        data: {
+          phoneNumber: formattedPhoneNumber,
+          otpCode,
+          expiresAt,
+          attempts: 0,
+          maxAttempts: 5,
+        },
+      });
+
+      // Send SMS via AWS SNS
+      await this.smsService.sendVerificationCode(formattedPhoneNumber, otpCode);
+      
+      this.logger.log(`Phone verification OTP sent to ${formattedPhoneNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to send phone verification OTP to ${phoneNumber}:`, error);
+      throw new BadRequestException({ message: 'Failed to send verification code. Please try again.' });
+    }
   }
 
   async verifyPhoneOtp(phoneNumber: string, otpCode: string): Promise<{ valid: boolean; attemptsLeft?: number }> {
-    // For now, accept only '123456'
-    if (otpCode === '123456') {
-      this.logger.log(`Phone verification successful for ${phoneNumber}`);
-      return { valid: true };
-    } else {
-      this.logger.log(`Phone verification failed for ${phoneNumber} with code ${otpCode}`);
-      return { valid: false, attemptsLeft: 4 }; // Mock attempts left
+    try {
+      // Format phone number to E.164 format
+      const formattedPhoneNumber = this.smsService.formatPhoneNumber(phoneNumber);
+
+      // Find the phone verification record
+      const phoneVerification = await this.prisma.phoneVerification.findFirst({
+        where: {
+          phoneNumber: formattedPhoneNumber,
+          verified: false,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (!phoneVerification) {
+        this.logger.warn(`No phone verification found for ${formattedPhoneNumber}`);
+        return { valid: false };
+      }
+
+      // Check if expired
+      if (new Date() > phoneVerification.expiresAt) {
+        this.logger.warn(`Phone verification expired for ${formattedPhoneNumber}`);
+        await this.prisma.phoneVerification.delete({
+          where: { id: phoneVerification.id },
+        });
+        return { valid: false };
+      }
+
+      // Check if max attempts reached
+      if (phoneVerification.attempts >= phoneVerification.maxAttempts) {
+        this.logger.warn(`Max attempts reached for phone verification ${formattedPhoneNumber}`);
+        await this.prisma.phoneVerification.delete({
+          where: { id: phoneVerification.id },
+        });
+        return { valid: false };
+      }
+
+      // Increment attempts
+      await this.prisma.phoneVerification.update({
+        where: { id: phoneVerification.id },
+        data: { attempts: phoneVerification.attempts + 1 },
+      });
+
+      // Check if OTP matches
+      if (phoneVerification.otpCode === otpCode) {
+        // Mark as verified and delete the record
+        await this.prisma.phoneVerification.update({
+          where: { id: phoneVerification.id },
+          data: { verified: true },
+        });
+
+        this.logger.log(`Phone verification successful for ${formattedPhoneNumber}`);
+        return { valid: true };
+      } else {
+        const attemptsLeft = phoneVerification.maxAttempts - (phoneVerification.attempts + 1);
+        this.logger.warn(`Phone verification failed for ${formattedPhoneNumber}. Attempts left: ${attemptsLeft}`);
+        return { valid: false, attemptsLeft: Math.max(0, attemptsLeft) };
+      }
+    } catch (error) {
+      this.logger.error(`Error verifying phone OTP for ${phoneNumber}:`, error);
+      return { valid: false };
     }
   }
 
   async resendPhoneVerificationOtp(phoneNumber: string): Promise<void> {
-    // TODO: Add rate limiting logic similar to email
-    await this.sendPhoneVerificationOtp(phoneNumber);
+    try {
+      // Format phone number to E.164 format
+      const formattedPhoneNumber = this.smsService.formatPhoneNumber(phoneNumber);
+
+      // Check if there's a recent verification request (rate limiting)
+      const recentVerification = await this.prisma.phoneVerification.findFirst({
+        where: {
+          phoneNumber: formattedPhoneNumber,
+          createdAt: {
+            gte: new Date(Date.now() - 60000), // 1 minute ago
+          },
+        },
+      });
+
+      if (recentVerification) {
+        throw new BadRequestException({ 
+          message: 'Please wait at least 1 minute before requesting another verification code.' 
+        });
+      }
+
+      // Send new verification code
+      await this.sendPhoneVerificationOtp(phoneNumber);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      this.logger.error(`Failed to resend phone verification OTP to ${phoneNumber}:`, error);
+      throw new BadRequestException({ message: 'Failed to resend verification code. Please try again.' });
+    }
   }
 
   async refreshTokenFromRefreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {

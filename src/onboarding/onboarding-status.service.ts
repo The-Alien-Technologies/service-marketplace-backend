@@ -77,18 +77,18 @@ export class OnboardingStatusService {
         description: 'Verify your email address',
       },
       {
-        step: 'basic_profile',
-        required: true,
-        completed: this.isBasicProfileComplete(user),
-        label: 'Basic Profile',
-        description: 'Complete your basic profile information',
-      },
-      {
         step: 'location',
         required: true,
         completed: this.isLocationComplete(user),
         label: 'Location',
         description: 'Add your location details',
+      },
+      {
+        step: 'basic_profile',
+        required: true,
+        completed: this.isBasicProfileComplete(user),
+        label: 'Basic Profile',
+        description: 'Complete your basic profile information',
       },
       {
         step: 'interests',

@@ -68,6 +68,7 @@ export class AuthController {
     );
   }
 
+
   @Public()
   @HttpCode(200)
   @Post('forgot-password')

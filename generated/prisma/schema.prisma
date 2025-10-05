@@ -209,3 +209,17 @@ model VerificationDocument {
 
   @@map("verification_documents")
 }
+
+model PhoneVerification {
+  id          String   @id @default(cuid())
+  phoneNumber String
+  otpCode     String
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  expiresAt   DateTime
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("phone_verifications")
+}

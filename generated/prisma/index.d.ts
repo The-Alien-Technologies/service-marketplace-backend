@@ -38,6 +38,11 @@ export type UserInterest = $Result.DefaultSelection<Prisma.$UserInterestPayload>
  * 
  */
 export type VerificationDocument = $Result.DefaultSelection<Prisma.$VerificationDocumentPayload>
+/**
+ * Model PhoneVerification
+ * 
+ */
+export type PhoneVerification = $Result.DefaultSelection<Prisma.$PhoneVerificationPayload>
 
 /**
  * Enums
@@ -326,6 +331,16 @@ export class PrismaClient<
     * ```
     */
   get verificationDocument(): Prisma.VerificationDocumentDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.phoneVerification`: Exposes CRUD operations for the **PhoneVerification** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more PhoneVerifications
+    * const phoneVerifications = await prisma.phoneVerification.findMany()
+    * ```
+    */
+  get phoneVerification(): Prisma.PhoneVerificationDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -770,7 +785,8 @@ export namespace Prisma {
     UserAddress: 'UserAddress',
     Category: 'Category',
     UserInterest: 'UserInterest',
-    VerificationDocument: 'VerificationDocument'
+    VerificationDocument: 'VerificationDocument',
+    PhoneVerification: 'PhoneVerification'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -789,7 +805,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "userAddress" | "category" | "userInterest" | "verificationDocument"
+      modelProps: "user" | "userAddress" | "category" | "userInterest" | "verificationDocument" | "phoneVerification"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1163,6 +1179,80 @@ export namespace Prisma {
           }
         }
       }
+      PhoneVerification: {
+        payload: Prisma.$PhoneVerificationPayload<ExtArgs>
+        fields: Prisma.PhoneVerificationFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.PhoneVerificationFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.PhoneVerificationFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>
+          }
+          findFirst: {
+            args: Prisma.PhoneVerificationFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.PhoneVerificationFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>
+          }
+          findMany: {
+            args: Prisma.PhoneVerificationFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>[]
+          }
+          create: {
+            args: Prisma.PhoneVerificationCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>
+          }
+          createMany: {
+            args: Prisma.PhoneVerificationCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.PhoneVerificationCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>[]
+          }
+          delete: {
+            args: Prisma.PhoneVerificationDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>
+          }
+          update: {
+            args: Prisma.PhoneVerificationUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>
+          }
+          deleteMany: {
+            args: Prisma.PhoneVerificationDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.PhoneVerificationUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.PhoneVerificationUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>[]
+          }
+          upsert: {
+            args: Prisma.PhoneVerificationUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$PhoneVerificationPayload>
+          }
+          aggregate: {
+            args: Prisma.PhoneVerificationAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregatePhoneVerification>
+          }
+          groupBy: {
+            args: Prisma.PhoneVerificationGroupByArgs<ExtArgs>
+            result: $Utils.Optional<PhoneVerificationGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.PhoneVerificationCountArgs<ExtArgs>
+            result: $Utils.Optional<PhoneVerificationCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1252,6 +1342,7 @@ export namespace Prisma {
     category?: CategoryOmit
     userInterest?: UserInterestOmit
     verificationDocument?: VerificationDocumentOmit
+    phoneVerification?: PhoneVerificationOmit
   }
 
   /* Types for Logging */
@@ -7737,6 +7828,1091 @@ export namespace Prisma {
 
 
   /**
+   * Model PhoneVerification
+   */
+
+  export type AggregatePhoneVerification = {
+    _count: PhoneVerificationCountAggregateOutputType | null
+    _avg: PhoneVerificationAvgAggregateOutputType | null
+    _sum: PhoneVerificationSumAggregateOutputType | null
+    _min: PhoneVerificationMinAggregateOutputType | null
+    _max: PhoneVerificationMaxAggregateOutputType | null
+  }
+
+  export type PhoneVerificationAvgAggregateOutputType = {
+    attempts: number | null
+    maxAttempts: number | null
+  }
+
+  export type PhoneVerificationSumAggregateOutputType = {
+    attempts: number | null
+    maxAttempts: number | null
+  }
+
+  export type PhoneVerificationMinAggregateOutputType = {
+    id: string | null
+    phoneNumber: string | null
+    otpCode: string | null
+    attempts: number | null
+    maxAttempts: number | null
+    expiresAt: Date | null
+    verified: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type PhoneVerificationMaxAggregateOutputType = {
+    id: string | null
+    phoneNumber: string | null
+    otpCode: string | null
+    attempts: number | null
+    maxAttempts: number | null
+    expiresAt: Date | null
+    verified: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type PhoneVerificationCountAggregateOutputType = {
+    id: number
+    phoneNumber: number
+    otpCode: number
+    attempts: number
+    maxAttempts: number
+    expiresAt: number
+    verified: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type PhoneVerificationAvgAggregateInputType = {
+    attempts?: true
+    maxAttempts?: true
+  }
+
+  export type PhoneVerificationSumAggregateInputType = {
+    attempts?: true
+    maxAttempts?: true
+  }
+
+  export type PhoneVerificationMinAggregateInputType = {
+    id?: true
+    phoneNumber?: true
+    otpCode?: true
+    attempts?: true
+    maxAttempts?: true
+    expiresAt?: true
+    verified?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type PhoneVerificationMaxAggregateInputType = {
+    id?: true
+    phoneNumber?: true
+    otpCode?: true
+    attempts?: true
+    maxAttempts?: true
+    expiresAt?: true
+    verified?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type PhoneVerificationCountAggregateInputType = {
+    id?: true
+    phoneNumber?: true
+    otpCode?: true
+    attempts?: true
+    maxAttempts?: true
+    expiresAt?: true
+    verified?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type PhoneVerificationAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which PhoneVerification to aggregate.
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of PhoneVerifications to fetch.
+     */
+    orderBy?: PhoneVerificationOrderByWithRelationInput | PhoneVerificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: PhoneVerificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` PhoneVerifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` PhoneVerifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned PhoneVerifications
+    **/
+    _count?: true | PhoneVerificationCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: PhoneVerificationAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: PhoneVerificationSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: PhoneVerificationMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: PhoneVerificationMaxAggregateInputType
+  }
+
+  export type GetPhoneVerificationAggregateType<T extends PhoneVerificationAggregateArgs> = {
+        [P in keyof T & keyof AggregatePhoneVerification]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregatePhoneVerification[P]>
+      : GetScalarType<T[P], AggregatePhoneVerification[P]>
+  }
+
+
+
+
+  export type PhoneVerificationGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: PhoneVerificationWhereInput
+    orderBy?: PhoneVerificationOrderByWithAggregationInput | PhoneVerificationOrderByWithAggregationInput[]
+    by: PhoneVerificationScalarFieldEnum[] | PhoneVerificationScalarFieldEnum
+    having?: PhoneVerificationScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: PhoneVerificationCountAggregateInputType | true
+    _avg?: PhoneVerificationAvgAggregateInputType
+    _sum?: PhoneVerificationSumAggregateInputType
+    _min?: PhoneVerificationMinAggregateInputType
+    _max?: PhoneVerificationMaxAggregateInputType
+  }
+
+  export type PhoneVerificationGroupByOutputType = {
+    id: string
+    phoneNumber: string
+    otpCode: string
+    attempts: number
+    maxAttempts: number
+    expiresAt: Date
+    verified: boolean
+    createdAt: Date
+    updatedAt: Date
+    _count: PhoneVerificationCountAggregateOutputType | null
+    _avg: PhoneVerificationAvgAggregateOutputType | null
+    _sum: PhoneVerificationSumAggregateOutputType | null
+    _min: PhoneVerificationMinAggregateOutputType | null
+    _max: PhoneVerificationMaxAggregateOutputType | null
+  }
+
+  type GetPhoneVerificationGroupByPayload<T extends PhoneVerificationGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<PhoneVerificationGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof PhoneVerificationGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], PhoneVerificationGroupByOutputType[P]>
+            : GetScalarType<T[P], PhoneVerificationGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type PhoneVerificationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    phoneNumber?: boolean
+    otpCode?: boolean
+    attempts?: boolean
+    maxAttempts?: boolean
+    expiresAt?: boolean
+    verified?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["phoneVerification"]>
+
+  export type PhoneVerificationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    phoneNumber?: boolean
+    otpCode?: boolean
+    attempts?: boolean
+    maxAttempts?: boolean
+    expiresAt?: boolean
+    verified?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["phoneVerification"]>
+
+  export type PhoneVerificationSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    phoneNumber?: boolean
+    otpCode?: boolean
+    attempts?: boolean
+    maxAttempts?: boolean
+    expiresAt?: boolean
+    verified?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["phoneVerification"]>
+
+  export type PhoneVerificationSelectScalar = {
+    id?: boolean
+    phoneNumber?: boolean
+    otpCode?: boolean
+    attempts?: boolean
+    maxAttempts?: boolean
+    expiresAt?: boolean
+    verified?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type PhoneVerificationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "phoneNumber" | "otpCode" | "attempts" | "maxAttempts" | "expiresAt" | "verified" | "createdAt" | "updatedAt", ExtArgs["result"]["phoneVerification"]>
+
+  export type $PhoneVerificationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "PhoneVerification"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      phoneNumber: string
+      otpCode: string
+      attempts: number
+      maxAttempts: number
+      expiresAt: Date
+      verified: boolean
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["phoneVerification"]>
+    composites: {}
+  }
+
+  type PhoneVerificationGetPayload<S extends boolean | null | undefined | PhoneVerificationDefaultArgs> = $Result.GetResult<Prisma.$PhoneVerificationPayload, S>
+
+  type PhoneVerificationCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<PhoneVerificationFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: PhoneVerificationCountAggregateInputType | true
+    }
+
+  export interface PhoneVerificationDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['PhoneVerification'], meta: { name: 'PhoneVerification' } }
+    /**
+     * Find zero or one PhoneVerification that matches the filter.
+     * @param {PhoneVerificationFindUniqueArgs} args - Arguments to find a PhoneVerification
+     * @example
+     * // Get one PhoneVerification
+     * const phoneVerification = await prisma.phoneVerification.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends PhoneVerificationFindUniqueArgs>(args: SelectSubset<T, PhoneVerificationFindUniqueArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one PhoneVerification that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {PhoneVerificationFindUniqueOrThrowArgs} args - Arguments to find a PhoneVerification
+     * @example
+     * // Get one PhoneVerification
+     * const phoneVerification = await prisma.phoneVerification.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends PhoneVerificationFindUniqueOrThrowArgs>(args: SelectSubset<T, PhoneVerificationFindUniqueOrThrowArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first PhoneVerification that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationFindFirstArgs} args - Arguments to find a PhoneVerification
+     * @example
+     * // Get one PhoneVerification
+     * const phoneVerification = await prisma.phoneVerification.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends PhoneVerificationFindFirstArgs>(args?: SelectSubset<T, PhoneVerificationFindFirstArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first PhoneVerification that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationFindFirstOrThrowArgs} args - Arguments to find a PhoneVerification
+     * @example
+     * // Get one PhoneVerification
+     * const phoneVerification = await prisma.phoneVerification.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends PhoneVerificationFindFirstOrThrowArgs>(args?: SelectSubset<T, PhoneVerificationFindFirstOrThrowArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more PhoneVerifications that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all PhoneVerifications
+     * const phoneVerifications = await prisma.phoneVerification.findMany()
+     * 
+     * // Get first 10 PhoneVerifications
+     * const phoneVerifications = await prisma.phoneVerification.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const phoneVerificationWithIdOnly = await prisma.phoneVerification.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends PhoneVerificationFindManyArgs>(args?: SelectSubset<T, PhoneVerificationFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a PhoneVerification.
+     * @param {PhoneVerificationCreateArgs} args - Arguments to create a PhoneVerification.
+     * @example
+     * // Create one PhoneVerification
+     * const PhoneVerification = await prisma.phoneVerification.create({
+     *   data: {
+     *     // ... data to create a PhoneVerification
+     *   }
+     * })
+     * 
+     */
+    create<T extends PhoneVerificationCreateArgs>(args: SelectSubset<T, PhoneVerificationCreateArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many PhoneVerifications.
+     * @param {PhoneVerificationCreateManyArgs} args - Arguments to create many PhoneVerifications.
+     * @example
+     * // Create many PhoneVerifications
+     * const phoneVerification = await prisma.phoneVerification.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends PhoneVerificationCreateManyArgs>(args?: SelectSubset<T, PhoneVerificationCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many PhoneVerifications and returns the data saved in the database.
+     * @param {PhoneVerificationCreateManyAndReturnArgs} args - Arguments to create many PhoneVerifications.
+     * @example
+     * // Create many PhoneVerifications
+     * const phoneVerification = await prisma.phoneVerification.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many PhoneVerifications and only return the `id`
+     * const phoneVerificationWithIdOnly = await prisma.phoneVerification.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends PhoneVerificationCreateManyAndReturnArgs>(args?: SelectSubset<T, PhoneVerificationCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a PhoneVerification.
+     * @param {PhoneVerificationDeleteArgs} args - Arguments to delete one PhoneVerification.
+     * @example
+     * // Delete one PhoneVerification
+     * const PhoneVerification = await prisma.phoneVerification.delete({
+     *   where: {
+     *     // ... filter to delete one PhoneVerification
+     *   }
+     * })
+     * 
+     */
+    delete<T extends PhoneVerificationDeleteArgs>(args: SelectSubset<T, PhoneVerificationDeleteArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one PhoneVerification.
+     * @param {PhoneVerificationUpdateArgs} args - Arguments to update one PhoneVerification.
+     * @example
+     * // Update one PhoneVerification
+     * const phoneVerification = await prisma.phoneVerification.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends PhoneVerificationUpdateArgs>(args: SelectSubset<T, PhoneVerificationUpdateArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more PhoneVerifications.
+     * @param {PhoneVerificationDeleteManyArgs} args - Arguments to filter PhoneVerifications to delete.
+     * @example
+     * // Delete a few PhoneVerifications
+     * const { count } = await prisma.phoneVerification.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends PhoneVerificationDeleteManyArgs>(args?: SelectSubset<T, PhoneVerificationDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more PhoneVerifications.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many PhoneVerifications
+     * const phoneVerification = await prisma.phoneVerification.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends PhoneVerificationUpdateManyArgs>(args: SelectSubset<T, PhoneVerificationUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more PhoneVerifications and returns the data updated in the database.
+     * @param {PhoneVerificationUpdateManyAndReturnArgs} args - Arguments to update many PhoneVerifications.
+     * @example
+     * // Update many PhoneVerifications
+     * const phoneVerification = await prisma.phoneVerification.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more PhoneVerifications and only return the `id`
+     * const phoneVerificationWithIdOnly = await prisma.phoneVerification.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends PhoneVerificationUpdateManyAndReturnArgs>(args: SelectSubset<T, PhoneVerificationUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one PhoneVerification.
+     * @param {PhoneVerificationUpsertArgs} args - Arguments to update or create a PhoneVerification.
+     * @example
+     * // Update or create a PhoneVerification
+     * const phoneVerification = await prisma.phoneVerification.upsert({
+     *   create: {
+     *     // ... data to create a PhoneVerification
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the PhoneVerification we want to update
+     *   }
+     * })
+     */
+    upsert<T extends PhoneVerificationUpsertArgs>(args: SelectSubset<T, PhoneVerificationUpsertArgs<ExtArgs>>): Prisma__PhoneVerificationClient<$Result.GetResult<Prisma.$PhoneVerificationPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of PhoneVerifications.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationCountArgs} args - Arguments to filter PhoneVerifications to count.
+     * @example
+     * // Count the number of PhoneVerifications
+     * const count = await prisma.phoneVerification.count({
+     *   where: {
+     *     // ... the filter for the PhoneVerifications we want to count
+     *   }
+     * })
+    **/
+    count<T extends PhoneVerificationCountArgs>(
+      args?: Subset<T, PhoneVerificationCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], PhoneVerificationCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a PhoneVerification.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends PhoneVerificationAggregateArgs>(args: Subset<T, PhoneVerificationAggregateArgs>): Prisma.PrismaPromise<GetPhoneVerificationAggregateType<T>>
+
+    /**
+     * Group by PhoneVerification.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {PhoneVerificationGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends PhoneVerificationGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: PhoneVerificationGroupByArgs['orderBy'] }
+        : { orderBy?: PhoneVerificationGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, PhoneVerificationGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetPhoneVerificationGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the PhoneVerification model
+   */
+  readonly fields: PhoneVerificationFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for PhoneVerification.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__PhoneVerificationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the PhoneVerification model
+   */
+  interface PhoneVerificationFieldRefs {
+    readonly id: FieldRef<"PhoneVerification", 'String'>
+    readonly phoneNumber: FieldRef<"PhoneVerification", 'String'>
+    readonly otpCode: FieldRef<"PhoneVerification", 'String'>
+    readonly attempts: FieldRef<"PhoneVerification", 'Int'>
+    readonly maxAttempts: FieldRef<"PhoneVerification", 'Int'>
+    readonly expiresAt: FieldRef<"PhoneVerification", 'DateTime'>
+    readonly verified: FieldRef<"PhoneVerification", 'Boolean'>
+    readonly createdAt: FieldRef<"PhoneVerification", 'DateTime'>
+    readonly updatedAt: FieldRef<"PhoneVerification", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * PhoneVerification findUnique
+   */
+  export type PhoneVerificationFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * Filter, which PhoneVerification to fetch.
+     */
+    where: PhoneVerificationWhereUniqueInput
+  }
+
+  /**
+   * PhoneVerification findUniqueOrThrow
+   */
+  export type PhoneVerificationFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * Filter, which PhoneVerification to fetch.
+     */
+    where: PhoneVerificationWhereUniqueInput
+  }
+
+  /**
+   * PhoneVerification findFirst
+   */
+  export type PhoneVerificationFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * Filter, which PhoneVerification to fetch.
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of PhoneVerifications to fetch.
+     */
+    orderBy?: PhoneVerificationOrderByWithRelationInput | PhoneVerificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for PhoneVerifications.
+     */
+    cursor?: PhoneVerificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` PhoneVerifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` PhoneVerifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of PhoneVerifications.
+     */
+    distinct?: PhoneVerificationScalarFieldEnum | PhoneVerificationScalarFieldEnum[]
+  }
+
+  /**
+   * PhoneVerification findFirstOrThrow
+   */
+  export type PhoneVerificationFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * Filter, which PhoneVerification to fetch.
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of PhoneVerifications to fetch.
+     */
+    orderBy?: PhoneVerificationOrderByWithRelationInput | PhoneVerificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for PhoneVerifications.
+     */
+    cursor?: PhoneVerificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` PhoneVerifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` PhoneVerifications.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of PhoneVerifications.
+     */
+    distinct?: PhoneVerificationScalarFieldEnum | PhoneVerificationScalarFieldEnum[]
+  }
+
+  /**
+   * PhoneVerification findMany
+   */
+  export type PhoneVerificationFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * Filter, which PhoneVerifications to fetch.
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of PhoneVerifications to fetch.
+     */
+    orderBy?: PhoneVerificationOrderByWithRelationInput | PhoneVerificationOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing PhoneVerifications.
+     */
+    cursor?: PhoneVerificationWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` PhoneVerifications from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` PhoneVerifications.
+     */
+    skip?: number
+    distinct?: PhoneVerificationScalarFieldEnum | PhoneVerificationScalarFieldEnum[]
+  }
+
+  /**
+   * PhoneVerification create
+   */
+  export type PhoneVerificationCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * The data needed to create a PhoneVerification.
+     */
+    data: XOR<PhoneVerificationCreateInput, PhoneVerificationUncheckedCreateInput>
+  }
+
+  /**
+   * PhoneVerification createMany
+   */
+  export type PhoneVerificationCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many PhoneVerifications.
+     */
+    data: PhoneVerificationCreateManyInput | PhoneVerificationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * PhoneVerification createManyAndReturn
+   */
+  export type PhoneVerificationCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * The data used to create many PhoneVerifications.
+     */
+    data: PhoneVerificationCreateManyInput | PhoneVerificationCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * PhoneVerification update
+   */
+  export type PhoneVerificationUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * The data needed to update a PhoneVerification.
+     */
+    data: XOR<PhoneVerificationUpdateInput, PhoneVerificationUncheckedUpdateInput>
+    /**
+     * Choose, which PhoneVerification to update.
+     */
+    where: PhoneVerificationWhereUniqueInput
+  }
+
+  /**
+   * PhoneVerification updateMany
+   */
+  export type PhoneVerificationUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update PhoneVerifications.
+     */
+    data: XOR<PhoneVerificationUpdateManyMutationInput, PhoneVerificationUncheckedUpdateManyInput>
+    /**
+     * Filter which PhoneVerifications to update
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * Limit how many PhoneVerifications to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * PhoneVerification updateManyAndReturn
+   */
+  export type PhoneVerificationUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * The data used to update PhoneVerifications.
+     */
+    data: XOR<PhoneVerificationUpdateManyMutationInput, PhoneVerificationUncheckedUpdateManyInput>
+    /**
+     * Filter which PhoneVerifications to update
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * Limit how many PhoneVerifications to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * PhoneVerification upsert
+   */
+  export type PhoneVerificationUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * The filter to search for the PhoneVerification to update in case it exists.
+     */
+    where: PhoneVerificationWhereUniqueInput
+    /**
+     * In case the PhoneVerification found by the `where` argument doesn't exist, create a new PhoneVerification with this data.
+     */
+    create: XOR<PhoneVerificationCreateInput, PhoneVerificationUncheckedCreateInput>
+    /**
+     * In case the PhoneVerification was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<PhoneVerificationUpdateInput, PhoneVerificationUncheckedUpdateInput>
+  }
+
+  /**
+   * PhoneVerification delete
+   */
+  export type PhoneVerificationDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+    /**
+     * Filter which PhoneVerification to delete.
+     */
+    where: PhoneVerificationWhereUniqueInput
+  }
+
+  /**
+   * PhoneVerification deleteMany
+   */
+  export type PhoneVerificationDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which PhoneVerifications to delete
+     */
+    where?: PhoneVerificationWhereInput
+    /**
+     * Limit how many PhoneVerifications to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * PhoneVerification without action
+   */
+  export type PhoneVerificationDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the PhoneVerification
+     */
+    select?: PhoneVerificationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the PhoneVerification
+     */
+    omit?: PhoneVerificationOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -7866,6 +9042,21 @@ export namespace Prisma {
   };
 
   export type VerificationDocumentScalarFieldEnum = (typeof VerificationDocumentScalarFieldEnum)[keyof typeof VerificationDocumentScalarFieldEnum]
+
+
+  export const PhoneVerificationScalarFieldEnum: {
+    id: 'id',
+    phoneNumber: 'phoneNumber',
+    otpCode: 'otpCode',
+    attempts: 'attempts',
+    maxAttempts: 'maxAttempts',
+    expiresAt: 'expiresAt',
+    verified: 'verified',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type PhoneVerificationScalarFieldEnum = (typeof PhoneVerificationScalarFieldEnum)[keyof typeof PhoneVerificationScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -8681,6 +9872,80 @@ export namespace Prisma {
     reviewedBy?: StringNullableWithAggregatesFilter<"VerificationDocument"> | string | null
   }
 
+  export type PhoneVerificationWhereInput = {
+    AND?: PhoneVerificationWhereInput | PhoneVerificationWhereInput[]
+    OR?: PhoneVerificationWhereInput[]
+    NOT?: PhoneVerificationWhereInput | PhoneVerificationWhereInput[]
+    id?: StringFilter<"PhoneVerification"> | string
+    phoneNumber?: StringFilter<"PhoneVerification"> | string
+    otpCode?: StringFilter<"PhoneVerification"> | string
+    attempts?: IntFilter<"PhoneVerification"> | number
+    maxAttempts?: IntFilter<"PhoneVerification"> | number
+    expiresAt?: DateTimeFilter<"PhoneVerification"> | Date | string
+    verified?: BoolFilter<"PhoneVerification"> | boolean
+    createdAt?: DateTimeFilter<"PhoneVerification"> | Date | string
+    updatedAt?: DateTimeFilter<"PhoneVerification"> | Date | string
+  }
+
+  export type PhoneVerificationOrderByWithRelationInput = {
+    id?: SortOrder
+    phoneNumber?: SortOrder
+    otpCode?: SortOrder
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
+    expiresAt?: SortOrder
+    verified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type PhoneVerificationWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: PhoneVerificationWhereInput | PhoneVerificationWhereInput[]
+    OR?: PhoneVerificationWhereInput[]
+    NOT?: PhoneVerificationWhereInput | PhoneVerificationWhereInput[]
+    phoneNumber?: StringFilter<"PhoneVerification"> | string
+    otpCode?: StringFilter<"PhoneVerification"> | string
+    attempts?: IntFilter<"PhoneVerification"> | number
+    maxAttempts?: IntFilter<"PhoneVerification"> | number
+    expiresAt?: DateTimeFilter<"PhoneVerification"> | Date | string
+    verified?: BoolFilter<"PhoneVerification"> | boolean
+    createdAt?: DateTimeFilter<"PhoneVerification"> | Date | string
+    updatedAt?: DateTimeFilter<"PhoneVerification"> | Date | string
+  }, "id">
+
+  export type PhoneVerificationOrderByWithAggregationInput = {
+    id?: SortOrder
+    phoneNumber?: SortOrder
+    otpCode?: SortOrder
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
+    expiresAt?: SortOrder
+    verified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: PhoneVerificationCountOrderByAggregateInput
+    _avg?: PhoneVerificationAvgOrderByAggregateInput
+    _max?: PhoneVerificationMaxOrderByAggregateInput
+    _min?: PhoneVerificationMinOrderByAggregateInput
+    _sum?: PhoneVerificationSumOrderByAggregateInput
+  }
+
+  export type PhoneVerificationScalarWhereWithAggregatesInput = {
+    AND?: PhoneVerificationScalarWhereWithAggregatesInput | PhoneVerificationScalarWhereWithAggregatesInput[]
+    OR?: PhoneVerificationScalarWhereWithAggregatesInput[]
+    NOT?: PhoneVerificationScalarWhereWithAggregatesInput | PhoneVerificationScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"PhoneVerification"> | string
+    phoneNumber?: StringWithAggregatesFilter<"PhoneVerification"> | string
+    otpCode?: StringWithAggregatesFilter<"PhoneVerification"> | string
+    attempts?: IntWithAggregatesFilter<"PhoneVerification"> | number
+    maxAttempts?: IntWithAggregatesFilter<"PhoneVerification"> | number
+    expiresAt?: DateTimeWithAggregatesFilter<"PhoneVerification"> | Date | string
+    verified?: BoolWithAggregatesFilter<"PhoneVerification"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"PhoneVerification"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"PhoneVerification"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     createdAt?: Date | string
@@ -9414,6 +10679,90 @@ export namespace Prisma {
     reviewedBy?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
+  export type PhoneVerificationCreateInput = {
+    id?: string
+    phoneNumber: string
+    otpCode: string
+    attempts?: number
+    maxAttempts?: number
+    expiresAt: Date | string
+    verified?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type PhoneVerificationUncheckedCreateInput = {
+    id?: string
+    phoneNumber: string
+    otpCode: string
+    attempts?: number
+    maxAttempts?: number
+    expiresAt: Date | string
+    verified?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type PhoneVerificationUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    otpCode?: StringFieldUpdateOperationsInput | string
+    attempts?: IntFieldUpdateOperationsInput | number
+    maxAttempts?: IntFieldUpdateOperationsInput | number
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type PhoneVerificationUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    otpCode?: StringFieldUpdateOperationsInput | string
+    attempts?: IntFieldUpdateOperationsInput | number
+    maxAttempts?: IntFieldUpdateOperationsInput | number
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type PhoneVerificationCreateManyInput = {
+    id?: string
+    phoneNumber: string
+    otpCode: string
+    attempts?: number
+    maxAttempts?: number
+    expiresAt: Date | string
+    verified?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type PhoneVerificationUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    otpCode?: StringFieldUpdateOperationsInput | string
+    attempts?: IntFieldUpdateOperationsInput | number
+    maxAttempts?: IntFieldUpdateOperationsInput | number
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type PhoneVerificationUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    otpCode?: StringFieldUpdateOperationsInput | string
+    attempts?: IntFieldUpdateOperationsInput | number
+    maxAttempts?: IntFieldUpdateOperationsInput | number
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    verified?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -10121,6 +11470,52 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumDocumentStatusFilter<$PrismaModel>
     _max?: NestedEnumDocumentStatusFilter<$PrismaModel>
+  }
+
+  export type PhoneVerificationCountOrderByAggregateInput = {
+    id?: SortOrder
+    phoneNumber?: SortOrder
+    otpCode?: SortOrder
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
+    expiresAt?: SortOrder
+    verified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type PhoneVerificationAvgOrderByAggregateInput = {
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
+  }
+
+  export type PhoneVerificationMaxOrderByAggregateInput = {
+    id?: SortOrder
+    phoneNumber?: SortOrder
+    otpCode?: SortOrder
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
+    expiresAt?: SortOrder
+    verified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type PhoneVerificationMinOrderByAggregateInput = {
+    id?: SortOrder
+    phoneNumber?: SortOrder
+    otpCode?: SortOrder
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
+    expiresAt?: SortOrder
+    verified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type PhoneVerificationSumOrderByAggregateInput = {
+    attempts?: SortOrder
+    maxAttempts?: SortOrder
   }
 
   export type UserAddressCreateNestedManyWithoutUserInput = {
