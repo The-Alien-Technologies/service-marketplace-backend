@@ -1,98 +1,251 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Pavodah Service Marketplace API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This is the backend API for the Service Marketplace application built with NestJS. The Service Marketplace connects service providers with customers, enabling them to offer and book various services.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Features
 
-## Description
+- **Authentication & Authorization**: JWT-based authentication with role-based access control
+- **User Management**: Complete user lifecycle management with social auth support
+- **Email Service**: Multi-provider email service (AWS SES & Resend)
+- **Database**: PostgreSQL with Prisma ORM
+- **Logging**: Winston-based structured logging
+- **Validation**: Request/response validation with class-validator
+- **Error Handling**: Global exception filters
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Tech Stack
 
-## Project setup
+- **Framework**: NestJS
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Authentication**: JWT with Passport
+- **Email**: AWS SES / Resend
+- **Validation**: class-validator & class-transformer
+- **Logging**: Winston
+- **Testing**: Jest
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- PostgreSQL database
+- AWS account (for SES) or Resend account
+
+### Installation
+
+1. Clone the repository
 
 ```bash
-$ npm install
+git clone <repository-url>
+cd service-marketplace-backend
 ```
 
-## Compile and run the project
+2. Install dependencies
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
+3. Set up environment variables
 
 ```bash
-# unit tests
-$ npm run test
+cp .env.example .env
+```
 
-# e2e tests
-$ npm run test:e2e
+Fill in your environment variables:
 
-# test coverage
-$ npm run test:cov
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/service_marketplace"
+JWT_SECRET="your-jwt-secret"
+JWT_EXPIRATION_TIME="1h"
+JWT_REFRESH_EXPIRATION_TIME="30d"
+
+# Email Configuration
+EMAIL_PROVIDER="AWS" # or "RESEND"
+AWS_REGION="us-east-1"
+AWS_ACCESS_KEY_ID="your-aws-access-key"
+AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
+AWS_BUCKET="your-aws-s3-bucket" # Optional: for file storage
+FROM_EMAIL="noreply@servicemarketplace.com"
+
+# Or for Resend
+RESEND_API_KEY="your-resend-api-key"
+RESEND_FROM_EMAIL="noreply@servicemarketplace.com"
+
+# App Configuration
+APP_NAME="Service Marketplace"
+APP_URL="http://localhost:3000"
+SUPPORT_EMAIL="support@servicemarketplace.com"
+```
+
+4. Set up the database
+
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
+
+5. Start the development server
+
+```bash
+npm run start:dev
+```
+
+The API will be available at `http://localhost:3000`
+
+## Authentication with Refresh Tokens
+
+This API implements JWT authentication with refresh tokens for enhanced security:
+
+### Token Configuration
+
+Set the following environment variables:
+
+```bash
+JWT_SECRET=your-secret-key-here
+JWT_EXPIRATION_TIME=15m           # Access token expiry (15 minutes)
+JWT_REFRESH_EXPIRATION_TIME=30d   # Refresh token expiry (30 days)
+```
+
+### Authentication Endpoints
+
+- `POST /auth/register` - Register a new user
+- `POST /auth/login` - Login with email/password
+- `POST /auth/social` - Social authentication (Google, Apple, Facebook, Twitter)
+- `POST /auth/forgot-password` - Request password reset
+- `POST /auth/reset-password` - Reset password with OTP
+- `POST /auth/verify-otp` - Verify password reset OTP
+- `POST /auth/refresh` - Refresh JWT token
+- `GET /auth/profile` - Get current user profile
+- `PUT /auth/profile` - Update user profile
+- `POST /auth/change-password` - Change password
+- `DELETE /auth/account` - Soft delete account
+
+### Usage Example
+
+```javascript
+// Login response
+{
+  "data": {
+    "userId": "user-id",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", // 15min access token
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." // 30d refresh token
+  }
+}
+
+// Refresh tokens
+POST /auth/refresh
+{
+  "refreshToken": "your-refresh-token-here"
+}
+```
+
+### Security Features
+
+- Access tokens expire in 15 minutes (configurable)
+- Refresh tokens expire in 30 days (configurable)
+- Automatic token rotation on refresh
+- User activity tracking on token refresh
+
+## User Management
+
+- User registration with email verification
+- Social authentication (Google, Apple, Facebook, Twitter)
+- Password reset with OTP via email
+- Profile management
+- Role-based access control (USER, ADMIN, SERVICE_PROVIDER)
+
+## User Roles
+
+- **USER**: Regular customers who can browse and book services
+- **SERVICE_PROVIDER**: Users who can offer services to customers
+- **ADMIN**: System administrators with full access
+
+## Email Templates
+
+The application includes responsive email templates for:
+
+- Welcome emails
+- Password reset OTP
+- Email verification (future)
+
+Templates are available in both HTML and plain text formats.
+
+## Database Schema
+
+The application uses PostgreSQL with the following main entities:
+
+- **User**: Core user entity with authentication and profile data
+- **Enums**: UserStatus, Role, SubscriptionStatus, ThemePreference, PreferredUnits
+
+## Development
+
+### Running Tests
+
+```bash
+# Unit tests
+npm run test
+
+# E2E tests
+npm run test:e2e
+
+# Test coverage
+npm run test:cov
+```
+
+### Database Operations
+
+```bash
+# Create a new migration
+npx prisma migrate dev --name migration-name
+
+# Reset database
+npx prisma migrate reset
+
+# Generate Prisma client
+npx prisma generate
+
+# View database in Prisma Studio
+npx prisma studio
+```
+
+### Linting and Formatting
+
+```bash
+# Lint code
+npm run lint
+
+# Format code
+npm run format
 ```
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Production Build
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run build
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### Environment Variables for Production
 
-## Resources
+Make sure to set all required environment variables in your production environment:
 
-Check out a few resources that may come in handy when working with NestJS:
+- Database connection string
+- JWT secrets
+- Email service credentials
+- App configuration
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Contributing
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Run linting and tests
+6. Submit a pull request
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the UNLICENSED license.

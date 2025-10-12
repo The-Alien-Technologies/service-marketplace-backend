@@ -1,0 +1,174 @@
+<html lang='en'>
+  <head>
+    <meta charset='UTF-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+    <title>Welcome to {{appName}}</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+      }
+      .container {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .logo {
+        font-size: 32px;
+        font-weight: bold;
+        color: #6366f1;
+        margin-bottom: 10px;
+      }
+      .welcome-title {
+        font-size: 28px;
+        color: #1f2937;
+        margin-bottom: 10px;
+      }
+      .subtitle {
+        font-size: 18px;
+        color: #6b7280;
+        margin-bottom: 30px;
+      }
+      .content {
+        margin-bottom: 30px;
+      }
+      .content p {
+        margin-bottom: 20px;
+        font-size: 16px;
+        line-height: 1.8;
+      }
+      .features {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 25px;
+        margin: 30px 0;
+      }
+      .features h3 {
+        color: #1f2937;
+        margin-bottom: 15px;
+        font-size: 20px;
+      }
+      .feature-list {
+        list-style: none;
+        padding: 0;
+      }
+      .feature-list li {
+        padding: 8px 0;
+        padding-left: 25px;
+        position: relative;
+      }
+      .feature-list li:before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        color: #10b981;
+        font-weight: bold;
+      }
+      .cta-button {
+        display: inline-block;
+        background: #6366f1;
+        color: white;
+        padding: 15px 30px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 16px;
+        margin: 20px 0;
+        transition: background-color 0.3s;
+      }
+      .cta-button:hover {
+        background: #4f46e5;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 40px;
+        padding-top: 30px;
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
+        font-size: 14px;
+      }
+      .footer a {
+        color: #6366f1;
+        text-decoration: none;
+      }
+      .social-links {
+        margin: 20px 0;
+      }
+      .social-links a {
+        display: inline-block;
+        margin: 0 10px;
+        color: #6b7280;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div class='header'>
+        <div class='logo'>{{appName}}</div>
+        <h1 class='welcome-title'>Welcome, {{userName}}! 🎉</h1>
+        <p class='subtitle'>Your gateway to amazing services starts here</p>
+      </div>
+
+      <div class='content'>
+        <p>Hi {{userName}},</p>
+
+        <p>Welcome to
+          <strong>{{appName}}</strong>! We're thrilled to have you join our community of service providers and customers.</p>
+
+        <p>You've just taken the first step towards connecting with amazing services or offering your own expertise to others. Whether you're looking to find trusted service providers or want to grow your business by offering services, we're here to
+          support you every step of the way.</p>
+
+        <div class='features'>
+          <h3>🚀 What you can do with {{appName}}:</h3>
+          <ul class='feature-list'>
+            <li>Browse and book services from verified providers</li>
+            <li>Offer your own services and grow your business</li>
+            <li>Connect with customers and service providers</li>
+            <li>Manage your bookings and appointments</li>
+            <li>Build your reputation with reviews and ratings</li>
+            <li>Access a wide range of service categories</li>
+          </ul>
+        </div>
+
+        <p>Ready to get started? Open the app and complete your profile to get the best experience tailored
+          just for you.</p>
+
+        <div style='text-align: center;'>
+          <a href='{{appUrl}}' class='cta-button'>Get Started Now</a>
+        </div>
+
+        <p>If you have any questions or need help getting started, don't hesitate to reach out to our support team at
+          <a href='mailto:{{supportEmail}}'>{{supportEmail}}</a>. We're here to help!</p>
+
+        <p>Here's to connecting great services with amazing customers! 💪</p>
+
+        <p>Best regards,<br />
+          The
+          {{appName}}
+          Team</p>
+      </div>
+
+      <div class='footer'>
+        <div class='social-links'>
+          <a href='#'>Twitter</a>
+          <a href='#'>Facebook</a>
+          <a href='#'>Instagram</a>
+        </div>
+        <p>© {{currentYear}} {{appName}}. All rights reserved.</p>
+        <p>You received this email because you signed up for {{appName}}.</p>
+        <p>If you no longer wish to receive emails from us, you can <a href='#'>unsubscribe</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>

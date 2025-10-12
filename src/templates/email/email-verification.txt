@@ -1,0 +1,16 @@
+Verify Your Email Address - Pavodah
+
+Welcome to Pavodah! To complete your registration, please verify your email address using the code below:
+
+Verification Code: {{otpCode}}
+
+This verification code will expire in {{expiresInMinutes}} minutes.
+
+SECURITY NOTICE: If you didn't create an account with Pavodah, please ignore this email. Your email address will not be used without verification.
+
+If you're having trouble with verification, you can request a new code or contact our support team at support@pavodah.com.
+
+Best regards,
+The Pavodah Team
+
+This is an automated email, please do not reply directly to this message.

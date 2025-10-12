@@ -1,0 +1,3 @@
+### Endpoint tested
+- auth
+- questionnaire
