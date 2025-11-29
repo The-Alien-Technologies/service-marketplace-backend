@@ -194,7 +194,9 @@ exports.Prisma.CategoryScalarFieldEnum = {
   updatedAt: 'updatedAt',
   name: 'name',
   description: 'description',
-  isActive: 'isActive'
+  isActive: 'isActive',
+  featured: 'featured',
+  parentCategoryId: 'parentCategoryId'
 };
 
 exports.Prisma.UserInterestScalarFieldEnum = {

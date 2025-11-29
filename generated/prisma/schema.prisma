@@ -159,15 +159,19 @@ model UserAddress {
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  name        String   @unique
-  description String?
-  isActive    Boolean  @default(true)
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  name             String   @unique
+  description      String?
+  isActive         Boolean  @default(true)
+  featured         Boolean  @default(false)
+  parentCategoryId String?
 
   // Relations
-  userInterests UserInterest[]
+  parentCategory Category?      @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  subCategories  Category[]     @relation("CategoryHierarchy")
+  userInterests  UserInterest[]
 
   @@map("categories")
 }
