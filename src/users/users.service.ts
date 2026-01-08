@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { SocialAuthDto, SocialProvider } from '../auth/dto/social-auth.dto';
@@ -7,13 +11,21 @@ import { User, UserStatus } from '../../generated/prisma';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(userData: Partial<RegisterDto> & { firstName: string; lastName: string; password: string }): Promise<User> {
+  async create(
+    userData: Partial<RegisterDto> & {
+      firstName: string;
+      lastName: string;
+      password: string;
+    },
+  ): Promise<User> {
     // Check if user already exists
     const existingUser = await this.findByEmail(userData.email);
     if (existingUser) {
-      throw new ConflictException({ message: 'User with this email already exists' });
+      throw new ConflictException({
+        message: 'User with this email already exists',
+      });
     }
 
     return this.prisma.user.create({
@@ -34,7 +46,9 @@ export class UsersService {
 
     // Only support Google for now
     if (provider !== SocialProvider.GOOGLE) {
-      throw new ConflictException({ message: 'Only Google authentication is supported' });
+      throw new ConflictException({
+        message: 'Only Google authentication is supported',
+      });
     }
 
     // Check if user already exists by email
@@ -89,6 +103,92 @@ export class UsersService {
     });
   }
 
+  async findAll(options: {
+    page: number;
+    limit: number;
+    search?: string;
+    role?: string;
+    status?: string;
+  }): Promise<{
+    users: User[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const { page, limit, search, role, status } = options;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    // Search filter
+    if (search) {
+      where.OR = [
+        { email: { contains: search, mode: 'insensitive' } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { displayName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Role filter
+    if (role) {
+      where.role = role;
+    }
+
+    // Status filter
+    if (status) {
+      where.status = status;
+    }
+
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+          avatar: true,
+          role: true,
+          status: true,
+          emailVerified: true,
+          phoneVerified: true,
+          hasCompletedOnboarding: true,
+          isServiceProviderVerified: true,
+          createdAt: true,
+          lastLoginAt: true,
+          lastActiveAt: true,
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      users: users as unknown as User[],
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateStatus(userId: string, status: UserStatus): Promise<User> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({ message: 'User not found' });
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { status },
+    });
+  }
+
   async findByUsername(username: string): Promise<User | null> {
     if (!username) return null;
     return this.prisma.user.findUnique({
@@ -96,7 +196,10 @@ export class UsersService {
     });
   }
 
-  async findByPasswordResetOtp(email: string, otp: string): Promise<User | null> {
+  async findByPasswordResetOtp(
+    email: string,
+    otp: string,
+  ): Promise<User | null> {
     return this.prisma.user.findFirst({
       where: {
         email: email,
@@ -136,18 +239,24 @@ export class UsersService {
     });
   }
 
-  async findBySocialProvider(provider: SocialProvider, providerId: string): Promise<User | null> {
+  async findBySocialProvider(
+    provider: SocialProvider,
+    providerId: string,
+  ): Promise<User | null> {
     // Only support Google for now
     if (provider !== SocialProvider.GOOGLE) {
       return null;
     }
 
-    return this.prisma.user.findFirst({ 
-      where: { googleId: providerId } 
+    return this.prisma.user.findFirst({
+      where: { googleId: providerId },
     });
   }
 
-  async updateProfile(userId: string, updateData: UpdateProfileDto): Promise<User> {
+  async updateProfile(
+    userId: string,
+    updateData: UpdateProfileDto,
+  ): Promise<User> {
     // Check if username is being updated and is unique
     if (updateData.username) {
       const existingUser = await this.findByUsername(updateData.username);
@@ -180,7 +289,10 @@ export class UsersService {
     });
   }
 
-  async updateOnboardingStatus(userId: string, completed: boolean): Promise<User> {
+  async updateOnboardingStatus(
+    userId: string,
+    completed: boolean,
+  ): Promise<User> {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -212,12 +324,13 @@ export class UsersService {
     premiumUsers: number;
     onboardedUsers: number;
   }> {
-    const [totalUsers, activeUsers, premiumUsers, onboardedUsers] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
-      this.prisma.user.count({ where: { isPremium: true } }),
-      this.prisma.user.count({ where: { hasCompletedOnboarding: true } }),
-    ]);
+    const [totalUsers, activeUsers, premiumUsers, onboardedUsers] =
+      await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
+        this.prisma.user.count({ where: { isPremium: true } }),
+        this.prisma.user.count({ where: { hasCompletedOnboarding: true } }),
+      ]);
 
     return {
       totalUsers,
