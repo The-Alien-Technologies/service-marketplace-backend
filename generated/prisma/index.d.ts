@@ -4481,6 +4481,7 @@ export namespace Prisma {
     updatedAt: Date | null
     name: string | null
     description: string | null
+    imageUrl: string | null
     isActive: boolean | null
     featured: boolean | null
     parentCategoryId: string | null
@@ -4492,6 +4493,7 @@ export namespace Prisma {
     updatedAt: Date | null
     name: string | null
     description: string | null
+    imageUrl: string | null
     isActive: boolean | null
     featured: boolean | null
     parentCategoryId: string | null
@@ -4503,6 +4505,7 @@ export namespace Prisma {
     updatedAt: number
     name: number
     description: number
+    imageUrl: number
     isActive: number
     featured: number
     parentCategoryId: number
@@ -4516,6 +4519,7 @@ export namespace Prisma {
     updatedAt?: true
     name?: true
     description?: true
+    imageUrl?: true
     isActive?: true
     featured?: true
     parentCategoryId?: true
@@ -4527,6 +4531,7 @@ export namespace Prisma {
     updatedAt?: true
     name?: true
     description?: true
+    imageUrl?: true
     isActive?: true
     featured?: true
     parentCategoryId?: true
@@ -4538,6 +4543,7 @@ export namespace Prisma {
     updatedAt?: true
     name?: true
     description?: true
+    imageUrl?: true
     isActive?: true
     featured?: true
     parentCategoryId?: true
@@ -4622,6 +4628,7 @@ export namespace Prisma {
     updatedAt: Date
     name: string
     description: string | null
+    imageUrl: string | null
     isActive: boolean
     featured: boolean
     parentCategoryId: string | null
@@ -4650,6 +4657,7 @@ export namespace Prisma {
     updatedAt?: boolean
     name?: boolean
     description?: boolean
+    imageUrl?: boolean
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: boolean
@@ -4665,6 +4673,7 @@ export namespace Prisma {
     updatedAt?: boolean
     name?: boolean
     description?: boolean
+    imageUrl?: boolean
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: boolean
@@ -4677,6 +4686,7 @@ export namespace Prisma {
     updatedAt?: boolean
     name?: boolean
     description?: boolean
+    imageUrl?: boolean
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: boolean
@@ -4689,12 +4699,13 @@ export namespace Prisma {
     updatedAt?: boolean
     name?: boolean
     description?: boolean
+    imageUrl?: boolean
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: boolean
   }
 
-  export type CategoryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "name" | "description" | "isActive" | "featured" | "parentCategoryId", ExtArgs["result"]["category"]>
+  export type CategoryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "name" | "description" | "imageUrl" | "isActive" | "featured" | "parentCategoryId", ExtArgs["result"]["category"]>
   export type CategoryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     parentCategory?: boolean | Category$parentCategoryArgs<ExtArgs>
     subCategories?: boolean | Category$subCategoriesArgs<ExtArgs>
@@ -4721,6 +4732,7 @@ export namespace Prisma {
       updatedAt: Date
       name: string
       description: string | null
+      imageUrl: string | null
       isActive: boolean
       featured: boolean
       parentCategoryId: string | null
@@ -5155,6 +5167,7 @@ export namespace Prisma {
     readonly updatedAt: FieldRef<"Category", 'DateTime'>
     readonly name: FieldRef<"Category", 'String'>
     readonly description: FieldRef<"Category", 'String'>
+    readonly imageUrl: FieldRef<"Category", 'String'>
     readonly isActive: FieldRef<"Category", 'Boolean'>
     readonly featured: FieldRef<"Category", 'Boolean'>
     readonly parentCategoryId: FieldRef<"Category", 'String'>
@@ -9106,6 +9119,7 @@ export namespace Prisma {
     updatedAt: 'updatedAt',
     name: 'name',
     description: 'description',
+    imageUrl: 'imageUrl',
     isActive: 'isActive',
     featured: 'featured',
     parentCategoryId: 'parentCategoryId'
@@ -9757,6 +9771,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Category"> | Date | string
     name?: StringFilter<"Category"> | string
     description?: StringNullableFilter<"Category"> | string | null
+    imageUrl?: StringNullableFilter<"Category"> | string | null
     isActive?: BoolFilter<"Category"> | boolean
     featured?: BoolFilter<"Category"> | boolean
     parentCategoryId?: StringNullableFilter<"Category"> | string | null
@@ -9771,6 +9786,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     name?: SortOrder
     description?: SortOrderInput | SortOrder
+    imageUrl?: SortOrderInput | SortOrder
     isActive?: SortOrder
     featured?: SortOrder
     parentCategoryId?: SortOrderInput | SortOrder
@@ -9788,6 +9804,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Category"> | Date | string
     updatedAt?: DateTimeFilter<"Category"> | Date | string
     description?: StringNullableFilter<"Category"> | string | null
+    imageUrl?: StringNullableFilter<"Category"> | string | null
     isActive?: BoolFilter<"Category"> | boolean
     featured?: BoolFilter<"Category"> | boolean
     parentCategoryId?: StringNullableFilter<"Category"> | string | null
@@ -9802,6 +9819,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     name?: SortOrder
     description?: SortOrderInput | SortOrder
+    imageUrl?: SortOrderInput | SortOrder
     isActive?: SortOrder
     featured?: SortOrder
     parentCategoryId?: SortOrderInput | SortOrder
@@ -9819,6 +9837,7 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"Category"> | Date | string
     name?: StringWithAggregatesFilter<"Category"> | string
     description?: StringNullableWithAggregatesFilter<"Category"> | string | null
+    imageUrl?: StringNullableWithAggregatesFilter<"Category"> | string | null
     isActive?: BoolWithAggregatesFilter<"Category"> | boolean
     featured?: BoolWithAggregatesFilter<"Category"> | boolean
     parentCategoryId?: StringNullableWithAggregatesFilter<"Category"> | string | null
@@ -10557,6 +10576,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategory?: CategoryCreateNestedOneWithoutSubCategoriesInput
@@ -10570,6 +10590,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: string | null
@@ -10583,6 +10604,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategory?: CategoryUpdateOneWithoutSubCategoriesNestedInput
@@ -10596,6 +10618,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategoryId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -10609,6 +10632,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: string | null
@@ -10620,6 +10644,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
   }
@@ -10630,6 +10655,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategoryId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -11453,6 +11479,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     name?: SortOrder
     description?: SortOrder
+    imageUrl?: SortOrder
     isActive?: SortOrder
     featured?: SortOrder
     parentCategoryId?: SortOrder
@@ -11464,6 +11491,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     name?: SortOrder
     description?: SortOrder
+    imageUrl?: SortOrder
     isActive?: SortOrder
     featured?: SortOrder
     parentCategoryId?: SortOrder
@@ -11475,6 +11503,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     name?: SortOrder
     description?: SortOrder
+    imageUrl?: SortOrder
     isActive?: SortOrder
     featured?: SortOrder
     parentCategoryId?: SortOrder
@@ -12794,6 +12823,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategory?: CategoryCreateNestedOneWithoutSubCategoriesInput
@@ -12806,6 +12836,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: string | null
@@ -12823,6 +12854,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     subCategories?: CategoryCreateNestedManyWithoutParentCategoryInput
@@ -12835,6 +12867,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     subCategories?: CategoryUncheckedCreateNestedManyWithoutParentCategoryInput
@@ -12892,6 +12925,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategory?: CategoryUpdateOneWithoutSubCategoriesNestedInput
@@ -12904,6 +12938,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategoryId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -12935,6 +12970,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Category"> | Date | string
     name?: StringFilter<"Category"> | string
     description?: StringNullableFilter<"Category"> | string | null
+    imageUrl?: StringNullableFilter<"Category"> | string | null
     isActive?: BoolFilter<"Category"> | boolean
     featured?: BoolFilter<"Category"> | boolean
     parentCategoryId?: StringNullableFilter<"Category"> | string | null
@@ -13073,6 +13109,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategory?: CategoryCreateNestedOneWithoutSubCategoriesInput
@@ -13085,6 +13122,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
     parentCategoryId?: string | null
@@ -13230,6 +13268,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategory?: CategoryUpdateOneWithoutSubCategoriesNestedInput
@@ -13242,6 +13281,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     parentCategoryId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -13642,6 +13682,7 @@ export namespace Prisma {
     updatedAt?: Date | string
     name: string
     description?: string | null
+    imageUrl?: string | null
     isActive?: boolean
     featured?: boolean
   }
@@ -13659,6 +13700,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     subCategories?: CategoryUpdateManyWithoutParentCategoryNestedInput
@@ -13671,6 +13713,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
     subCategories?: CategoryUncheckedUpdateManyWithoutParentCategoryNestedInput
@@ -13683,6 +13726,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     name?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    imageUrl?: NullableStringFieldUpdateOperationsInput | string | null
     isActive?: BoolFieldUpdateOperationsInput | boolean
     featured?: BoolFieldUpdateOperationsInput | boolean
   }

@@ -9,7 +9,10 @@ import {
   UseGuards,
   Query,
   ParseBoolPipe,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { IsAdmin } from '../common/decorators/roles.decorator';
@@ -86,9 +89,16 @@ export class CategoriesController {
   // Admin-only endpoints
   @Post()
   @IsAdmin()
-  async createCategory(@Body() createCategoryDto: CreateCategoryDto) {
+  @UseInterceptors(FileInterceptor('image'))
+  async createCategory(
+    @Body() createCategoryDto: CreateCategoryDto,
+    @UploadedFile() image?: Express.Multer.File,
+  ) {
     try {
-      const category = await this.categoriesService.create(createCategoryDto);
+      const category = await this.categoriesService.create(
+        createCategoryDto,
+        image,
+      );
       return ResponseUtil.success(category, 'Category created successfully');
     } catch (error) {
       throw error;
@@ -97,14 +107,17 @@ export class CategoriesController {
 
   @Put(':id')
   @IsAdmin()
+  @UseInterceptors(FileInterceptor('image'))
   async updateCategory(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
+    @UploadedFile() image?: Express.Multer.File,
   ) {
     try {
       const category = await this.categoriesService.update(
         id,
         updateCategoryDto,
+        image,
       );
       return ResponseUtil.success(category, 'Category updated successfully');
     } catch (error) {
@@ -117,17 +130,6 @@ export class CategoriesController {
   async deleteCategory(@Param('id') id: string) {
     try {
       const category = await this.categoriesService.remove(id);
-      return ResponseUtil.success(category, 'Category deleted successfully');
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  @Delete(':id/hard')
-  @IsAdmin()
-  async hardDeleteCategory(@Param('id') id: string) {
-    try {
-      const category = await this.categoriesService.hardDelete(id);
       return ResponseUtil.success(category, 'Category permanently deleted');
     } catch (error) {
       throw error;

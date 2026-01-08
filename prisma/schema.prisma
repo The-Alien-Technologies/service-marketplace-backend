@@ -164,6 +164,7 @@ model Category {
   updatedAt        DateTime @updatedAt
   name             String   @unique
   description      String?
+  imageUrl         String? // Uploaded category icon/image
   isActive         Boolean  @default(true)
   featured         Boolean  @default(false)
   parentCategoryId String?

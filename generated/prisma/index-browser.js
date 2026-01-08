@@ -194,6 +194,7 @@ exports.Prisma.CategoryScalarFieldEnum = {
   updatedAt: 'updatedAt',
   name: 'name',
   description: 'description',
+  imageUrl: 'imageUrl',
   isActive: 'isActive',
   featured: 'featured',
   parentCategoryId: 'parentCategoryId'

@@ -5,14 +5,24 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  FileUploadService,
+  FileCategory,
+} from '../common/services/file-upload.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileUploadService: FileUploadService,
+  ) {}
 
-  async create(createCategoryDto: CreateCategoryDto) {
+  async create(
+    createCategoryDto: CreateCategoryDto,
+    image?: Express.Multer.File,
+  ) {
     const { name, description, parentCategoryId, featured } = createCategoryDto;
 
     // Check if category with same name already exists (case-insensitive)
@@ -40,12 +50,35 @@ export class CategoriesService {
       }
     }
 
+    // Upload image if provided
+    let imageUrl: string | undefined;
+    if (image) {
+      const uploadResult = await this.fileUploadService.uploadFile(
+        image,
+        FileCategory.GENERAL,
+        {
+          folder: 'categories',
+          allowedTypes: [
+            'image/svg+xml',
+            'image/png',
+            'image/jpeg',
+            'image/jpg',
+            'image/webp',
+          ],
+          maxSize: 5 * 1024 * 1024, // 5MB
+          generateUniqueName: true,
+        },
+      );
+      imageUrl = uploadResult.url;
+    }
+
     return this.prisma.category.create({
       data: {
         name,
         description,
         parentCategoryId,
         featured: featured ?? false,
+        imageUrl,
       },
       include: {
         parentCategory: {
@@ -76,6 +109,7 @@ export class CategoriesService {
             id: true,
             name: true,
             featured: true,
+            imageUrl: true,
           },
         },
         _count: {
@@ -84,7 +118,7 @@ export class CategoriesService {
           },
         },
       },
-      orderBy: [{ featured: 'desc' }, { createdAt: 'asc' }],
+      orderBy: [{ createdAt: 'desc' }],
     });
   }
 
@@ -100,10 +134,11 @@ export class CategoriesService {
           select: {
             id: true,
             name: true,
+            imageUrl: true,
           },
         },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -120,6 +155,7 @@ export class CategoriesService {
             id: true,
             name: true,
             featured: true,
+            imageUrl: true,
           },
         },
         _count: {
@@ -128,7 +164,7 @@ export class CategoriesService {
           },
         },
       },
-      orderBy: [{ featured: 'desc' }, { createdAt: 'asc' }],
+      orderBy: [{ createdAt: 'desc' }],
     });
   }
 
@@ -149,6 +185,7 @@ export class CategoriesService {
             name: true,
             description: true,
             featured: true,
+            imageUrl: true,
           },
         },
         _count: {
@@ -167,7 +204,11 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, updateCategoryDto: UpdateCategoryDto) {
+  async update(
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+    image?: Express.Multer.File,
+  ) {
     // Check if category exists
     const category = await this.prisma.category.findUnique({
       where: { id },
@@ -222,9 +263,44 @@ export class CategoriesService {
       }
     }
 
+    // Upload new image if provided
+    let imageUrl: string | undefined;
+    if (image) {
+      // Delete old image if exists
+      if (category.imageUrl) {
+        try {
+          await this.fileUploadService.deleteFile(category.imageUrl);
+        } catch (error) {
+          // Log but don't fail if old image deletion fails
+          console.warn('Failed to delete old category image:', error);
+        }
+      }
+
+      const uploadResult = await this.fileUploadService.uploadFile(
+        image,
+        FileCategory.GENERAL,
+        {
+          folder: 'categories',
+          allowedTypes: [
+            'image/svg+xml',
+            'image/png',
+            'image/jpeg',
+            'image/jpg',
+            'image/webp',
+          ],
+          maxSize: 5 * 1024 * 1024, // 5MB
+          generateUniqueName: true,
+        },
+      );
+      imageUrl = uploadResult.url;
+    }
+
     return this.prisma.category.update({
       where: { id },
-      data: updateCategoryDto,
+      data: {
+        ...updateCategoryDto,
+        ...(imageUrl && { imageUrl }),
+      },
       include: {
         parentCategory: {
           select: {
@@ -236,6 +312,7 @@ export class CategoriesService {
           select: {
             id: true,
             name: true,
+            imageUrl: true,
           },
         },
       },
@@ -247,37 +324,6 @@ export class CategoriesService {
       where: { id },
       include: {
         subCategories: true,
-        _count: {
-          select: {
-            userInterests: true,
-          },
-        },
-      },
-    });
-
-    if (!category) {
-      throw new NotFoundException('Category not found');
-    }
-
-    // Check if category has subcategories
-    if (category.subCategories.length > 0) {
-      throw new BadRequestException(
-        'Cannot delete category with subcategories. Please delete or reassign subcategories first.',
-      );
-    }
-
-    // Soft delete: mark as inactive instead of hard delete
-    return this.prisma.category.update({
-      where: { id },
-      data: { isActive: false },
-    });
-  }
-
-  async hardDelete(id: string) {
-    const category = await this.prisma.category.findUnique({
-      where: { id },
-      include: {
-        subCategories: true,
       },
     });
 
@@ -289,6 +335,16 @@ export class CategoriesService {
       throw new BadRequestException(
         'Cannot delete category with subcategories. Please delete or reassign subcategories first.',
       );
+    }
+
+    // Delete image if exists
+    if (category.imageUrl) {
+      try {
+        await this.fileUploadService.deleteFile(category.imageUrl);
+      } catch (error) {
+        // Log but don't fail if image deletion fails
+        console.warn('Failed to delete category image:', error);
+      }
     }
 
     return this.prisma.category.delete({
