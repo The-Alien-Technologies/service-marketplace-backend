@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { CategoriesModule } from './categories/categories.module';
+import { ServicesModule } from './services/services.module';
 import { AppController } from './app.controller';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -17,7 +18,10 @@ import { SeederModule } from './common/seeders/seeder.module';
 @Module({
   imports: [
     WinstonModule.forRoot({
-      format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json(),
+      ),
       transports: [
         new winston.transports.Console(),
         new winston.transports.File({
@@ -34,12 +38,13 @@ import { SeederModule } from './common/seeders/seeder.module';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',  
+      envFilePath: '.env',
     }),
     AuthModule,
     UsersModule,
     OnboardingModule,
     CategoriesModule,
+    ServicesModule,
     PrismaModule,
     SeederModule,
   ],

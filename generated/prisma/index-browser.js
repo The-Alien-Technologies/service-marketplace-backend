@@ -238,6 +238,51 @@ exports.Prisma.PhoneVerificationScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ServiceScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  title: 'title',
+  slug: 'slug',
+  overview: 'overview',
+  coverImage: 'coverImage',
+  tags: 'tags',
+  status: 'status',
+  providerId: 'providerId',
+  categoryId: 'categoryId'
+};
+
+exports.Prisma.ServicePlanScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  title: 'title',
+  price: 'price',
+  inclusions: 'inclusions',
+  isPopular: 'isPopular',
+  sortOrder: 'sortOrder',
+  serviceId: 'serviceId'
+};
+
+exports.Prisma.ServiceAddonScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  title: 'title',
+  description: 'description',
+  price: 'price',
+  serviceId: 'serviceId'
+};
+
+exports.Prisma.ServiceImageScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  url: 'url',
+  fileName: 'fileName',
+  sortOrder: 'sortOrder',
+  serviceId: 'serviceId'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -304,13 +349,24 @@ exports.DocumentStatus = exports.$Enums.DocumentStatus = {
   REJECTED: 'REJECTED'
 };
 
+exports.ServiceStatus = exports.$Enums.ServiceStatus = {
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+  SUSPENDED: 'SUSPENDED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   UserAddress: 'UserAddress',
   Category: 'Category',
   UserInterest: 'UserInterest',
   VerificationDocument: 'VerificationDocument',
-  PhoneVerification: 'PhoneVerification'
+  PhoneVerification: 'PhoneVerification',
+  Service: 'Service',
+  ServicePlan: 'ServicePlan',
+  ServiceAddon: 'ServiceAddon',
+  ServiceImage: 'ServiceImage'
 };
 
 /**

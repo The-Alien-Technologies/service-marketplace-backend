@@ -1,7 +1,11 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 
@@ -29,6 +33,9 @@ export enum FileCategory {
   AVATAR = 'avatars',
   DOCUMENT = 'documents',
   GENERAL = 'uploads',
+  SERVICE = 'services',
+  SERVICE_PORTFOLIO = 'services/portfolio',
+  CATEGORY = 'categories',
 }
 
 @Injectable()
@@ -40,19 +47,28 @@ export class FileUploadService {
 
   constructor(private readonly configService: ConfigService) {
     // Get the configured provider, default to LOCAL for development
-    const configuredProvider = this.configService.get<string>('FILE_UPLOAD_PROVIDER', FileUploadProvider.LOCAL);
-    
+    const configuredProvider = this.configService.get<string>(
+      'FILE_UPLOAD_PROVIDER',
+      FileUploadProvider.LOCAL,
+    );
+
     // Validate and set the provider
-    if (Object.values(FileUploadProvider).includes(configuredProvider as FileUploadProvider)) {
+    if (
+      Object.values(FileUploadProvider).includes(
+        configuredProvider as FileUploadProvider,
+      )
+    ) {
       this.provider = configuredProvider as FileUploadProvider;
     } else {
-      this.logger.warn(`Invalid FILE_UPLOAD_PROVIDER: ${configuredProvider}, falling back to LOCAL`);
+      this.logger.warn(
+        `Invalid FILE_UPLOAD_PROVIDER: ${configuredProvider}, falling back to LOCAL`,
+      );
       this.provider = FileUploadProvider.LOCAL;
     }
 
     // Initialize the appropriate client based on provider
     this.initializeProvider();
-    
+
     this.logger.log(`File upload provider initialized: ${this.provider}`);
   }
 
@@ -77,9 +93,11 @@ export class FileUploadService {
   private initializeSupabase(): void {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
-    
+
     if (!supabaseUrl || !supabaseKey) {
-      this.logger.error('Supabase provider selected but SUPABASE_URL or SUPABASE_KEY not configured');
+      this.logger.error(
+        'Supabase provider selected but SUPABASE_URL or SUPABASE_KEY not configured',
+      );
       this.provider = FileUploadProvider.LOCAL;
       this.logger.warn('Falling back to LOCAL provider');
       return;
@@ -92,10 +110,14 @@ export class FileUploadService {
   private initializeS3(): void {
     const awsRegion = this.configService.get<string>('AWS_REGION');
     const awsAccessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const awsSecretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
-    
+    const awsSecretAccessKey = this.configService.get<string>(
+      'AWS_SECRET_ACCESS_KEY',
+    );
+
     if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
-      this.logger.error('AWS S3 provider selected but AWS credentials not configured');
+      this.logger.error(
+        'AWS S3 provider selected but AWS credentials not configured',
+      );
       this.provider = FileUploadProvider.LOCAL;
       this.logger.warn('Falling back to LOCAL provider');
       return;
@@ -120,7 +142,7 @@ export class FileUploadService {
     this.validateFile(file, options);
 
     this.logger.log(`Using file upload provider: ${this.provider}`);
-    
+
     switch (this.provider) {
       case FileUploadProvider.SUPABASE:
         return this.uploadToSupabase(file, category, options);
@@ -129,8 +151,12 @@ export class FileUploadService {
       case FileUploadProvider.LOCAL:
         return this.uploadToLocal(file, category, options);
       default:
-        this.logger.error(`Unknown provider: ${this.provider}, available providers: ${Object.values(FileUploadProvider)}`);
-        throw new BadRequestException(`Unsupported file upload provider: ${this.provider}`);
+        this.logger.error(
+          `Unknown provider: ${this.provider}, available providers: ${Object.values(FileUploadProvider)}`,
+        );
+        throw new BadRequestException(
+          `Unsupported file upload provider: ${this.provider}`,
+        );
     }
   }
 
@@ -143,15 +169,22 @@ export class FileUploadService {
       case FileUploadProvider.LOCAL:
         return this.deleteFromLocal(fileUrl);
       default:
-        throw new BadRequestException(`Unsupported file upload provider: ${this.provider}`);
+        throw new BadRequestException(
+          `Unsupported file upload provider: ${this.provider}`,
+        );
     }
   }
 
-  private validateFile(file: Express.Multer.File, options: FileUploadOptions): void {
+  private validateFile(
+    file: Express.Multer.File,
+    options: FileUploadOptions,
+  ): void {
     // Check file size
     const maxSize = options.maxSize || 10 * 1024 * 1024; // Default 10MB
     if (file.size > maxSize) {
-      throw new BadRequestException(`File size cannot exceed ${maxSize / (1024 * 1024)}MB`);
+      throw new BadRequestException(
+        `File size cannot exceed ${maxSize / (1024 * 1024)}MB`,
+      );
     }
 
     // Check file type
@@ -162,16 +195,19 @@ export class FileUploadService {
     }
   }
 
-  private generateFileName(originalName: string, generateUnique: boolean = true): string {
+  private generateFileName(
+    originalName: string,
+    generateUnique: boolean = true,
+  ): string {
     const ext = path.extname(originalName);
     const baseName = path.basename(originalName, ext);
-    
+
     if (generateUnique) {
       const uuid = uuidv4();
       const timestamp = Date.now();
       return `${baseName}_${timestamp}_${uuid}${ext}`;
     }
-    
+
     return originalName;
   }
 
@@ -182,8 +218,13 @@ export class FileUploadService {
   ): Promise<FileUploadResult> {
     try {
       const bucketName = this.configService.get<string>('SUPABASE_BUCKET_NAME');
-      const fileName = this.generateFileName(file.originalname, options.generateUniqueName);
-      const filePath = options.folder ? `${options.folder}/${fileName}` : `${category}/${fileName}`;
+      const fileName = this.generateFileName(
+        file.originalname,
+        options.generateUniqueName,
+      );
+      const filePath = options.folder
+        ? `${options.folder}/${fileName}`
+        : `${category}/${fileName}`;
 
       const { data, error } = await this.supabaseClient.storage
         .from(bucketName)
@@ -194,7 +235,9 @@ export class FileUploadService {
 
       if (error) {
         this.logger.error('Supabase upload error:', error);
-        throw new BadRequestException(`Failed to upload file: ${error.message}`);
+        throw new BadRequestException(
+          `Failed to upload file: ${error.message}`,
+        );
       }
 
       // Get public URL
@@ -216,12 +259,17 @@ export class FileUploadService {
 
   private async deleteFromSupabase(fileUrl: string): Promise<void> {
     try {
-      const bucketName = this.configService.get<string>('SUPABASE_BUCKET_NAME', 'pavodah-files');
-      
+      const bucketName = this.configService.get<string>(
+        'SUPABASE_BUCKET_NAME',
+        'pavodah-files',
+      );
+
       // Extract file path from URL
       const url = new URL(fileUrl);
       const pathParts = url.pathname.split('/');
-      const filePath = pathParts.slice(pathParts.indexOf(bucketName) + 1).join('/');
+      const filePath = pathParts
+        .slice(pathParts.indexOf(bucketName) + 1)
+        .join('/');
 
       const { error } = await this.supabaseClient.storage
         .from(bucketName)
@@ -229,7 +277,9 @@ export class FileUploadService {
 
       if (error) {
         this.logger.error('Supabase delete error:', error);
-        throw new BadRequestException(`Failed to delete file: ${error.message}`);
+        throw new BadRequestException(
+          `Failed to delete file: ${error.message}`,
+        );
       }
     } catch (error) {
       this.logger.error('Failed to delete from Supabase:', error);
@@ -248,8 +298,13 @@ export class FileUploadService {
         throw new BadRequestException('AWS S3 bucket name not configured');
       }
 
-      const fileName = this.generateFileName(file.originalname, options.generateUniqueName);
-      const key = options.folder ? `${options.folder}/${fileName}` : `${category}/${fileName}`;
+      const fileName = this.generateFileName(
+        file.originalname,
+        options.generateUniqueName,
+      );
+      const key = options.folder
+        ? `${options.folder}/${fileName}`
+        : `${category}/${fileName}`;
 
       const command = new PutObjectCommand({
         Bucket: bucketName,
@@ -308,27 +363,35 @@ export class FileUploadService {
   ): Promise<FileUploadResult> {
     const fs = require('fs').promises;
     const path = require('path');
-    
+
     try {
       // Create uploads directory structure
       const uploadsDir = path.join(process.cwd(), 'uploads');
       const categoryDir = path.join(uploadsDir, category);
-      const folderDir = options.folder ? path.join(categoryDir, options.folder) : categoryDir;
-      
+      const folderDir = options.folder
+        ? path.join(categoryDir, options.folder)
+        : categoryDir;
+
       // Ensure directories exist
       await fs.mkdir(folderDir, { recursive: true });
-      
+
       // Generate file name
-      const fileName = this.generateFileName(file.originalname, options.generateUniqueName);
+      const fileName = this.generateFileName(
+        file.originalname,
+        options.generateUniqueName,
+      );
       const filePath = path.join(folderDir, fileName);
-      
+
       // Write file to disk
       await fs.writeFile(filePath, file.buffer);
-      
+
       // Generate public URL (for development)
-      const relativePath = path.relative(path.join(process.cwd(), 'uploads'), filePath);
+      const relativePath = path.relative(
+        path.join(process.cwd(), 'uploads'),
+        filePath,
+      );
       const publicUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
-      
+
       return {
         url: publicUrl,
         fileName: fileName,
@@ -337,19 +400,21 @@ export class FileUploadService {
       };
     } catch (error) {
       this.logger.error('Local upload error:', error);
-      throw new BadRequestException(`Failed to upload file locally: ${error.message}`);
+      throw new BadRequestException(
+        `Failed to upload file locally: ${error.message}`,
+      );
     }
   }
 
   private async deleteFromLocal(fileUrl: string): Promise<void> {
     const fs = require('fs').promises;
     const path = require('path');
-    
+
     try {
       // Convert URL back to file path
       const relativePath = fileUrl.replace('/uploads/', '');
       const filePath = path.join(process.cwd(), 'uploads', relativePath);
-      
+
       // Check if file exists and delete it
       try {
         await fs.access(filePath);
@@ -366,7 +431,10 @@ export class FileUploadService {
   }
 
   // Utility methods for common file operations
-  async uploadAvatar(file: Express.Multer.File, userId: string): Promise<FileUploadResult> {
+  async uploadAvatar(
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<FileUploadResult> {
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     const maxSize = 5 * 1024 * 1024; // 5MB for avatars
 
@@ -378,7 +446,10 @@ export class FileUploadService {
     });
   }
 
-  async uploadDocument(file: Express.Multer.File, userId: string): Promise<FileUploadResult> {
+  async uploadDocument(
+    file: Express.Multer.File,
+    userId: string,
+  ): Promise<FileUploadResult> {
     const allowedTypes = [
       'application/pdf',
       'image/jpeg',
@@ -397,7 +468,10 @@ export class FileUploadService {
     });
   }
 
-  async uploadGeneral(file: Express.Multer.File, folder?: string): Promise<FileUploadResult> {
+  async uploadGeneral(
+    file: Express.Multer.File,
+    folder?: string,
+  ): Promise<FileUploadResult> {
     return this.uploadFile(file, FileCategory.GENERAL, {
       folder,
       generateUniqueName: true,

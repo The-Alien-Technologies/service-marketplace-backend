@@ -132,6 +132,7 @@ model User {
   addresses             UserAddress[]
   interests             UserInterest[]
   verificationDocuments VerificationDocument[]
+  services              Service[]
 
   @@map("users")
 }
@@ -173,6 +174,7 @@ model Category {
   parentCategory Category?      @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
   subCategories  Category[]     @relation("CategoryHierarchy")
   userInterests  UserInterest[]
+  services       Service[]
 
   @@map("categories")
 }
@@ -227,4 +229,88 @@ model PhoneVerification {
   updatedAt   DateTime @updatedAt
 
   @@map("phone_verifications")
+}
+
+// Service Marketplace Enums
+enum ServiceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  SUSPENDED
+}
+
+// Service Models
+model Service {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Core fields
+  title      String
+  slug       String        @unique
+  overview   String
+  coverImage String?
+  tags       String[]
+  status     ServiceStatus @default(DRAFT)
+
+  // Relations
+  providerId String
+  provider   User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // Nested entities
+  plans  ServicePlan[]
+  addons ServiceAddon[]
+  images ServiceImage[]
+
+  @@map("services")
+}
+
+model ServicePlan {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title      String
+  price      Decimal @db.Decimal(10, 2)
+  inclusions String // Multiline text stored as-is
+  isPopular  Boolean @default(false)
+  sortOrder  Int     @default(0)
+
+  // Relations
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("service_plans")
+}
+
+model ServiceAddon {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title       String
+  description String?
+  price       Decimal @db.Decimal(10, 2)
+
+  // Relations
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("service_addons")
+}
+
+model ServiceImage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  url       String
+  fileName  String
+  sortOrder Int      @default(0)
+
+  // Relations
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("service_images")
 }
