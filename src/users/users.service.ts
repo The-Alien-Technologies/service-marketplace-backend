@@ -97,6 +97,32 @@ export class UsersService {
     });
   }
 
+  async findWithProfile(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        addresses: true,
+        interests: {
+          include: {
+            category: true,
+          },
+        },
+        verificationDocuments: true,
+        services: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        _count: {
+          select: {
+            services: true,
+          },
+        },
+      },
+    });
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { email },

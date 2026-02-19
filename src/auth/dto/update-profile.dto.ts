@@ -1,4 +1,11 @@
-import { IsOptional, IsString, IsBoolean, IsEnum, IsDateString, IsUrl } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsEnum,
+  IsDateString,
+  IsUrl,
+} from 'class-validator';
 import { ThemePreference } from '../../../generated/prisma';
 
 export class UpdateProfileDto {
@@ -41,6 +48,14 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsBoolean()
   notificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  emailNotificationsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  smsNotificationsEnabled?: boolean;
 
   @IsOptional()
   @IsBoolean()

@@ -5,6 +5,9 @@ import { UsersModule } from './users/users.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ServicesModule } from './services/services.module';
+import { OrdersModule } from './orders/orders.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AppController } from './app.controller';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -45,6 +48,9 @@ import { SeederModule } from './common/seeders/seeder.module';
     OnboardingModule,
     CategoriesModule,
     ServicesModule,
+    OrdersModule,
+    ReviewsModule,
+    AnalyticsModule,
     PrismaModule,
     SeederModule,
   ],

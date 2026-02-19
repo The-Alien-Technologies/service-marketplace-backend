@@ -20,6 +20,7 @@ import { Public } from '../common/decorators/is-public.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { FilterServicesDto } from './dto/filter-services.dto';
 import { ResponseUtil } from '../common/utils/response.util';
 
 @Controller('categories')
@@ -69,6 +70,26 @@ export class CategoriesController {
       return ResponseUtil.success(
         categories,
         'Top-level categories retrieved successfully',
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Public()
+  @Get(':id/services')
+  async getFilteredServices(
+    @Param('id') id: string,
+    @Query() filters: FilterServicesDto,
+  ) {
+    try {
+      const result = await this.categoriesService.findServicesByCategory(
+        id,
+        filters,
+      );
+      return ResponseUtil.success(
+        result,
+        'Filtered services retrieved successfully',
       );
     } catch (error) {
       throw error;
