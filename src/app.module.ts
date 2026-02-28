@@ -17,6 +17,7 @@ import * as path from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { ApplicationExceptionFilter } from './common/filters/http-filter.filter';
 import { SeederModule } from './common/seeders/seeder.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { SeederModule } from './common/seeders/seeder.module';
     AnalyticsModule,
     PrismaModule,
     SeederModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

@@ -139,6 +139,9 @@ model User {
   providerOrders        Order[]                @relation("ProviderOrders")
   clientReviews         Review[]               @relation("ClientReviews")
   providerReviews       Review[]               @relation("ProviderReviews")
+  providerConversations Conversation[]         @relation("ProviderConversations")
+  userConversations     Conversation[]         @relation("UserConversations")
+  sentMessages          Message[]              @relation("SentMessages")
 
   @@map("users")
 }
@@ -427,4 +430,38 @@ model ReviewResponse {
   comment String
 
   @@map("review_responses")
+}
+
+// Messaging Models
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  providerId String
+  provider   User   @relation("ProviderConversations", fields: [providerId], references: [id])
+
+  userId String
+  user   User   @relation("UserConversations", fields: [userId], references: [id])
+
+  messages Message[]
+
+  @@unique([providerId, userId])
+  @@map("conversations")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id])
+
+  content String  @db.Text
+  isRead  Boolean @default(false)
+
+  @@map("messages")
 }

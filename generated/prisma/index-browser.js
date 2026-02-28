@@ -335,6 +335,23 @@ exports.Prisma.ReviewResponseScalarFieldEnum = {
   comment: 'comment'
 };
 
+exports.Prisma.ConversationScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  providerId: 'providerId',
+  userId: 'userId'
+};
+
+exports.Prisma.MessageScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  conversationId: 'conversationId',
+  senderId: 'senderId',
+  content: 'content',
+  isRead: 'isRead'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -431,7 +448,9 @@ exports.Prisma.ModelName = {
   Order: 'Order',
   OrderAddOn: 'OrderAddOn',
   Review: 'Review',
-  ReviewResponse: 'ReviewResponse'
+  ReviewResponse: 'ReviewResponse',
+  Conversation: 'Conversation',
+  Message: 'Message'
 };
 
 /**
