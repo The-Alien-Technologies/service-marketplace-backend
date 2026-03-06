@@ -131,17 +131,19 @@ model User {
   lastActiveAt DateTime   @default(now())
 
   // Relations
-  addresses             UserAddress[]
-  interests             UserInterest[]
-  verificationDocuments VerificationDocument[]
-  services              Service[]
-  clientOrders          Order[]                @relation("ClientOrders")
-  providerOrders        Order[]                @relation("ProviderOrders")
-  clientReviews         Review[]               @relation("ClientReviews")
-  providerReviews       Review[]               @relation("ProviderReviews")
-  providerConversations Conversation[]         @relation("ProviderConversations")
-  userConversations     Conversation[]         @relation("UserConversations")
-  sentMessages          Message[]              @relation("SentMessages")
+  addresses               UserAddress[]
+  interests               UserInterest[]
+  verificationDocuments   VerificationDocument[]
+  services                Service[]
+  clientOrders            Order[]                @relation("ClientOrders")
+  providerOrders          Order[]                @relation("ProviderOrders")
+  clientReviews           Review[]               @relation("ClientReviews")
+  providerReviews         Review[]               @relation("ProviderReviews")
+  providerConversations   Conversation[]         @relation("ProviderConversations")
+  userConversations       Conversation[]         @relation("UserConversations")
+  sentMessages            Message[]              @relation("SentMessages")
+  quoteRequestsAsClient   QuoteRequest[]         @relation("ClientQuoteRequests")
+  quoteRequestsAsProvider QuoteRequest[]         @relation("ProviderQuoteRequests")
 
   @@map("users")
 }
@@ -257,6 +259,14 @@ enum OrderStatus {
   REFUNDED // Order refunded
 }
 
+enum QuoteStatus {
+  NEW
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 // Service Models
 model Service {
   id        String   @id @default(cuid())
@@ -278,11 +288,12 @@ model Service {
   category   Category @relation(fields: [categoryId], references: [id])
 
   // Nested entities
-  plans   ServicePlan[]
-  addons  ServiceAddon[]
-  images  ServiceImage[]
-  orders  Order[]
-  reviews Review[]
+  plans         ServicePlan[]
+  addons        ServiceAddon[]
+  images        ServiceImage[]
+  orders        Order[]
+  reviews       Review[]
+  quoteRequests QuoteRequest[]
 
   @@map("services")
 }
@@ -464,4 +475,36 @@ model Message {
   isRead  Boolean @default(false)
 
   @@map("messages")
+}
+
+// Quote Request Models
+model QuoteRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Participants
+  clientId   String
+  client     User   @relation("ClientQuoteRequests", fields: [clientId], references: [id])
+  providerId String
+  provider   User   @relation("ProviderQuoteRequests", fields: [providerId], references: [id])
+
+  // Service context (optional)
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  // Request details
+  projectTitle String
+  description  String   @db.Text
+  deliveryTime String
+  budget       Decimal  @db.Decimal(10, 2)
+  currency     String   @default("GHS")
+  attachments  String[] // file URLs
+
+  // Status & response
+  status        QuoteStatus @default(NEW)
+  providerNote  String?     @db.Text // provider's offer note
+  declineReason String?
+
+  @@map("quote_requests")
 }

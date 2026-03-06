@@ -508,7 +508,8 @@ export class AuthService {
         this.smsService.formatPhoneNumber(phoneNumber);
 
       // Generate 6-digit OTP
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // TEMPORARILY HARDCODED for testing
+      const otpCode = '123456'; // Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
 
@@ -529,9 +530,12 @@ export class AuthService {
       });
 
       // Send SMS via AWS SNS
-      await this.smsService.sendVerificationCode(formattedPhoneNumber, otpCode);
+      // TEMPORARILY COMMENTED OUT for testing
+      // await this.smsService.sendVerificationCode(formattedPhoneNumber, otpCode);
 
-      this.logger.log(`Phone verification OTP sent to ${formattedPhoneNumber}`);
+      this.logger.log(
+        `[TESTING] Phone verification OTP created as 123456 for ${formattedPhoneNumber}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to send phone verification OTP to ${phoneNumber}:`,

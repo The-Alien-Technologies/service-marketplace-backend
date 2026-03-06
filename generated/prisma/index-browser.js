@@ -352,6 +352,24 @@ exports.Prisma.MessageScalarFieldEnum = {
   isRead: 'isRead'
 };
 
+exports.Prisma.QuoteRequestScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  clientId: 'clientId',
+  providerId: 'providerId',
+  serviceId: 'serviceId',
+  projectTitle: 'projectTitle',
+  description: 'description',
+  deliveryTime: 'deliveryTime',
+  budget: 'budget',
+  currency: 'currency',
+  attachments: 'attachments',
+  status: 'status',
+  providerNote: 'providerNote',
+  declineReason: 'declineReason'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -434,6 +452,14 @@ exports.OrderStatus = exports.$Enums.OrderStatus = {
   REFUNDED: 'REFUNDED'
 };
 
+exports.QuoteStatus = exports.$Enums.QuoteStatus = {
+  NEW: 'NEW',
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  DECLINED: 'DECLINED',
+  EXPIRED: 'EXPIRED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   UserAddress: 'UserAddress',
@@ -450,7 +476,8 @@ exports.Prisma.ModelName = {
   Review: 'Review',
   ReviewResponse: 'ReviewResponse',
   Conversation: 'Conversation',
-  Message: 'Message'
+  Message: 'Message',
+  QuoteRequest: 'QuoteRequest'
 };
 
 /**

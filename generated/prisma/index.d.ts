@@ -93,6 +93,11 @@ export type Conversation = $Result.DefaultSelection<Prisma.$ConversationPayload>
  * 
  */
 export type Message = $Result.DefaultSelection<Prisma.$MessagePayload>
+/**
+ * Model QuoteRequest
+ * 
+ */
+export type QuoteRequest = $Result.DefaultSelection<Prisma.$QuoteRequestPayload>
 
 /**
  * Enums
@@ -195,6 +200,17 @@ export const OrderStatus: {
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
 
+
+export const QuoteStatus: {
+  NEW: 'NEW',
+  PENDING: 'PENDING',
+  ACCEPTED: 'ACCEPTED',
+  DECLINED: 'DECLINED',
+  EXPIRED: 'EXPIRED'
+};
+
+export type QuoteStatus = (typeof QuoteStatus)[keyof typeof QuoteStatus]
+
 }
 
 export type UserStatus = $Enums.UserStatus
@@ -236,6 +252,10 @@ export const ServiceStatus: typeof $Enums.ServiceStatus
 export type OrderStatus = $Enums.OrderStatus
 
 export const OrderStatus: typeof $Enums.OrderStatus
+
+export type QuoteStatus = $Enums.QuoteStatus
+
+export const QuoteStatus: typeof $Enums.QuoteStatus
 
 /**
  * ##  Prisma Client ʲˢ
@@ -514,6 +534,16 @@ export class PrismaClient<
     * ```
     */
   get message(): Prisma.MessageDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.quoteRequest`: Exposes CRUD operations for the **QuoteRequest** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more QuoteRequests
+    * const quoteRequests = await prisma.quoteRequest.findMany()
+    * ```
+    */
+  get quoteRequest(): Prisma.QuoteRequestDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -970,7 +1000,8 @@ export namespace Prisma {
     Review: 'Review',
     ReviewResponse: 'ReviewResponse',
     Conversation: 'Conversation',
-    Message: 'Message'
+    Message: 'Message',
+    QuoteRequest: 'QuoteRequest'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -989,7 +1020,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "userAddress" | "category" | "userInterest" | "verificationDocument" | "phoneVerification" | "service" | "servicePlan" | "serviceAddon" | "serviceImage" | "order" | "orderAddOn" | "review" | "reviewResponse" | "conversation" | "message"
+      modelProps: "user" | "userAddress" | "category" | "userInterest" | "verificationDocument" | "phoneVerification" | "service" | "servicePlan" | "serviceAddon" | "serviceImage" | "order" | "orderAddOn" | "review" | "reviewResponse" | "conversation" | "message" | "quoteRequest"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2177,6 +2208,80 @@ export namespace Prisma {
           }
         }
       }
+      QuoteRequest: {
+        payload: Prisma.$QuoteRequestPayload<ExtArgs>
+        fields: Prisma.QuoteRequestFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.QuoteRequestFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.QuoteRequestFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>
+          }
+          findFirst: {
+            args: Prisma.QuoteRequestFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.QuoteRequestFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>
+          }
+          findMany: {
+            args: Prisma.QuoteRequestFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>[]
+          }
+          create: {
+            args: Prisma.QuoteRequestCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>
+          }
+          createMany: {
+            args: Prisma.QuoteRequestCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.QuoteRequestCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>[]
+          }
+          delete: {
+            args: Prisma.QuoteRequestDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>
+          }
+          update: {
+            args: Prisma.QuoteRequestUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>
+          }
+          deleteMany: {
+            args: Prisma.QuoteRequestDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.QuoteRequestUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.QuoteRequestUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>[]
+          }
+          upsert: {
+            args: Prisma.QuoteRequestUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QuoteRequestPayload>
+          }
+          aggregate: {
+            args: Prisma.QuoteRequestAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateQuoteRequest>
+          }
+          groupBy: {
+            args: Prisma.QuoteRequestGroupByArgs<ExtArgs>
+            result: $Utils.Optional<QuoteRequestGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.QuoteRequestCountArgs<ExtArgs>
+            result: $Utils.Optional<QuoteRequestCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2289,6 +2394,7 @@ export namespace Prisma {
     reviewResponse?: ReviewResponseOmit
     conversation?: ConversationOmit
     message?: MessageOmit
+    quoteRequest?: QuoteRequestOmit
   }
 
   /* Types for Logging */
@@ -2380,6 +2486,8 @@ export namespace Prisma {
     providerConversations: number
     userConversations: number
     sentMessages: number
+    quoteRequestsAsClient: number
+    quoteRequestsAsProvider: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2394,6 +2502,8 @@ export namespace Prisma {
     providerConversations?: boolean | UserCountOutputTypeCountProviderConversationsArgs
     userConversations?: boolean | UserCountOutputTypeCountUserConversationsArgs
     sentMessages?: boolean | UserCountOutputTypeCountSentMessagesArgs
+    quoteRequestsAsClient?: boolean | UserCountOutputTypeCountQuoteRequestsAsClientArgs
+    quoteRequestsAsProvider?: boolean | UserCountOutputTypeCountQuoteRequestsAsProviderArgs
   }
 
   // Custom InputTypes
@@ -2484,6 +2594,20 @@ export namespace Prisma {
     where?: MessageWhereInput
   }
 
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountQuoteRequestsAsClientArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuoteRequestWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountQuoteRequestsAsProviderArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuoteRequestWhereInput
+  }
+
 
   /**
    * Count Type CategoryCountOutputType
@@ -2544,6 +2668,7 @@ export namespace Prisma {
     images: number
     orders: number
     reviews: number
+    quoteRequests: number
   }
 
   export type ServiceCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -2552,6 +2677,7 @@ export namespace Prisma {
     images?: boolean | ServiceCountOutputTypeCountImagesArgs
     orders?: boolean | ServiceCountOutputTypeCountOrdersArgs
     reviews?: boolean | ServiceCountOutputTypeCountReviewsArgs
+    quoteRequests?: boolean | ServiceCountOutputTypeCountQuoteRequestsArgs
   }
 
   // Custom InputTypes
@@ -2598,6 +2724,13 @@ export namespace Prisma {
    */
   export type ServiceCountOutputTypeCountReviewsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ReviewWhereInput
+  }
+
+  /**
+   * ServiceCountOutputType without action
+   */
+  export type ServiceCountOutputTypeCountQuoteRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuoteRequestWhereInput
   }
 
 
@@ -3244,6 +3377,8 @@ export namespace Prisma {
     providerConversations?: boolean | User$providerConversationsArgs<ExtArgs>
     userConversations?: boolean | User$userConversationsArgs<ExtArgs>
     sentMessages?: boolean | User$sentMessagesArgs<ExtArgs>
+    quoteRequestsAsClient?: boolean | User$quoteRequestsAsClientArgs<ExtArgs>
+    quoteRequestsAsProvider?: boolean | User$quoteRequestsAsProviderArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -3419,6 +3554,8 @@ export namespace Prisma {
     providerConversations?: boolean | User$providerConversationsArgs<ExtArgs>
     userConversations?: boolean | User$userConversationsArgs<ExtArgs>
     sentMessages?: boolean | User$sentMessagesArgs<ExtArgs>
+    quoteRequestsAsClient?: boolean | User$quoteRequestsAsClientArgs<ExtArgs>
+    quoteRequestsAsProvider?: boolean | User$quoteRequestsAsProviderArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -3438,6 +3575,8 @@ export namespace Prisma {
       providerConversations: Prisma.$ConversationPayload<ExtArgs>[]
       userConversations: Prisma.$ConversationPayload<ExtArgs>[]
       sentMessages: Prisma.$MessagePayload<ExtArgs>[]
+      quoteRequestsAsClient: Prisma.$QuoteRequestPayload<ExtArgs>[]
+      quoteRequestsAsProvider: Prisma.$QuoteRequestPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -3895,6 +4034,8 @@ export namespace Prisma {
     providerConversations<T extends User$providerConversationsArgs<ExtArgs> = {}>(args?: Subset<T, User$providerConversationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     userConversations<T extends User$userConversationsArgs<ExtArgs> = {}>(args?: Subset<T, User$userConversationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ConversationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     sentMessages<T extends User$sentMessagesArgs<ExtArgs> = {}>(args?: Subset<T, User$sentMessagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    quoteRequestsAsClient<T extends User$quoteRequestsAsClientArgs<ExtArgs> = {}>(args?: Subset<T, User$quoteRequestsAsClientArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    quoteRequestsAsProvider<T extends User$quoteRequestsAsProviderArgs<ExtArgs> = {}>(args?: Subset<T, User$quoteRequestsAsProviderArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4623,6 +4764,54 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: MessageScalarFieldEnum | MessageScalarFieldEnum[]
+  }
+
+  /**
+   * User.quoteRequestsAsClient
+   */
+  export type User$quoteRequestsAsClientArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    where?: QuoteRequestWhereInput
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    cursor?: QuoteRequestWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: QuoteRequestScalarFieldEnum | QuoteRequestScalarFieldEnum[]
+  }
+
+  /**
+   * User.quoteRequestsAsProvider
+   */
+  export type User$quoteRequestsAsProviderArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    where?: QuoteRequestWhereInput
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    cursor?: QuoteRequestWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: QuoteRequestScalarFieldEnum | QuoteRequestScalarFieldEnum[]
   }
 
   /**
@@ -10660,6 +10849,7 @@ export namespace Prisma {
     images?: boolean | Service$imagesArgs<ExtArgs>
     orders?: boolean | Service$ordersArgs<ExtArgs>
     reviews?: boolean | Service$reviewsArgs<ExtArgs>
+    quoteRequests?: boolean | Service$quoteRequestsArgs<ExtArgs>
     _count?: boolean | ServiceCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["service"]>
 
@@ -10718,6 +10908,7 @@ export namespace Prisma {
     images?: boolean | Service$imagesArgs<ExtArgs>
     orders?: boolean | Service$ordersArgs<ExtArgs>
     reviews?: boolean | Service$reviewsArgs<ExtArgs>
+    quoteRequests?: boolean | Service$quoteRequestsArgs<ExtArgs>
     _count?: boolean | ServiceCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type ServiceIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -10739,6 +10930,7 @@ export namespace Prisma {
       images: Prisma.$ServiceImagePayload<ExtArgs>[]
       orders: Prisma.$OrderPayload<ExtArgs>[]
       reviews: Prisma.$ReviewPayload<ExtArgs>[]
+      quoteRequests: Prisma.$QuoteRequestPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -11153,6 +11345,7 @@ export namespace Prisma {
     images<T extends Service$imagesArgs<ExtArgs> = {}>(args?: Subset<T, Service$imagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ServiceImagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     orders<T extends Service$ordersArgs<ExtArgs> = {}>(args?: Subset<T, Service$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     reviews<T extends Service$reviewsArgs<ExtArgs> = {}>(args?: Subset<T, Service$reviewsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ReviewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    quoteRequests<T extends Service$quoteRequestsArgs<ExtArgs> = {}>(args?: Subset<T, Service$quoteRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -11706,6 +11899,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ReviewScalarFieldEnum | ReviewScalarFieldEnum[]
+  }
+
+  /**
+   * Service.quoteRequests
+   */
+  export type Service$quoteRequestsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    where?: QuoteRequestWhereInput
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    cursor?: QuoteRequestWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: QuoteRequestScalarFieldEnum | QuoteRequestScalarFieldEnum[]
   }
 
   /**
@@ -21961,6 +22178,1259 @@ export namespace Prisma {
 
 
   /**
+   * Model QuoteRequest
+   */
+
+  export type AggregateQuoteRequest = {
+    _count: QuoteRequestCountAggregateOutputType | null
+    _avg: QuoteRequestAvgAggregateOutputType | null
+    _sum: QuoteRequestSumAggregateOutputType | null
+    _min: QuoteRequestMinAggregateOutputType | null
+    _max: QuoteRequestMaxAggregateOutputType | null
+  }
+
+  export type QuoteRequestAvgAggregateOutputType = {
+    budget: Decimal | null
+  }
+
+  export type QuoteRequestSumAggregateOutputType = {
+    budget: Decimal | null
+  }
+
+  export type QuoteRequestMinAggregateOutputType = {
+    id: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    clientId: string | null
+    providerId: string | null
+    serviceId: string | null
+    projectTitle: string | null
+    description: string | null
+    deliveryTime: string | null
+    budget: Decimal | null
+    currency: string | null
+    status: $Enums.QuoteStatus | null
+    providerNote: string | null
+    declineReason: string | null
+  }
+
+  export type QuoteRequestMaxAggregateOutputType = {
+    id: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    clientId: string | null
+    providerId: string | null
+    serviceId: string | null
+    projectTitle: string | null
+    description: string | null
+    deliveryTime: string | null
+    budget: Decimal | null
+    currency: string | null
+    status: $Enums.QuoteStatus | null
+    providerNote: string | null
+    declineReason: string | null
+  }
+
+  export type QuoteRequestCountAggregateOutputType = {
+    id: number
+    createdAt: number
+    updatedAt: number
+    clientId: number
+    providerId: number
+    serviceId: number
+    projectTitle: number
+    description: number
+    deliveryTime: number
+    budget: number
+    currency: number
+    attachments: number
+    status: number
+    providerNote: number
+    declineReason: number
+    _all: number
+  }
+
+
+  export type QuoteRequestAvgAggregateInputType = {
+    budget?: true
+  }
+
+  export type QuoteRequestSumAggregateInputType = {
+    budget?: true
+  }
+
+  export type QuoteRequestMinAggregateInputType = {
+    id?: true
+    createdAt?: true
+    updatedAt?: true
+    clientId?: true
+    providerId?: true
+    serviceId?: true
+    projectTitle?: true
+    description?: true
+    deliveryTime?: true
+    budget?: true
+    currency?: true
+    status?: true
+    providerNote?: true
+    declineReason?: true
+  }
+
+  export type QuoteRequestMaxAggregateInputType = {
+    id?: true
+    createdAt?: true
+    updatedAt?: true
+    clientId?: true
+    providerId?: true
+    serviceId?: true
+    projectTitle?: true
+    description?: true
+    deliveryTime?: true
+    budget?: true
+    currency?: true
+    status?: true
+    providerNote?: true
+    declineReason?: true
+  }
+
+  export type QuoteRequestCountAggregateInputType = {
+    id?: true
+    createdAt?: true
+    updatedAt?: true
+    clientId?: true
+    providerId?: true
+    serviceId?: true
+    projectTitle?: true
+    description?: true
+    deliveryTime?: true
+    budget?: true
+    currency?: true
+    attachments?: true
+    status?: true
+    providerNote?: true
+    declineReason?: true
+    _all?: true
+  }
+
+  export type QuoteRequestAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which QuoteRequest to aggregate.
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuoteRequests to fetch.
+     */
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: QuoteRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuoteRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuoteRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned QuoteRequests
+    **/
+    _count?: true | QuoteRequestCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: QuoteRequestAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: QuoteRequestSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: QuoteRequestMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: QuoteRequestMaxAggregateInputType
+  }
+
+  export type GetQuoteRequestAggregateType<T extends QuoteRequestAggregateArgs> = {
+        [P in keyof T & keyof AggregateQuoteRequest]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateQuoteRequest[P]>
+      : GetScalarType<T[P], AggregateQuoteRequest[P]>
+  }
+
+
+
+
+  export type QuoteRequestGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuoteRequestWhereInput
+    orderBy?: QuoteRequestOrderByWithAggregationInput | QuoteRequestOrderByWithAggregationInput[]
+    by: QuoteRequestScalarFieldEnum[] | QuoteRequestScalarFieldEnum
+    having?: QuoteRequestScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: QuoteRequestCountAggregateInputType | true
+    _avg?: QuoteRequestAvgAggregateInputType
+    _sum?: QuoteRequestSumAggregateInputType
+    _min?: QuoteRequestMinAggregateInputType
+    _max?: QuoteRequestMaxAggregateInputType
+  }
+
+  export type QuoteRequestGroupByOutputType = {
+    id: string
+    createdAt: Date
+    updatedAt: Date
+    clientId: string
+    providerId: string
+    serviceId: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal
+    currency: string
+    attachments: string[]
+    status: $Enums.QuoteStatus
+    providerNote: string | null
+    declineReason: string | null
+    _count: QuoteRequestCountAggregateOutputType | null
+    _avg: QuoteRequestAvgAggregateOutputType | null
+    _sum: QuoteRequestSumAggregateOutputType | null
+    _min: QuoteRequestMinAggregateOutputType | null
+    _max: QuoteRequestMaxAggregateOutputType | null
+  }
+
+  type GetQuoteRequestGroupByPayload<T extends QuoteRequestGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<QuoteRequestGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof QuoteRequestGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], QuoteRequestGroupByOutputType[P]>
+            : GetScalarType<T[P], QuoteRequestGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type QuoteRequestSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    clientId?: boolean
+    providerId?: boolean
+    serviceId?: boolean
+    projectTitle?: boolean
+    description?: boolean
+    deliveryTime?: boolean
+    budget?: boolean
+    currency?: boolean
+    attachments?: boolean
+    status?: boolean
+    providerNote?: boolean
+    declineReason?: boolean
+    client?: boolean | UserDefaultArgs<ExtArgs>
+    provider?: boolean | UserDefaultArgs<ExtArgs>
+    service?: boolean | QuoteRequest$serviceArgs<ExtArgs>
+  }, ExtArgs["result"]["quoteRequest"]>
+
+  export type QuoteRequestSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    clientId?: boolean
+    providerId?: boolean
+    serviceId?: boolean
+    projectTitle?: boolean
+    description?: boolean
+    deliveryTime?: boolean
+    budget?: boolean
+    currency?: boolean
+    attachments?: boolean
+    status?: boolean
+    providerNote?: boolean
+    declineReason?: boolean
+    client?: boolean | UserDefaultArgs<ExtArgs>
+    provider?: boolean | UserDefaultArgs<ExtArgs>
+    service?: boolean | QuoteRequest$serviceArgs<ExtArgs>
+  }, ExtArgs["result"]["quoteRequest"]>
+
+  export type QuoteRequestSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    clientId?: boolean
+    providerId?: boolean
+    serviceId?: boolean
+    projectTitle?: boolean
+    description?: boolean
+    deliveryTime?: boolean
+    budget?: boolean
+    currency?: boolean
+    attachments?: boolean
+    status?: boolean
+    providerNote?: boolean
+    declineReason?: boolean
+    client?: boolean | UserDefaultArgs<ExtArgs>
+    provider?: boolean | UserDefaultArgs<ExtArgs>
+    service?: boolean | QuoteRequest$serviceArgs<ExtArgs>
+  }, ExtArgs["result"]["quoteRequest"]>
+
+  export type QuoteRequestSelectScalar = {
+    id?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    clientId?: boolean
+    providerId?: boolean
+    serviceId?: boolean
+    projectTitle?: boolean
+    description?: boolean
+    deliveryTime?: boolean
+    budget?: boolean
+    currency?: boolean
+    attachments?: boolean
+    status?: boolean
+    providerNote?: boolean
+    declineReason?: boolean
+  }
+
+  export type QuoteRequestOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "clientId" | "providerId" | "serviceId" | "projectTitle" | "description" | "deliveryTime" | "budget" | "currency" | "attachments" | "status" | "providerNote" | "declineReason", ExtArgs["result"]["quoteRequest"]>
+  export type QuoteRequestInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    client?: boolean | UserDefaultArgs<ExtArgs>
+    provider?: boolean | UserDefaultArgs<ExtArgs>
+    service?: boolean | QuoteRequest$serviceArgs<ExtArgs>
+  }
+  export type QuoteRequestIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    client?: boolean | UserDefaultArgs<ExtArgs>
+    provider?: boolean | UserDefaultArgs<ExtArgs>
+    service?: boolean | QuoteRequest$serviceArgs<ExtArgs>
+  }
+  export type QuoteRequestIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    client?: boolean | UserDefaultArgs<ExtArgs>
+    provider?: boolean | UserDefaultArgs<ExtArgs>
+    service?: boolean | QuoteRequest$serviceArgs<ExtArgs>
+  }
+
+  export type $QuoteRequestPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "QuoteRequest"
+    objects: {
+      client: Prisma.$UserPayload<ExtArgs>
+      provider: Prisma.$UserPayload<ExtArgs>
+      service: Prisma.$ServicePayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      createdAt: Date
+      updatedAt: Date
+      clientId: string
+      providerId: string
+      serviceId: string | null
+      projectTitle: string
+      description: string
+      deliveryTime: string
+      budget: Prisma.Decimal
+      currency: string
+      attachments: string[]
+      status: $Enums.QuoteStatus
+      providerNote: string | null
+      declineReason: string | null
+    }, ExtArgs["result"]["quoteRequest"]>
+    composites: {}
+  }
+
+  type QuoteRequestGetPayload<S extends boolean | null | undefined | QuoteRequestDefaultArgs> = $Result.GetResult<Prisma.$QuoteRequestPayload, S>
+
+  type QuoteRequestCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<QuoteRequestFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: QuoteRequestCountAggregateInputType | true
+    }
+
+  export interface QuoteRequestDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['QuoteRequest'], meta: { name: 'QuoteRequest' } }
+    /**
+     * Find zero or one QuoteRequest that matches the filter.
+     * @param {QuoteRequestFindUniqueArgs} args - Arguments to find a QuoteRequest
+     * @example
+     * // Get one QuoteRequest
+     * const quoteRequest = await prisma.quoteRequest.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends QuoteRequestFindUniqueArgs>(args: SelectSubset<T, QuoteRequestFindUniqueArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one QuoteRequest that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {QuoteRequestFindUniqueOrThrowArgs} args - Arguments to find a QuoteRequest
+     * @example
+     * // Get one QuoteRequest
+     * const quoteRequest = await prisma.quoteRequest.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends QuoteRequestFindUniqueOrThrowArgs>(args: SelectSubset<T, QuoteRequestFindUniqueOrThrowArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first QuoteRequest that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestFindFirstArgs} args - Arguments to find a QuoteRequest
+     * @example
+     * // Get one QuoteRequest
+     * const quoteRequest = await prisma.quoteRequest.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends QuoteRequestFindFirstArgs>(args?: SelectSubset<T, QuoteRequestFindFirstArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first QuoteRequest that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestFindFirstOrThrowArgs} args - Arguments to find a QuoteRequest
+     * @example
+     * // Get one QuoteRequest
+     * const quoteRequest = await prisma.quoteRequest.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends QuoteRequestFindFirstOrThrowArgs>(args?: SelectSubset<T, QuoteRequestFindFirstOrThrowArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more QuoteRequests that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all QuoteRequests
+     * const quoteRequests = await prisma.quoteRequest.findMany()
+     * 
+     * // Get first 10 QuoteRequests
+     * const quoteRequests = await prisma.quoteRequest.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const quoteRequestWithIdOnly = await prisma.quoteRequest.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends QuoteRequestFindManyArgs>(args?: SelectSubset<T, QuoteRequestFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a QuoteRequest.
+     * @param {QuoteRequestCreateArgs} args - Arguments to create a QuoteRequest.
+     * @example
+     * // Create one QuoteRequest
+     * const QuoteRequest = await prisma.quoteRequest.create({
+     *   data: {
+     *     // ... data to create a QuoteRequest
+     *   }
+     * })
+     * 
+     */
+    create<T extends QuoteRequestCreateArgs>(args: SelectSubset<T, QuoteRequestCreateArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many QuoteRequests.
+     * @param {QuoteRequestCreateManyArgs} args - Arguments to create many QuoteRequests.
+     * @example
+     * // Create many QuoteRequests
+     * const quoteRequest = await prisma.quoteRequest.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends QuoteRequestCreateManyArgs>(args?: SelectSubset<T, QuoteRequestCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many QuoteRequests and returns the data saved in the database.
+     * @param {QuoteRequestCreateManyAndReturnArgs} args - Arguments to create many QuoteRequests.
+     * @example
+     * // Create many QuoteRequests
+     * const quoteRequest = await prisma.quoteRequest.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many QuoteRequests and only return the `id`
+     * const quoteRequestWithIdOnly = await prisma.quoteRequest.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends QuoteRequestCreateManyAndReturnArgs>(args?: SelectSubset<T, QuoteRequestCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a QuoteRequest.
+     * @param {QuoteRequestDeleteArgs} args - Arguments to delete one QuoteRequest.
+     * @example
+     * // Delete one QuoteRequest
+     * const QuoteRequest = await prisma.quoteRequest.delete({
+     *   where: {
+     *     // ... filter to delete one QuoteRequest
+     *   }
+     * })
+     * 
+     */
+    delete<T extends QuoteRequestDeleteArgs>(args: SelectSubset<T, QuoteRequestDeleteArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one QuoteRequest.
+     * @param {QuoteRequestUpdateArgs} args - Arguments to update one QuoteRequest.
+     * @example
+     * // Update one QuoteRequest
+     * const quoteRequest = await prisma.quoteRequest.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends QuoteRequestUpdateArgs>(args: SelectSubset<T, QuoteRequestUpdateArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more QuoteRequests.
+     * @param {QuoteRequestDeleteManyArgs} args - Arguments to filter QuoteRequests to delete.
+     * @example
+     * // Delete a few QuoteRequests
+     * const { count } = await prisma.quoteRequest.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends QuoteRequestDeleteManyArgs>(args?: SelectSubset<T, QuoteRequestDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more QuoteRequests.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many QuoteRequests
+     * const quoteRequest = await prisma.quoteRequest.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends QuoteRequestUpdateManyArgs>(args: SelectSubset<T, QuoteRequestUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more QuoteRequests and returns the data updated in the database.
+     * @param {QuoteRequestUpdateManyAndReturnArgs} args - Arguments to update many QuoteRequests.
+     * @example
+     * // Update many QuoteRequests
+     * const quoteRequest = await prisma.quoteRequest.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more QuoteRequests and only return the `id`
+     * const quoteRequestWithIdOnly = await prisma.quoteRequest.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends QuoteRequestUpdateManyAndReturnArgs>(args: SelectSubset<T, QuoteRequestUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one QuoteRequest.
+     * @param {QuoteRequestUpsertArgs} args - Arguments to update or create a QuoteRequest.
+     * @example
+     * // Update or create a QuoteRequest
+     * const quoteRequest = await prisma.quoteRequest.upsert({
+     *   create: {
+     *     // ... data to create a QuoteRequest
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the QuoteRequest we want to update
+     *   }
+     * })
+     */
+    upsert<T extends QuoteRequestUpsertArgs>(args: SelectSubset<T, QuoteRequestUpsertArgs<ExtArgs>>): Prisma__QuoteRequestClient<$Result.GetResult<Prisma.$QuoteRequestPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of QuoteRequests.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestCountArgs} args - Arguments to filter QuoteRequests to count.
+     * @example
+     * // Count the number of QuoteRequests
+     * const count = await prisma.quoteRequest.count({
+     *   where: {
+     *     // ... the filter for the QuoteRequests we want to count
+     *   }
+     * })
+    **/
+    count<T extends QuoteRequestCountArgs>(
+      args?: Subset<T, QuoteRequestCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], QuoteRequestCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a QuoteRequest.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends QuoteRequestAggregateArgs>(args: Subset<T, QuoteRequestAggregateArgs>): Prisma.PrismaPromise<GetQuoteRequestAggregateType<T>>
+
+    /**
+     * Group by QuoteRequest.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QuoteRequestGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends QuoteRequestGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: QuoteRequestGroupByArgs['orderBy'] }
+        : { orderBy?: QuoteRequestGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, QuoteRequestGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetQuoteRequestGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the QuoteRequest model
+   */
+  readonly fields: QuoteRequestFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for QuoteRequest.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__QuoteRequestClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    client<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    provider<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    service<T extends QuoteRequest$serviceArgs<ExtArgs> = {}>(args?: Subset<T, QuoteRequest$serviceArgs<ExtArgs>>): Prisma__ServiceClient<$Result.GetResult<Prisma.$ServicePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the QuoteRequest model
+   */
+  interface QuoteRequestFieldRefs {
+    readonly id: FieldRef<"QuoteRequest", 'String'>
+    readonly createdAt: FieldRef<"QuoteRequest", 'DateTime'>
+    readonly updatedAt: FieldRef<"QuoteRequest", 'DateTime'>
+    readonly clientId: FieldRef<"QuoteRequest", 'String'>
+    readonly providerId: FieldRef<"QuoteRequest", 'String'>
+    readonly serviceId: FieldRef<"QuoteRequest", 'String'>
+    readonly projectTitle: FieldRef<"QuoteRequest", 'String'>
+    readonly description: FieldRef<"QuoteRequest", 'String'>
+    readonly deliveryTime: FieldRef<"QuoteRequest", 'String'>
+    readonly budget: FieldRef<"QuoteRequest", 'Decimal'>
+    readonly currency: FieldRef<"QuoteRequest", 'String'>
+    readonly attachments: FieldRef<"QuoteRequest", 'String[]'>
+    readonly status: FieldRef<"QuoteRequest", 'QuoteStatus'>
+    readonly providerNote: FieldRef<"QuoteRequest", 'String'>
+    readonly declineReason: FieldRef<"QuoteRequest", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * QuoteRequest findUnique
+   */
+  export type QuoteRequestFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which QuoteRequest to fetch.
+     */
+    where: QuoteRequestWhereUniqueInput
+  }
+
+  /**
+   * QuoteRequest findUniqueOrThrow
+   */
+  export type QuoteRequestFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which QuoteRequest to fetch.
+     */
+    where: QuoteRequestWhereUniqueInput
+  }
+
+  /**
+   * QuoteRequest findFirst
+   */
+  export type QuoteRequestFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which QuoteRequest to fetch.
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuoteRequests to fetch.
+     */
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for QuoteRequests.
+     */
+    cursor?: QuoteRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuoteRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuoteRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QuoteRequests.
+     */
+    distinct?: QuoteRequestScalarFieldEnum | QuoteRequestScalarFieldEnum[]
+  }
+
+  /**
+   * QuoteRequest findFirstOrThrow
+   */
+  export type QuoteRequestFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which QuoteRequest to fetch.
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuoteRequests to fetch.
+     */
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for QuoteRequests.
+     */
+    cursor?: QuoteRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuoteRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuoteRequests.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QuoteRequests.
+     */
+    distinct?: QuoteRequestScalarFieldEnum | QuoteRequestScalarFieldEnum[]
+  }
+
+  /**
+   * QuoteRequest findMany
+   */
+  export type QuoteRequestFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * Filter, which QuoteRequests to fetch.
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QuoteRequests to fetch.
+     */
+    orderBy?: QuoteRequestOrderByWithRelationInput | QuoteRequestOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing QuoteRequests.
+     */
+    cursor?: QuoteRequestWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QuoteRequests from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QuoteRequests.
+     */
+    skip?: number
+    distinct?: QuoteRequestScalarFieldEnum | QuoteRequestScalarFieldEnum[]
+  }
+
+  /**
+   * QuoteRequest create
+   */
+  export type QuoteRequestCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * The data needed to create a QuoteRequest.
+     */
+    data: XOR<QuoteRequestCreateInput, QuoteRequestUncheckedCreateInput>
+  }
+
+  /**
+   * QuoteRequest createMany
+   */
+  export type QuoteRequestCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many QuoteRequests.
+     */
+    data: QuoteRequestCreateManyInput | QuoteRequestCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * QuoteRequest createManyAndReturn
+   */
+  export type QuoteRequestCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * The data used to create many QuoteRequests.
+     */
+    data: QuoteRequestCreateManyInput | QuoteRequestCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * QuoteRequest update
+   */
+  export type QuoteRequestUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * The data needed to update a QuoteRequest.
+     */
+    data: XOR<QuoteRequestUpdateInput, QuoteRequestUncheckedUpdateInput>
+    /**
+     * Choose, which QuoteRequest to update.
+     */
+    where: QuoteRequestWhereUniqueInput
+  }
+
+  /**
+   * QuoteRequest updateMany
+   */
+  export type QuoteRequestUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update QuoteRequests.
+     */
+    data: XOR<QuoteRequestUpdateManyMutationInput, QuoteRequestUncheckedUpdateManyInput>
+    /**
+     * Filter which QuoteRequests to update
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * Limit how many QuoteRequests to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * QuoteRequest updateManyAndReturn
+   */
+  export type QuoteRequestUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * The data used to update QuoteRequests.
+     */
+    data: XOR<QuoteRequestUpdateManyMutationInput, QuoteRequestUncheckedUpdateManyInput>
+    /**
+     * Filter which QuoteRequests to update
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * Limit how many QuoteRequests to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * QuoteRequest upsert
+   */
+  export type QuoteRequestUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * The filter to search for the QuoteRequest to update in case it exists.
+     */
+    where: QuoteRequestWhereUniqueInput
+    /**
+     * In case the QuoteRequest found by the `where` argument doesn't exist, create a new QuoteRequest with this data.
+     */
+    create: XOR<QuoteRequestCreateInput, QuoteRequestUncheckedCreateInput>
+    /**
+     * In case the QuoteRequest was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<QuoteRequestUpdateInput, QuoteRequestUncheckedUpdateInput>
+  }
+
+  /**
+   * QuoteRequest delete
+   */
+  export type QuoteRequestDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+    /**
+     * Filter which QuoteRequest to delete.
+     */
+    where: QuoteRequestWhereUniqueInput
+  }
+
+  /**
+   * QuoteRequest deleteMany
+   */
+  export type QuoteRequestDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which QuoteRequests to delete
+     */
+    where?: QuoteRequestWhereInput
+    /**
+     * Limit how many QuoteRequests to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * QuoteRequest.service
+   */
+  export type QuoteRequest$serviceArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Service
+     */
+    select?: ServiceSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Service
+     */
+    omit?: ServiceOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: ServiceInclude<ExtArgs> | null
+    where?: ServiceWhereInput
+  }
+
+  /**
+   * QuoteRequest without action
+   */
+  export type QuoteRequestDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QuoteRequest
+     */
+    select?: QuoteRequestSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QuoteRequest
+     */
+    omit?: QuoteRequestOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuoteRequestInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -22253,6 +23723,27 @@ export namespace Prisma {
   export type MessageScalarFieldEnum = (typeof MessageScalarFieldEnum)[keyof typeof MessageScalarFieldEnum]
 
 
+  export const QuoteRequestScalarFieldEnum: {
+    id: 'id',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    clientId: 'clientId',
+    providerId: 'providerId',
+    serviceId: 'serviceId',
+    projectTitle: 'projectTitle',
+    description: 'description',
+    deliveryTime: 'deliveryTime',
+    budget: 'budget',
+    currency: 'currency',
+    attachments: 'attachments',
+    status: 'status',
+    providerNote: 'providerNote',
+    declineReason: 'declineReason'
+  };
+
+  export type QuoteRequestScalarFieldEnum = (typeof QuoteRequestScalarFieldEnum)[keyof typeof QuoteRequestScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -22497,6 +23988,20 @@ export namespace Prisma {
    */
   export type ListEnumOrderStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'OrderStatus[]'>
     
+
+
+  /**
+   * Reference to a field of type 'QuoteStatus'
+   */
+  export type EnumQuoteStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuoteStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'QuoteStatus[]'
+   */
+  export type ListEnumQuoteStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QuoteStatus[]'>
+    
   /**
    * Deep Input Types
    */
@@ -22567,6 +24072,8 @@ export namespace Prisma {
     providerConversations?: ConversationListRelationFilter
     userConversations?: ConversationListRelationFilter
     sentMessages?: MessageListRelationFilter
+    quoteRequestsAsClient?: QuoteRequestListRelationFilter
+    quoteRequestsAsProvider?: QuoteRequestListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -22631,6 +24138,8 @@ export namespace Prisma {
     providerConversations?: ConversationOrderByRelationAggregateInput
     userConversations?: ConversationOrderByRelationAggregateInput
     sentMessages?: MessageOrderByRelationAggregateInput
+    quoteRequestsAsClient?: QuoteRequestOrderByRelationAggregateInput
+    quoteRequestsAsProvider?: QuoteRequestOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -22698,6 +24207,8 @@ export namespace Prisma {
     providerConversations?: ConversationListRelationFilter
     userConversations?: ConversationListRelationFilter
     sentMessages?: MessageListRelationFilter
+    quoteRequestsAsClient?: QuoteRequestListRelationFilter
+    quoteRequestsAsProvider?: QuoteRequestListRelationFilter
   }, "id" | "email" | "username" | "googleId" | "appleId" | "facebookId" | "twitterId">
 
   export type UserOrderByWithAggregationInput = {
@@ -23262,6 +24773,7 @@ export namespace Prisma {
     images?: ServiceImageListRelationFilter
     orders?: OrderListRelationFilter
     reviews?: ReviewListRelationFilter
+    quoteRequests?: QuoteRequestListRelationFilter
   }
 
   export type ServiceOrderByWithRelationInput = {
@@ -23283,6 +24795,7 @@ export namespace Prisma {
     images?: ServiceImageOrderByRelationAggregateInput
     orders?: OrderOrderByRelationAggregateInput
     reviews?: ReviewOrderByRelationAggregateInput
+    quoteRequests?: QuoteRequestOrderByRelationAggregateInput
   }
 
   export type ServiceWhereUniqueInput = Prisma.AtLeast<{
@@ -23307,6 +24820,7 @@ export namespace Prisma {
     images?: ServiceImageListRelationFilter
     orders?: OrderListRelationFilter
     reviews?: ReviewListRelationFilter
+    quoteRequests?: QuoteRequestListRelationFilter
   }, "id" | "slug">
 
   export type ServiceOrderByWithAggregationInput = {
@@ -24009,6 +25523,119 @@ export namespace Prisma {
     isRead?: BoolWithAggregatesFilter<"Message"> | boolean
   }
 
+  export type QuoteRequestWhereInput = {
+    AND?: QuoteRequestWhereInput | QuoteRequestWhereInput[]
+    OR?: QuoteRequestWhereInput[]
+    NOT?: QuoteRequestWhereInput | QuoteRequestWhereInput[]
+    id?: StringFilter<"QuoteRequest"> | string
+    createdAt?: DateTimeFilter<"QuoteRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"QuoteRequest"> | Date | string
+    clientId?: StringFilter<"QuoteRequest"> | string
+    providerId?: StringFilter<"QuoteRequest"> | string
+    serviceId?: StringNullableFilter<"QuoteRequest"> | string | null
+    projectTitle?: StringFilter<"QuoteRequest"> | string
+    description?: StringFilter<"QuoteRequest"> | string
+    deliveryTime?: StringFilter<"QuoteRequest"> | string
+    budget?: DecimalFilter<"QuoteRequest"> | Decimal | DecimalJsLike | number | string
+    currency?: StringFilter<"QuoteRequest"> | string
+    attachments?: StringNullableListFilter<"QuoteRequest">
+    status?: EnumQuoteStatusFilter<"QuoteRequest"> | $Enums.QuoteStatus
+    providerNote?: StringNullableFilter<"QuoteRequest"> | string | null
+    declineReason?: StringNullableFilter<"QuoteRequest"> | string | null
+    client?: XOR<UserScalarRelationFilter, UserWhereInput>
+    provider?: XOR<UserScalarRelationFilter, UserWhereInput>
+    service?: XOR<ServiceNullableScalarRelationFilter, ServiceWhereInput> | null
+  }
+
+  export type QuoteRequestOrderByWithRelationInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    clientId?: SortOrder
+    providerId?: SortOrder
+    serviceId?: SortOrderInput | SortOrder
+    projectTitle?: SortOrder
+    description?: SortOrder
+    deliveryTime?: SortOrder
+    budget?: SortOrder
+    currency?: SortOrder
+    attachments?: SortOrder
+    status?: SortOrder
+    providerNote?: SortOrderInput | SortOrder
+    declineReason?: SortOrderInput | SortOrder
+    client?: UserOrderByWithRelationInput
+    provider?: UserOrderByWithRelationInput
+    service?: ServiceOrderByWithRelationInput
+  }
+
+  export type QuoteRequestWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: QuoteRequestWhereInput | QuoteRequestWhereInput[]
+    OR?: QuoteRequestWhereInput[]
+    NOT?: QuoteRequestWhereInput | QuoteRequestWhereInput[]
+    createdAt?: DateTimeFilter<"QuoteRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"QuoteRequest"> | Date | string
+    clientId?: StringFilter<"QuoteRequest"> | string
+    providerId?: StringFilter<"QuoteRequest"> | string
+    serviceId?: StringNullableFilter<"QuoteRequest"> | string | null
+    projectTitle?: StringFilter<"QuoteRequest"> | string
+    description?: StringFilter<"QuoteRequest"> | string
+    deliveryTime?: StringFilter<"QuoteRequest"> | string
+    budget?: DecimalFilter<"QuoteRequest"> | Decimal | DecimalJsLike | number | string
+    currency?: StringFilter<"QuoteRequest"> | string
+    attachments?: StringNullableListFilter<"QuoteRequest">
+    status?: EnumQuoteStatusFilter<"QuoteRequest"> | $Enums.QuoteStatus
+    providerNote?: StringNullableFilter<"QuoteRequest"> | string | null
+    declineReason?: StringNullableFilter<"QuoteRequest"> | string | null
+    client?: XOR<UserScalarRelationFilter, UserWhereInput>
+    provider?: XOR<UserScalarRelationFilter, UserWhereInput>
+    service?: XOR<ServiceNullableScalarRelationFilter, ServiceWhereInput> | null
+  }, "id">
+
+  export type QuoteRequestOrderByWithAggregationInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    clientId?: SortOrder
+    providerId?: SortOrder
+    serviceId?: SortOrderInput | SortOrder
+    projectTitle?: SortOrder
+    description?: SortOrder
+    deliveryTime?: SortOrder
+    budget?: SortOrder
+    currency?: SortOrder
+    attachments?: SortOrder
+    status?: SortOrder
+    providerNote?: SortOrderInput | SortOrder
+    declineReason?: SortOrderInput | SortOrder
+    _count?: QuoteRequestCountOrderByAggregateInput
+    _avg?: QuoteRequestAvgOrderByAggregateInput
+    _max?: QuoteRequestMaxOrderByAggregateInput
+    _min?: QuoteRequestMinOrderByAggregateInput
+    _sum?: QuoteRequestSumOrderByAggregateInput
+  }
+
+  export type QuoteRequestScalarWhereWithAggregatesInput = {
+    AND?: QuoteRequestScalarWhereWithAggregatesInput | QuoteRequestScalarWhereWithAggregatesInput[]
+    OR?: QuoteRequestScalarWhereWithAggregatesInput[]
+    NOT?: QuoteRequestScalarWhereWithAggregatesInput | QuoteRequestScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"QuoteRequest"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"QuoteRequest"> | Date | string
+    clientId?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    providerId?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    serviceId?: StringNullableWithAggregatesFilter<"QuoteRequest"> | string | null
+    projectTitle?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    description?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    deliveryTime?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    budget?: DecimalWithAggregatesFilter<"QuoteRequest"> | Decimal | DecimalJsLike | number | string
+    currency?: StringWithAggregatesFilter<"QuoteRequest"> | string
+    attachments?: StringNullableListFilter<"QuoteRequest">
+    status?: EnumQuoteStatusWithAggregatesFilter<"QuoteRequest"> | $Enums.QuoteStatus
+    providerNote?: StringNullableWithAggregatesFilter<"QuoteRequest"> | string | null
+    declineReason?: StringNullableWithAggregatesFilter<"QuoteRequest"> | string | null
+  }
+
   export type UserCreateInput = {
     id?: string
     createdAt?: Date | string
@@ -24071,6 +25698,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -24135,6 +25764,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserUpdateInput = {
@@ -24199,6 +25830,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -24263,6 +25896,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -24917,6 +26552,7 @@ export namespace Prisma {
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateInput = {
@@ -24936,6 +26572,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUpdateInput = {
@@ -24955,6 +26592,7 @@ export namespace Prisma {
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateInput = {
@@ -24974,6 +26612,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceCreateManyInput = {
@@ -25695,6 +27334,129 @@ export namespace Prisma {
     isRead?: BoolFieldUpdateOperationsInput | boolean
   }
 
+  export type QuoteRequestCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+    client: UserCreateNestedOneWithoutQuoteRequestsAsClientInput
+    provider: UserCreateNestedOneWithoutQuoteRequestsAsProviderInput
+    service?: ServiceCreateNestedOneWithoutQuoteRequestsInput
+  }
+
+  export type QuoteRequestUncheckedCreateInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    clientId: string
+    providerId: string
+    serviceId?: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+  }
+
+  export type QuoteRequestUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+    client?: UserUpdateOneRequiredWithoutQuoteRequestsAsClientNestedInput
+    provider?: UserUpdateOneRequiredWithoutQuoteRequestsAsProviderNestedInput
+    service?: ServiceUpdateOneWithoutQuoteRequestsNestedInput
+  }
+
+  export type QuoteRequestUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    clientId?: StringFieldUpdateOperationsInput | string
+    providerId?: StringFieldUpdateOperationsInput | string
+    serviceId?: NullableStringFieldUpdateOperationsInput | string | null
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestCreateManyInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    clientId: string
+    providerId: string
+    serviceId?: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+  }
+
+  export type QuoteRequestUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    clientId?: StringFieldUpdateOperationsInput | string
+    providerId?: StringFieldUpdateOperationsInput | string
+    serviceId?: NullableStringFieldUpdateOperationsInput | string | null
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -25846,6 +27608,12 @@ export namespace Prisma {
     none?: MessageWhereInput
   }
 
+  export type QuoteRequestListRelationFilter = {
+    every?: QuoteRequestWhereInput
+    some?: QuoteRequestWhereInput
+    none?: QuoteRequestWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -25880,6 +27648,10 @@ export namespace Prisma {
   }
 
   export type MessageOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type QuoteRequestOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -27063,6 +28835,88 @@ export namespace Prisma {
     isRead?: SortOrder
   }
 
+  export type EnumQuoteStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.QuoteStatus | EnumQuoteStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQuoteStatusFilter<$PrismaModel> | $Enums.QuoteStatus
+  }
+
+  export type ServiceNullableScalarRelationFilter = {
+    is?: ServiceWhereInput | null
+    isNot?: ServiceWhereInput | null
+  }
+
+  export type QuoteRequestCountOrderByAggregateInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    clientId?: SortOrder
+    providerId?: SortOrder
+    serviceId?: SortOrder
+    projectTitle?: SortOrder
+    description?: SortOrder
+    deliveryTime?: SortOrder
+    budget?: SortOrder
+    currency?: SortOrder
+    attachments?: SortOrder
+    status?: SortOrder
+    providerNote?: SortOrder
+    declineReason?: SortOrder
+  }
+
+  export type QuoteRequestAvgOrderByAggregateInput = {
+    budget?: SortOrder
+  }
+
+  export type QuoteRequestMaxOrderByAggregateInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    clientId?: SortOrder
+    providerId?: SortOrder
+    serviceId?: SortOrder
+    projectTitle?: SortOrder
+    description?: SortOrder
+    deliveryTime?: SortOrder
+    budget?: SortOrder
+    currency?: SortOrder
+    status?: SortOrder
+    providerNote?: SortOrder
+    declineReason?: SortOrder
+  }
+
+  export type QuoteRequestMinOrderByAggregateInput = {
+    id?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    clientId?: SortOrder
+    providerId?: SortOrder
+    serviceId?: SortOrder
+    projectTitle?: SortOrder
+    description?: SortOrder
+    deliveryTime?: SortOrder
+    budget?: SortOrder
+    currency?: SortOrder
+    status?: SortOrder
+    providerNote?: SortOrder
+    declineReason?: SortOrder
+  }
+
+  export type QuoteRequestSumOrderByAggregateInput = {
+    budget?: SortOrder
+  }
+
+  export type EnumQuoteStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.QuoteStatus | EnumQuoteStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQuoteStatusWithAggregatesFilter<$PrismaModel> | $Enums.QuoteStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumQuoteStatusFilter<$PrismaModel>
+    _max?: NestedEnumQuoteStatusFilter<$PrismaModel>
+  }
+
   export type UserAddressCreateNestedManyWithoutUserInput = {
     create?: XOR<UserAddressCreateWithoutUserInput, UserAddressUncheckedCreateWithoutUserInput> | UserAddressCreateWithoutUserInput[] | UserAddressUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserAddressCreateOrConnectWithoutUserInput | UserAddressCreateOrConnectWithoutUserInput[]
@@ -27140,6 +28994,20 @@ export namespace Prisma {
     connect?: MessageWhereUniqueInput | MessageWhereUniqueInput[]
   }
 
+  export type QuoteRequestCreateNestedManyWithoutClientInput = {
+    create?: XOR<QuoteRequestCreateWithoutClientInput, QuoteRequestUncheckedCreateWithoutClientInput> | QuoteRequestCreateWithoutClientInput[] | QuoteRequestUncheckedCreateWithoutClientInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutClientInput | QuoteRequestCreateOrConnectWithoutClientInput[]
+    createMany?: QuoteRequestCreateManyClientInputEnvelope
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+  }
+
+  export type QuoteRequestCreateNestedManyWithoutProviderInput = {
+    create?: XOR<QuoteRequestCreateWithoutProviderInput, QuoteRequestUncheckedCreateWithoutProviderInput> | QuoteRequestCreateWithoutProviderInput[] | QuoteRequestUncheckedCreateWithoutProviderInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutProviderInput | QuoteRequestCreateOrConnectWithoutProviderInput[]
+    createMany?: QuoteRequestCreateManyProviderInputEnvelope
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+  }
+
   export type UserAddressUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<UserAddressCreateWithoutUserInput, UserAddressUncheckedCreateWithoutUserInput> | UserAddressCreateWithoutUserInput[] | UserAddressUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserAddressCreateOrConnectWithoutUserInput | UserAddressCreateOrConnectWithoutUserInput[]
@@ -27215,6 +29083,20 @@ export namespace Prisma {
     connectOrCreate?: MessageCreateOrConnectWithoutSenderInput | MessageCreateOrConnectWithoutSenderInput[]
     createMany?: MessageCreateManySenderInputEnvelope
     connect?: MessageWhereUniqueInput | MessageWhereUniqueInput[]
+  }
+
+  export type QuoteRequestUncheckedCreateNestedManyWithoutClientInput = {
+    create?: XOR<QuoteRequestCreateWithoutClientInput, QuoteRequestUncheckedCreateWithoutClientInput> | QuoteRequestCreateWithoutClientInput[] | QuoteRequestUncheckedCreateWithoutClientInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutClientInput | QuoteRequestCreateOrConnectWithoutClientInput[]
+    createMany?: QuoteRequestCreateManyClientInputEnvelope
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+  }
+
+  export type QuoteRequestUncheckedCreateNestedManyWithoutProviderInput = {
+    create?: XOR<QuoteRequestCreateWithoutProviderInput, QuoteRequestUncheckedCreateWithoutProviderInput> | QuoteRequestCreateWithoutProviderInput[] | QuoteRequestUncheckedCreateWithoutProviderInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutProviderInput | QuoteRequestCreateOrConnectWithoutProviderInput[]
+    createMany?: QuoteRequestCreateManyProviderInputEnvelope
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -27419,6 +29301,34 @@ export namespace Prisma {
     deleteMany?: MessageScalarWhereInput | MessageScalarWhereInput[]
   }
 
+  export type QuoteRequestUpdateManyWithoutClientNestedInput = {
+    create?: XOR<QuoteRequestCreateWithoutClientInput, QuoteRequestUncheckedCreateWithoutClientInput> | QuoteRequestCreateWithoutClientInput[] | QuoteRequestUncheckedCreateWithoutClientInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutClientInput | QuoteRequestCreateOrConnectWithoutClientInput[]
+    upsert?: QuoteRequestUpsertWithWhereUniqueWithoutClientInput | QuoteRequestUpsertWithWhereUniqueWithoutClientInput[]
+    createMany?: QuoteRequestCreateManyClientInputEnvelope
+    set?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    disconnect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    delete?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    update?: QuoteRequestUpdateWithWhereUniqueWithoutClientInput | QuoteRequestUpdateWithWhereUniqueWithoutClientInput[]
+    updateMany?: QuoteRequestUpdateManyWithWhereWithoutClientInput | QuoteRequestUpdateManyWithWhereWithoutClientInput[]
+    deleteMany?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
+  }
+
+  export type QuoteRequestUpdateManyWithoutProviderNestedInput = {
+    create?: XOR<QuoteRequestCreateWithoutProviderInput, QuoteRequestUncheckedCreateWithoutProviderInput> | QuoteRequestCreateWithoutProviderInput[] | QuoteRequestUncheckedCreateWithoutProviderInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutProviderInput | QuoteRequestCreateOrConnectWithoutProviderInput[]
+    upsert?: QuoteRequestUpsertWithWhereUniqueWithoutProviderInput | QuoteRequestUpsertWithWhereUniqueWithoutProviderInput[]
+    createMany?: QuoteRequestCreateManyProviderInputEnvelope
+    set?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    disconnect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    delete?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    update?: QuoteRequestUpdateWithWhereUniqueWithoutProviderInput | QuoteRequestUpdateWithWhereUniqueWithoutProviderInput[]
+    updateMany?: QuoteRequestUpdateManyWithWhereWithoutProviderInput | QuoteRequestUpdateManyWithWhereWithoutProviderInput[]
+    deleteMany?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
+  }
+
   export type UserAddressUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<UserAddressCreateWithoutUserInput, UserAddressUncheckedCreateWithoutUserInput> | UserAddressCreateWithoutUserInput[] | UserAddressUncheckedCreateWithoutUserInput[]
     connectOrCreate?: UserAddressCreateOrConnectWithoutUserInput | UserAddressCreateOrConnectWithoutUserInput[]
@@ -27571,6 +29481,34 @@ export namespace Prisma {
     update?: MessageUpdateWithWhereUniqueWithoutSenderInput | MessageUpdateWithWhereUniqueWithoutSenderInput[]
     updateMany?: MessageUpdateManyWithWhereWithoutSenderInput | MessageUpdateManyWithWhereWithoutSenderInput[]
     deleteMany?: MessageScalarWhereInput | MessageScalarWhereInput[]
+  }
+
+  export type QuoteRequestUncheckedUpdateManyWithoutClientNestedInput = {
+    create?: XOR<QuoteRequestCreateWithoutClientInput, QuoteRequestUncheckedCreateWithoutClientInput> | QuoteRequestCreateWithoutClientInput[] | QuoteRequestUncheckedCreateWithoutClientInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutClientInput | QuoteRequestCreateOrConnectWithoutClientInput[]
+    upsert?: QuoteRequestUpsertWithWhereUniqueWithoutClientInput | QuoteRequestUpsertWithWhereUniqueWithoutClientInput[]
+    createMany?: QuoteRequestCreateManyClientInputEnvelope
+    set?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    disconnect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    delete?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    update?: QuoteRequestUpdateWithWhereUniqueWithoutClientInput | QuoteRequestUpdateWithWhereUniqueWithoutClientInput[]
+    updateMany?: QuoteRequestUpdateManyWithWhereWithoutClientInput | QuoteRequestUpdateManyWithWhereWithoutClientInput[]
+    deleteMany?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
+  }
+
+  export type QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput = {
+    create?: XOR<QuoteRequestCreateWithoutProviderInput, QuoteRequestUncheckedCreateWithoutProviderInput> | QuoteRequestCreateWithoutProviderInput[] | QuoteRequestUncheckedCreateWithoutProviderInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutProviderInput | QuoteRequestCreateOrConnectWithoutProviderInput[]
+    upsert?: QuoteRequestUpsertWithWhereUniqueWithoutProviderInput | QuoteRequestUpsertWithWhereUniqueWithoutProviderInput[]
+    createMany?: QuoteRequestCreateManyProviderInputEnvelope
+    set?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    disconnect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    delete?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    update?: QuoteRequestUpdateWithWhereUniqueWithoutProviderInput | QuoteRequestUpdateWithWhereUniqueWithoutProviderInput[]
+    updateMany?: QuoteRequestUpdateManyWithWhereWithoutProviderInput | QuoteRequestUpdateManyWithWhereWithoutProviderInput[]
+    deleteMany?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
   }
 
   export type UserCreateNestedOneWithoutAddressesInput = {
@@ -27842,6 +29780,13 @@ export namespace Prisma {
     connect?: ReviewWhereUniqueInput | ReviewWhereUniqueInput[]
   }
 
+  export type QuoteRequestCreateNestedManyWithoutServiceInput = {
+    create?: XOR<QuoteRequestCreateWithoutServiceInput, QuoteRequestUncheckedCreateWithoutServiceInput> | QuoteRequestCreateWithoutServiceInput[] | QuoteRequestUncheckedCreateWithoutServiceInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutServiceInput | QuoteRequestCreateOrConnectWithoutServiceInput[]
+    createMany?: QuoteRequestCreateManyServiceInputEnvelope
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+  }
+
   export type ServicePlanUncheckedCreateNestedManyWithoutServiceInput = {
     create?: XOR<ServicePlanCreateWithoutServiceInput, ServicePlanUncheckedCreateWithoutServiceInput> | ServicePlanCreateWithoutServiceInput[] | ServicePlanUncheckedCreateWithoutServiceInput[]
     connectOrCreate?: ServicePlanCreateOrConnectWithoutServiceInput | ServicePlanCreateOrConnectWithoutServiceInput[]
@@ -27875,6 +29820,13 @@ export namespace Prisma {
     connectOrCreate?: ReviewCreateOrConnectWithoutServiceInput | ReviewCreateOrConnectWithoutServiceInput[]
     createMany?: ReviewCreateManyServiceInputEnvelope
     connect?: ReviewWhereUniqueInput | ReviewWhereUniqueInput[]
+  }
+
+  export type QuoteRequestUncheckedCreateNestedManyWithoutServiceInput = {
+    create?: XOR<QuoteRequestCreateWithoutServiceInput, QuoteRequestUncheckedCreateWithoutServiceInput> | QuoteRequestCreateWithoutServiceInput[] | QuoteRequestUncheckedCreateWithoutServiceInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutServiceInput | QuoteRequestCreateOrConnectWithoutServiceInput[]
+    createMany?: QuoteRequestCreateManyServiceInputEnvelope
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
   }
 
   export type ServiceUpdatetagsInput = {
@@ -27972,6 +29924,20 @@ export namespace Prisma {
     deleteMany?: ReviewScalarWhereInput | ReviewScalarWhereInput[]
   }
 
+  export type QuoteRequestUpdateManyWithoutServiceNestedInput = {
+    create?: XOR<QuoteRequestCreateWithoutServiceInput, QuoteRequestUncheckedCreateWithoutServiceInput> | QuoteRequestCreateWithoutServiceInput[] | QuoteRequestUncheckedCreateWithoutServiceInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutServiceInput | QuoteRequestCreateOrConnectWithoutServiceInput[]
+    upsert?: QuoteRequestUpsertWithWhereUniqueWithoutServiceInput | QuoteRequestUpsertWithWhereUniqueWithoutServiceInput[]
+    createMany?: QuoteRequestCreateManyServiceInputEnvelope
+    set?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    disconnect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    delete?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    update?: QuoteRequestUpdateWithWhereUniqueWithoutServiceInput | QuoteRequestUpdateWithWhereUniqueWithoutServiceInput[]
+    updateMany?: QuoteRequestUpdateManyWithWhereWithoutServiceInput | QuoteRequestUpdateManyWithWhereWithoutServiceInput[]
+    deleteMany?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
+  }
+
   export type ServicePlanUncheckedUpdateManyWithoutServiceNestedInput = {
     create?: XOR<ServicePlanCreateWithoutServiceInput, ServicePlanUncheckedCreateWithoutServiceInput> | ServicePlanCreateWithoutServiceInput[] | ServicePlanUncheckedCreateWithoutServiceInput[]
     connectOrCreate?: ServicePlanCreateOrConnectWithoutServiceInput | ServicePlanCreateOrConnectWithoutServiceInput[]
@@ -28040,6 +30006,20 @@ export namespace Prisma {
     update?: ReviewUpdateWithWhereUniqueWithoutServiceInput | ReviewUpdateWithWhereUniqueWithoutServiceInput[]
     updateMany?: ReviewUpdateManyWithWhereWithoutServiceInput | ReviewUpdateManyWithWhereWithoutServiceInput[]
     deleteMany?: ReviewScalarWhereInput | ReviewScalarWhereInput[]
+  }
+
+  export type QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput = {
+    create?: XOR<QuoteRequestCreateWithoutServiceInput, QuoteRequestUncheckedCreateWithoutServiceInput> | QuoteRequestCreateWithoutServiceInput[] | QuoteRequestUncheckedCreateWithoutServiceInput[]
+    connectOrCreate?: QuoteRequestCreateOrConnectWithoutServiceInput | QuoteRequestCreateOrConnectWithoutServiceInput[]
+    upsert?: QuoteRequestUpsertWithWhereUniqueWithoutServiceInput | QuoteRequestUpsertWithWhereUniqueWithoutServiceInput[]
+    createMany?: QuoteRequestCreateManyServiceInputEnvelope
+    set?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    disconnect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    delete?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    connect?: QuoteRequestWhereUniqueInput | QuoteRequestWhereUniqueInput[]
+    update?: QuoteRequestUpdateWithWhereUniqueWithoutServiceInput | QuoteRequestUpdateWithWhereUniqueWithoutServiceInput[]
+    updateMany?: QuoteRequestUpdateManyWithWhereWithoutServiceInput | QuoteRequestUpdateManyWithWhereWithoutServiceInput[]
+    deleteMany?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
   }
 
   export type ServiceCreateNestedOneWithoutPlansInput = {
@@ -28424,6 +30404,63 @@ export namespace Prisma {
     upsert?: UserUpsertWithoutSentMessagesInput
     connect?: UserWhereUniqueInput
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSentMessagesInput, UserUpdateWithoutSentMessagesInput>, UserUncheckedUpdateWithoutSentMessagesInput>
+  }
+
+  export type QuoteRequestCreateattachmentsInput = {
+    set: string[]
+  }
+
+  export type UserCreateNestedOneWithoutQuoteRequestsAsClientInput = {
+    create?: XOR<UserCreateWithoutQuoteRequestsAsClientInput, UserUncheckedCreateWithoutQuoteRequestsAsClientInput>
+    connectOrCreate?: UserCreateOrConnectWithoutQuoteRequestsAsClientInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutQuoteRequestsAsProviderInput = {
+    create?: XOR<UserCreateWithoutQuoteRequestsAsProviderInput, UserUncheckedCreateWithoutQuoteRequestsAsProviderInput>
+    connectOrCreate?: UserCreateOrConnectWithoutQuoteRequestsAsProviderInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type ServiceCreateNestedOneWithoutQuoteRequestsInput = {
+    create?: XOR<ServiceCreateWithoutQuoteRequestsInput, ServiceUncheckedCreateWithoutQuoteRequestsInput>
+    connectOrCreate?: ServiceCreateOrConnectWithoutQuoteRequestsInput
+    connect?: ServiceWhereUniqueInput
+  }
+
+  export type QuoteRequestUpdateattachmentsInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
+  export type EnumQuoteStatusFieldUpdateOperationsInput = {
+    set?: $Enums.QuoteStatus
+  }
+
+  export type UserUpdateOneRequiredWithoutQuoteRequestsAsClientNestedInput = {
+    create?: XOR<UserCreateWithoutQuoteRequestsAsClientInput, UserUncheckedCreateWithoutQuoteRequestsAsClientInput>
+    connectOrCreate?: UserCreateOrConnectWithoutQuoteRequestsAsClientInput
+    upsert?: UserUpsertWithoutQuoteRequestsAsClientInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutQuoteRequestsAsClientInput, UserUpdateWithoutQuoteRequestsAsClientInput>, UserUncheckedUpdateWithoutQuoteRequestsAsClientInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutQuoteRequestsAsProviderNestedInput = {
+    create?: XOR<UserCreateWithoutQuoteRequestsAsProviderInput, UserUncheckedCreateWithoutQuoteRequestsAsProviderInput>
+    connectOrCreate?: UserCreateOrConnectWithoutQuoteRequestsAsProviderInput
+    upsert?: UserUpsertWithoutQuoteRequestsAsProviderInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutQuoteRequestsAsProviderInput, UserUpdateWithoutQuoteRequestsAsProviderInput>, UserUncheckedUpdateWithoutQuoteRequestsAsProviderInput>
+  }
+
+  export type ServiceUpdateOneWithoutQuoteRequestsNestedInput = {
+    create?: XOR<ServiceCreateWithoutQuoteRequestsInput, ServiceUncheckedCreateWithoutQuoteRequestsInput>
+    connectOrCreate?: ServiceCreateOrConnectWithoutQuoteRequestsInput
+    upsert?: ServiceUpsertWithoutQuoteRequestsInput
+    disconnect?: ServiceWhereInput | boolean
+    delete?: ServiceWhereInput | boolean
+    connect?: ServiceWhereUniqueInput
+    update?: XOR<XOR<ServiceUpdateToOneWithWhereWithoutQuoteRequestsInput, ServiceUpdateWithoutQuoteRequestsInput>, ServiceUncheckedUpdateWithoutQuoteRequestsInput>
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -28813,6 +30850,23 @@ export namespace Prisma {
     _max?: NestedEnumOrderStatusFilter<$PrismaModel>
   }
 
+  export type NestedEnumQuoteStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.QuoteStatus | EnumQuoteStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQuoteStatusFilter<$PrismaModel> | $Enums.QuoteStatus
+  }
+
+  export type NestedEnumQuoteStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.QuoteStatus | EnumQuoteStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QuoteStatus[] | ListEnumQuoteStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQuoteStatusWithAggregatesFilter<$PrismaModel> | $Enums.QuoteStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumQuoteStatusFilter<$PrismaModel>
+    _max?: NestedEnumQuoteStatusFilter<$PrismaModel>
+  }
+
   export type UserAddressCreateWithoutUserInput = {
     id?: string
     createdAt?: Date | string
@@ -28939,6 +30993,7 @@ export namespace Prisma {
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutProviderInput = {
@@ -28957,6 +31012,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutProviderInput = {
@@ -29216,6 +31272,94 @@ export namespace Prisma {
 
   export type MessageCreateManySenderInputEnvelope = {
     data: MessageCreateManySenderInput | MessageCreateManySenderInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type QuoteRequestCreateWithoutClientInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+    provider: UserCreateNestedOneWithoutQuoteRequestsAsProviderInput
+    service?: ServiceCreateNestedOneWithoutQuoteRequestsInput
+  }
+
+  export type QuoteRequestUncheckedCreateWithoutClientInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    providerId: string
+    serviceId?: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+  }
+
+  export type QuoteRequestCreateOrConnectWithoutClientInput = {
+    where: QuoteRequestWhereUniqueInput
+    create: XOR<QuoteRequestCreateWithoutClientInput, QuoteRequestUncheckedCreateWithoutClientInput>
+  }
+
+  export type QuoteRequestCreateManyClientInputEnvelope = {
+    data: QuoteRequestCreateManyClientInput | QuoteRequestCreateManyClientInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type QuoteRequestCreateWithoutProviderInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+    client: UserCreateNestedOneWithoutQuoteRequestsAsClientInput
+    service?: ServiceCreateNestedOneWithoutQuoteRequestsInput
+  }
+
+  export type QuoteRequestUncheckedCreateWithoutProviderInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    clientId: string
+    serviceId?: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+  }
+
+  export type QuoteRequestCreateOrConnectWithoutProviderInput = {
+    where: QuoteRequestWhereUniqueInput
+    create: XOR<QuoteRequestCreateWithoutProviderInput, QuoteRequestUncheckedCreateWithoutProviderInput>
+  }
+
+  export type QuoteRequestCreateManyProviderInputEnvelope = {
+    data: QuoteRequestCreateManyProviderInput | QuoteRequestCreateManyProviderInput[]
     skipDuplicates?: boolean
   }
 
@@ -29525,6 +31669,59 @@ export namespace Prisma {
     isRead?: BoolFilter<"Message"> | boolean
   }
 
+  export type QuoteRequestUpsertWithWhereUniqueWithoutClientInput = {
+    where: QuoteRequestWhereUniqueInput
+    update: XOR<QuoteRequestUpdateWithoutClientInput, QuoteRequestUncheckedUpdateWithoutClientInput>
+    create: XOR<QuoteRequestCreateWithoutClientInput, QuoteRequestUncheckedCreateWithoutClientInput>
+  }
+
+  export type QuoteRequestUpdateWithWhereUniqueWithoutClientInput = {
+    where: QuoteRequestWhereUniqueInput
+    data: XOR<QuoteRequestUpdateWithoutClientInput, QuoteRequestUncheckedUpdateWithoutClientInput>
+  }
+
+  export type QuoteRequestUpdateManyWithWhereWithoutClientInput = {
+    where: QuoteRequestScalarWhereInput
+    data: XOR<QuoteRequestUpdateManyMutationInput, QuoteRequestUncheckedUpdateManyWithoutClientInput>
+  }
+
+  export type QuoteRequestScalarWhereInput = {
+    AND?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
+    OR?: QuoteRequestScalarWhereInput[]
+    NOT?: QuoteRequestScalarWhereInput | QuoteRequestScalarWhereInput[]
+    id?: StringFilter<"QuoteRequest"> | string
+    createdAt?: DateTimeFilter<"QuoteRequest"> | Date | string
+    updatedAt?: DateTimeFilter<"QuoteRequest"> | Date | string
+    clientId?: StringFilter<"QuoteRequest"> | string
+    providerId?: StringFilter<"QuoteRequest"> | string
+    serviceId?: StringNullableFilter<"QuoteRequest"> | string | null
+    projectTitle?: StringFilter<"QuoteRequest"> | string
+    description?: StringFilter<"QuoteRequest"> | string
+    deliveryTime?: StringFilter<"QuoteRequest"> | string
+    budget?: DecimalFilter<"QuoteRequest"> | Decimal | DecimalJsLike | number | string
+    currency?: StringFilter<"QuoteRequest"> | string
+    attachments?: StringNullableListFilter<"QuoteRequest">
+    status?: EnumQuoteStatusFilter<"QuoteRequest"> | $Enums.QuoteStatus
+    providerNote?: StringNullableFilter<"QuoteRequest"> | string | null
+    declineReason?: StringNullableFilter<"QuoteRequest"> | string | null
+  }
+
+  export type QuoteRequestUpsertWithWhereUniqueWithoutProviderInput = {
+    where: QuoteRequestWhereUniqueInput
+    update: XOR<QuoteRequestUpdateWithoutProviderInput, QuoteRequestUncheckedUpdateWithoutProviderInput>
+    create: XOR<QuoteRequestCreateWithoutProviderInput, QuoteRequestUncheckedCreateWithoutProviderInput>
+  }
+
+  export type QuoteRequestUpdateWithWhereUniqueWithoutProviderInput = {
+    where: QuoteRequestWhereUniqueInput
+    data: XOR<QuoteRequestUpdateWithoutProviderInput, QuoteRequestUncheckedUpdateWithoutProviderInput>
+  }
+
+  export type QuoteRequestUpdateManyWithWhereWithoutProviderInput = {
+    where: QuoteRequestScalarWhereInput
+    data: XOR<QuoteRequestUpdateManyMutationInput, QuoteRequestUncheckedUpdateManyWithoutProviderInput>
+  }
+
   export type UserCreateWithoutAddressesInput = {
     id?: string
     createdAt?: Date | string
@@ -29586,6 +31783,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutAddressesInput = {
@@ -29649,6 +31848,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutAddressesInput = {
@@ -29728,6 +31929,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAddressesInput = {
@@ -29791,6 +31994,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type CategoryCreateWithoutSubCategoriesInput = {
@@ -29904,6 +32109,7 @@ export namespace Prisma {
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutCategoryInput = {
@@ -29922,6 +32128,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutCategoryInput = {
@@ -30097,6 +32304,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutInterestsInput = {
@@ -30160,6 +32369,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutInterestsInput = {
@@ -30272,6 +32483,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutInterestsInput = {
@@ -30335,6 +32548,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type CategoryUpsertWithoutUserInterestsInput = {
@@ -30437,6 +32652,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutVerificationDocumentsInput = {
@@ -30500,6 +32717,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutVerificationDocumentsInput = {
@@ -30579,6 +32798,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutVerificationDocumentsInput = {
@@ -30642,6 +32863,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type UserCreateWithoutServicesInput = {
@@ -30705,6 +32928,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutServicesInput = {
@@ -30768,6 +32993,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutServicesInput = {
@@ -30980,6 +33207,50 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type QuoteRequestCreateWithoutServiceInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+    client: UserCreateNestedOneWithoutQuoteRequestsAsClientInput
+    provider: UserCreateNestedOneWithoutQuoteRequestsAsProviderInput
+  }
+
+  export type QuoteRequestUncheckedCreateWithoutServiceInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    clientId: string
+    providerId: string
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+  }
+
+  export type QuoteRequestCreateOrConnectWithoutServiceInput = {
+    where: QuoteRequestWhereUniqueInput
+    create: XOR<QuoteRequestCreateWithoutServiceInput, QuoteRequestUncheckedCreateWithoutServiceInput>
+  }
+
+  export type QuoteRequestCreateManyServiceInputEnvelope = {
+    data: QuoteRequestCreateManyServiceInput | QuoteRequestCreateManyServiceInput[]
+    skipDuplicates?: boolean
+  }
+
   export type UserUpsertWithoutServicesInput = {
     update: XOR<UserUpdateWithoutServicesInput, UserUncheckedUpdateWithoutServicesInput>
     create: XOR<UserCreateWithoutServicesInput, UserUncheckedCreateWithoutServicesInput>
@@ -31052,6 +33323,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutServicesInput = {
@@ -31115,6 +33388,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type CategoryUpsertWithoutServicesInput = {
@@ -31276,6 +33551,22 @@ export namespace Prisma {
     data: XOR<ReviewUpdateManyMutationInput, ReviewUncheckedUpdateManyWithoutServiceInput>
   }
 
+  export type QuoteRequestUpsertWithWhereUniqueWithoutServiceInput = {
+    where: QuoteRequestWhereUniqueInput
+    update: XOR<QuoteRequestUpdateWithoutServiceInput, QuoteRequestUncheckedUpdateWithoutServiceInput>
+    create: XOR<QuoteRequestCreateWithoutServiceInput, QuoteRequestUncheckedCreateWithoutServiceInput>
+  }
+
+  export type QuoteRequestUpdateWithWhereUniqueWithoutServiceInput = {
+    where: QuoteRequestWhereUniqueInput
+    data: XOR<QuoteRequestUpdateWithoutServiceInput, QuoteRequestUncheckedUpdateWithoutServiceInput>
+  }
+
+  export type QuoteRequestUpdateManyWithWhereWithoutServiceInput = {
+    where: QuoteRequestScalarWhereInput
+    data: XOR<QuoteRequestUpdateManyMutationInput, QuoteRequestUncheckedUpdateManyWithoutServiceInput>
+  }
+
   export type ServiceCreateWithoutPlansInput = {
     id?: string
     createdAt?: Date | string
@@ -31292,6 +33583,7 @@ export namespace Prisma {
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutPlansInput = {
@@ -31310,6 +33602,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutPlansInput = {
@@ -31344,6 +33637,7 @@ export namespace Prisma {
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutPlansInput = {
@@ -31362,6 +33656,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceCreateWithoutAddonsInput = {
@@ -31380,6 +33675,7 @@ export namespace Prisma {
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutAddonsInput = {
@@ -31398,6 +33694,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutAddonsInput = {
@@ -31432,6 +33729,7 @@ export namespace Prisma {
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutAddonsInput = {
@@ -31450,6 +33748,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceCreateWithoutImagesInput = {
@@ -31468,6 +33767,7 @@ export namespace Prisma {
     addons?: ServiceAddonCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutImagesInput = {
@@ -31486,6 +33786,7 @@ export namespace Prisma {
     addons?: ServiceAddonUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutImagesInput = {
@@ -31520,6 +33821,7 @@ export namespace Prisma {
     addons?: ServiceAddonUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutImagesInput = {
@@ -31538,6 +33840,7 @@ export namespace Prisma {
     addons?: ServiceAddonUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type UserCreateWithoutClientOrdersInput = {
@@ -31601,6 +33904,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutClientOrdersInput = {
@@ -31664,6 +33969,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutClientOrdersInput = {
@@ -31732,6 +34039,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutProviderOrdersInput = {
@@ -31795,6 +34104,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutProviderOrdersInput = {
@@ -31818,6 +34129,7 @@ export namespace Prisma {
     addons?: ServiceAddonCreateNestedManyWithoutServiceInput
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     reviews?: ReviewCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutOrdersInput = {
@@ -31836,6 +34148,7 @@ export namespace Prisma {
     addons?: ServiceAddonUncheckedCreateNestedManyWithoutServiceInput
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutOrdersInput = {
@@ -31970,6 +34283,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutClientOrdersInput = {
@@ -32033,6 +34348,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUpsertWithoutProviderOrdersInput = {
@@ -32107,6 +34424,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutProviderOrdersInput = {
@@ -32170,6 +34489,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type ServiceUpsertWithoutOrdersInput = {
@@ -32199,6 +34520,7 @@ export namespace Prisma {
     addons?: ServiceAddonUpdateManyWithoutServiceNestedInput
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutOrdersInput = {
@@ -32217,6 +34539,7 @@ export namespace Prisma {
     addons?: ServiceAddonUncheckedUpdateManyWithoutServiceNestedInput
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type OrderAddOnUpsertWithWhereUniqueWithoutOrderInput = {
@@ -32490,6 +34813,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutClientReviewsInput = {
@@ -32553,6 +34878,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutClientReviewsInput = {
@@ -32621,6 +34948,8 @@ export namespace Prisma {
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutProviderReviewsInput = {
@@ -32684,6 +35013,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutProviderReviewsInput = {
@@ -32707,6 +35038,7 @@ export namespace Prisma {
     addons?: ServiceAddonCreateNestedManyWithoutServiceInput
     images?: ServiceImageCreateNestedManyWithoutServiceInput
     orders?: OrderCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceUncheckedCreateWithoutReviewsInput = {
@@ -32725,6 +35057,7 @@ export namespace Prisma {
     addons?: ServiceAddonUncheckedCreateNestedManyWithoutServiceInput
     images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
     orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
+    quoteRequests?: QuoteRequestUncheckedCreateNestedManyWithoutServiceInput
   }
 
   export type ServiceCreateOrConnectWithoutReviewsInput = {
@@ -32876,6 +35209,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutClientReviewsInput = {
@@ -32939,6 +35274,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUpsertWithoutProviderReviewsInput = {
@@ -33013,6 +35350,8 @@ export namespace Prisma {
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutProviderReviewsInput = {
@@ -33076,6 +35415,8 @@ export namespace Prisma {
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type ServiceUpsertWithoutReviewsInput = {
@@ -33105,6 +35446,7 @@ export namespace Prisma {
     addons?: ServiceAddonUpdateManyWithoutServiceNestedInput
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutReviewsInput = {
@@ -33123,6 +35465,7 @@ export namespace Prisma {
     addons?: ServiceAddonUncheckedUpdateManyWithoutServiceNestedInput
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type ReviewResponseUpsertWithoutReviewInput = {
@@ -33275,6 +35618,8 @@ export namespace Prisma {
     providerReviews?: ReviewCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutProviderConversationsInput = {
@@ -33338,6 +35683,8 @@ export namespace Prisma {
     providerReviews?: ReviewUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutProviderConversationsInput = {
@@ -33406,6 +35753,8 @@ export namespace Prisma {
     providerReviews?: ReviewCreateNestedManyWithoutProviderInput
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutUserConversationsInput = {
@@ -33469,6 +35818,8 @@ export namespace Prisma {
     providerReviews?: ReviewUncheckedCreateNestedManyWithoutProviderInput
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutUserConversationsInput = {
@@ -33574,6 +35925,8 @@ export namespace Prisma {
     providerReviews?: ReviewUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutProviderConversationsInput = {
@@ -33637,6 +35990,8 @@ export namespace Prisma {
     providerReviews?: ReviewUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUpsertWithoutUserConversationsInput = {
@@ -33711,6 +36066,8 @@ export namespace Prisma {
     providerReviews?: ReviewUpdateManyWithoutProviderNestedInput
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutUserConversationsInput = {
@@ -33774,6 +36131,8 @@ export namespace Prisma {
     providerReviews?: ReviewUncheckedUpdateManyWithoutProviderNestedInput
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
   }
 
   export type MessageUpsertWithWhereUniqueWithoutConversationInput = {
@@ -33874,6 +36233,8 @@ export namespace Prisma {
     providerReviews?: ReviewCreateNestedManyWithoutProviderInput
     providerConversations?: ConversationCreateNestedManyWithoutProviderInput
     userConversations?: ConversationCreateNestedManyWithoutUserInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
   }
 
   export type UserUncheckedCreateWithoutSentMessagesInput = {
@@ -33937,6 +36298,8 @@ export namespace Prisma {
     providerReviews?: ReviewUncheckedCreateNestedManyWithoutProviderInput
     providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
     userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
   }
 
   export type UserCreateOrConnectWithoutSentMessagesInput = {
@@ -34043,6 +36406,8 @@ export namespace Prisma {
     providerReviews?: ReviewUpdateManyWithoutProviderNestedInput
     providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUpdateManyWithoutUserNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSentMessagesInput = {
@@ -34106,6 +36471,652 @@ export namespace Prisma {
     providerReviews?: ReviewUncheckedUpdateManyWithoutProviderNestedInput
     providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
     userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
+  }
+
+  export type UserCreateWithoutQuoteRequestsAsClientInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    email: string
+    emailVerified?: boolean
+    emailVerificationOtp?: string | null
+    emailVerificationExpires?: Date | string | null
+    emailVerificationAttempts?: number
+    password?: string | null
+    passwordResetOtp?: string | null
+    passwordResetExpires?: Date | string | null
+    passwordResetAttempts?: number
+    role?: $Enums.Role
+    firstName?: string | null
+    lastName?: string | null
+    displayName?: string | null
+    username?: string | null
+    avatar?: string | null
+    bio?: string | null
+    dateOfBirth?: Date | string | null
+    timezone?: string
+    phoneNumber?: string | null
+    countryCode?: string | null
+    phoneVerified?: boolean
+    googleId?: string | null
+    appleId?: string | null
+    facebookId?: string | null
+    twitterId?: string | null
+    hasCompletedOnboarding?: boolean
+    onboardingCompletedAt?: Date | string | null
+    profileCompleteness?: number
+    serviceProviderExperienceLevel?: $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: boolean
+    serviceProviderVerifiedAt?: Date | string | null
+    isPremium?: boolean
+    subscriptionStatus?: $Enums.SubscriptionStatus | null
+    subscriptionTier?: string | null
+    subscriptionStartDate?: Date | string | null
+    subscriptionEndDate?: Date | string | null
+    themePreference?: $Enums.ThemePreference
+    notificationsEnabled?: boolean
+    emailNotificationsEnabled?: boolean
+    smsNotificationsEnabled?: boolean
+    marketingNotifications?: boolean
+    preferredLanguage?: string
+    isProfilePublic?: boolean
+    dataAnalyticsEnabled?: boolean
+    status?: $Enums.UserStatus
+    lastLoginAt?: Date | string | null
+    lastActiveAt?: Date | string
+    addresses?: UserAddressCreateNestedManyWithoutUserInput
+    interests?: UserInterestCreateNestedManyWithoutUserInput
+    verificationDocuments?: VerificationDocumentCreateNestedManyWithoutUserInput
+    services?: ServiceCreateNestedManyWithoutProviderInput
+    clientOrders?: OrderCreateNestedManyWithoutClientInput
+    providerOrders?: OrderCreateNestedManyWithoutProviderInput
+    clientReviews?: ReviewCreateNestedManyWithoutClientInput
+    providerReviews?: ReviewCreateNestedManyWithoutProviderInput
+    providerConversations?: ConversationCreateNestedManyWithoutProviderInput
+    userConversations?: ConversationCreateNestedManyWithoutUserInput
+    sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsProvider?: QuoteRequestCreateNestedManyWithoutProviderInput
+  }
+
+  export type UserUncheckedCreateWithoutQuoteRequestsAsClientInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    email: string
+    emailVerified?: boolean
+    emailVerificationOtp?: string | null
+    emailVerificationExpires?: Date | string | null
+    emailVerificationAttempts?: number
+    password?: string | null
+    passwordResetOtp?: string | null
+    passwordResetExpires?: Date | string | null
+    passwordResetAttempts?: number
+    role?: $Enums.Role
+    firstName?: string | null
+    lastName?: string | null
+    displayName?: string | null
+    username?: string | null
+    avatar?: string | null
+    bio?: string | null
+    dateOfBirth?: Date | string | null
+    timezone?: string
+    phoneNumber?: string | null
+    countryCode?: string | null
+    phoneVerified?: boolean
+    googleId?: string | null
+    appleId?: string | null
+    facebookId?: string | null
+    twitterId?: string | null
+    hasCompletedOnboarding?: boolean
+    onboardingCompletedAt?: Date | string | null
+    profileCompleteness?: number
+    serviceProviderExperienceLevel?: $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: boolean
+    serviceProviderVerifiedAt?: Date | string | null
+    isPremium?: boolean
+    subscriptionStatus?: $Enums.SubscriptionStatus | null
+    subscriptionTier?: string | null
+    subscriptionStartDate?: Date | string | null
+    subscriptionEndDate?: Date | string | null
+    themePreference?: $Enums.ThemePreference
+    notificationsEnabled?: boolean
+    emailNotificationsEnabled?: boolean
+    smsNotificationsEnabled?: boolean
+    marketingNotifications?: boolean
+    preferredLanguage?: string
+    isProfilePublic?: boolean
+    dataAnalyticsEnabled?: boolean
+    status?: $Enums.UserStatus
+    lastLoginAt?: Date | string | null
+    lastActiveAt?: Date | string
+    addresses?: UserAddressUncheckedCreateNestedManyWithoutUserInput
+    interests?: UserInterestUncheckedCreateNestedManyWithoutUserInput
+    verificationDocuments?: VerificationDocumentUncheckedCreateNestedManyWithoutUserInput
+    services?: ServiceUncheckedCreateNestedManyWithoutProviderInput
+    clientOrders?: OrderUncheckedCreateNestedManyWithoutClientInput
+    providerOrders?: OrderUncheckedCreateNestedManyWithoutProviderInput
+    clientReviews?: ReviewUncheckedCreateNestedManyWithoutClientInput
+    providerReviews?: ReviewUncheckedCreateNestedManyWithoutProviderInput
+    providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
+    userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
+    sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedCreateNestedManyWithoutProviderInput
+  }
+
+  export type UserCreateOrConnectWithoutQuoteRequestsAsClientInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutQuoteRequestsAsClientInput, UserUncheckedCreateWithoutQuoteRequestsAsClientInput>
+  }
+
+  export type UserCreateWithoutQuoteRequestsAsProviderInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    email: string
+    emailVerified?: boolean
+    emailVerificationOtp?: string | null
+    emailVerificationExpires?: Date | string | null
+    emailVerificationAttempts?: number
+    password?: string | null
+    passwordResetOtp?: string | null
+    passwordResetExpires?: Date | string | null
+    passwordResetAttempts?: number
+    role?: $Enums.Role
+    firstName?: string | null
+    lastName?: string | null
+    displayName?: string | null
+    username?: string | null
+    avatar?: string | null
+    bio?: string | null
+    dateOfBirth?: Date | string | null
+    timezone?: string
+    phoneNumber?: string | null
+    countryCode?: string | null
+    phoneVerified?: boolean
+    googleId?: string | null
+    appleId?: string | null
+    facebookId?: string | null
+    twitterId?: string | null
+    hasCompletedOnboarding?: boolean
+    onboardingCompletedAt?: Date | string | null
+    profileCompleteness?: number
+    serviceProviderExperienceLevel?: $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: boolean
+    serviceProviderVerifiedAt?: Date | string | null
+    isPremium?: boolean
+    subscriptionStatus?: $Enums.SubscriptionStatus | null
+    subscriptionTier?: string | null
+    subscriptionStartDate?: Date | string | null
+    subscriptionEndDate?: Date | string | null
+    themePreference?: $Enums.ThemePreference
+    notificationsEnabled?: boolean
+    emailNotificationsEnabled?: boolean
+    smsNotificationsEnabled?: boolean
+    marketingNotifications?: boolean
+    preferredLanguage?: string
+    isProfilePublic?: boolean
+    dataAnalyticsEnabled?: boolean
+    status?: $Enums.UserStatus
+    lastLoginAt?: Date | string | null
+    lastActiveAt?: Date | string
+    addresses?: UserAddressCreateNestedManyWithoutUserInput
+    interests?: UserInterestCreateNestedManyWithoutUserInput
+    verificationDocuments?: VerificationDocumentCreateNestedManyWithoutUserInput
+    services?: ServiceCreateNestedManyWithoutProviderInput
+    clientOrders?: OrderCreateNestedManyWithoutClientInput
+    providerOrders?: OrderCreateNestedManyWithoutProviderInput
+    clientReviews?: ReviewCreateNestedManyWithoutClientInput
+    providerReviews?: ReviewCreateNestedManyWithoutProviderInput
+    providerConversations?: ConversationCreateNestedManyWithoutProviderInput
+    userConversations?: ConversationCreateNestedManyWithoutUserInput
+    sentMessages?: MessageCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestCreateNestedManyWithoutClientInput
+  }
+
+  export type UserUncheckedCreateWithoutQuoteRequestsAsProviderInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    email: string
+    emailVerified?: boolean
+    emailVerificationOtp?: string | null
+    emailVerificationExpires?: Date | string | null
+    emailVerificationAttempts?: number
+    password?: string | null
+    passwordResetOtp?: string | null
+    passwordResetExpires?: Date | string | null
+    passwordResetAttempts?: number
+    role?: $Enums.Role
+    firstName?: string | null
+    lastName?: string | null
+    displayName?: string | null
+    username?: string | null
+    avatar?: string | null
+    bio?: string | null
+    dateOfBirth?: Date | string | null
+    timezone?: string
+    phoneNumber?: string | null
+    countryCode?: string | null
+    phoneVerified?: boolean
+    googleId?: string | null
+    appleId?: string | null
+    facebookId?: string | null
+    twitterId?: string | null
+    hasCompletedOnboarding?: boolean
+    onboardingCompletedAt?: Date | string | null
+    profileCompleteness?: number
+    serviceProviderExperienceLevel?: $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: boolean
+    serviceProviderVerifiedAt?: Date | string | null
+    isPremium?: boolean
+    subscriptionStatus?: $Enums.SubscriptionStatus | null
+    subscriptionTier?: string | null
+    subscriptionStartDate?: Date | string | null
+    subscriptionEndDate?: Date | string | null
+    themePreference?: $Enums.ThemePreference
+    notificationsEnabled?: boolean
+    emailNotificationsEnabled?: boolean
+    smsNotificationsEnabled?: boolean
+    marketingNotifications?: boolean
+    preferredLanguage?: string
+    isProfilePublic?: boolean
+    dataAnalyticsEnabled?: boolean
+    status?: $Enums.UserStatus
+    lastLoginAt?: Date | string | null
+    lastActiveAt?: Date | string
+    addresses?: UserAddressUncheckedCreateNestedManyWithoutUserInput
+    interests?: UserInterestUncheckedCreateNestedManyWithoutUserInput
+    verificationDocuments?: VerificationDocumentUncheckedCreateNestedManyWithoutUserInput
+    services?: ServiceUncheckedCreateNestedManyWithoutProviderInput
+    clientOrders?: OrderUncheckedCreateNestedManyWithoutClientInput
+    providerOrders?: OrderUncheckedCreateNestedManyWithoutProviderInput
+    clientReviews?: ReviewUncheckedCreateNestedManyWithoutClientInput
+    providerReviews?: ReviewUncheckedCreateNestedManyWithoutProviderInput
+    providerConversations?: ConversationUncheckedCreateNestedManyWithoutProviderInput
+    userConversations?: ConversationUncheckedCreateNestedManyWithoutUserInput
+    sentMessages?: MessageUncheckedCreateNestedManyWithoutSenderInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedCreateNestedManyWithoutClientInput
+  }
+
+  export type UserCreateOrConnectWithoutQuoteRequestsAsProviderInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutQuoteRequestsAsProviderInput, UserUncheckedCreateWithoutQuoteRequestsAsProviderInput>
+  }
+
+  export type ServiceCreateWithoutQuoteRequestsInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    title: string
+    slug: string
+    overview: string
+    coverImage?: string | null
+    tags?: ServiceCreatetagsInput | string[]
+    status?: $Enums.ServiceStatus
+    provider: UserCreateNestedOneWithoutServicesInput
+    category: CategoryCreateNestedOneWithoutServicesInput
+    plans?: ServicePlanCreateNestedManyWithoutServiceInput
+    addons?: ServiceAddonCreateNestedManyWithoutServiceInput
+    images?: ServiceImageCreateNestedManyWithoutServiceInput
+    orders?: OrderCreateNestedManyWithoutServiceInput
+    reviews?: ReviewCreateNestedManyWithoutServiceInput
+  }
+
+  export type ServiceUncheckedCreateWithoutQuoteRequestsInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    title: string
+    slug: string
+    overview: string
+    coverImage?: string | null
+    tags?: ServiceCreatetagsInput | string[]
+    status?: $Enums.ServiceStatus
+    providerId: string
+    categoryId: string
+    plans?: ServicePlanUncheckedCreateNestedManyWithoutServiceInput
+    addons?: ServiceAddonUncheckedCreateNestedManyWithoutServiceInput
+    images?: ServiceImageUncheckedCreateNestedManyWithoutServiceInput
+    orders?: OrderUncheckedCreateNestedManyWithoutServiceInput
+    reviews?: ReviewUncheckedCreateNestedManyWithoutServiceInput
+  }
+
+  export type ServiceCreateOrConnectWithoutQuoteRequestsInput = {
+    where: ServiceWhereUniqueInput
+    create: XOR<ServiceCreateWithoutQuoteRequestsInput, ServiceUncheckedCreateWithoutQuoteRequestsInput>
+  }
+
+  export type UserUpsertWithoutQuoteRequestsAsClientInput = {
+    update: XOR<UserUpdateWithoutQuoteRequestsAsClientInput, UserUncheckedUpdateWithoutQuoteRequestsAsClientInput>
+    create: XOR<UserCreateWithoutQuoteRequestsAsClientInput, UserUncheckedCreateWithoutQuoteRequestsAsClientInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutQuoteRequestsAsClientInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutQuoteRequestsAsClientInput, UserUncheckedUpdateWithoutQuoteRequestsAsClientInput>
+  }
+
+  export type UserUpdateWithoutQuoteRequestsAsClientInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    email?: StringFieldUpdateOperationsInput | string
+    emailVerified?: BoolFieldUpdateOperationsInput | boolean
+    emailVerificationOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    emailVerificationExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    emailVerificationAttempts?: IntFieldUpdateOperationsInput | number
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    passwordResetAttempts?: IntFieldUpdateOperationsInput | number
+    role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
+    firstName?: NullableStringFieldUpdateOperationsInput | string | null
+    lastName?: NullableStringFieldUpdateOperationsInput | string | null
+    displayName?: NullableStringFieldUpdateOperationsInput | string | null
+    username?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    dateOfBirth?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    countryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    phoneVerified?: BoolFieldUpdateOperationsInput | boolean
+    googleId?: NullableStringFieldUpdateOperationsInput | string | null
+    appleId?: NullableStringFieldUpdateOperationsInput | string | null
+    facebookId?: NullableStringFieldUpdateOperationsInput | string | null
+    twitterId?: NullableStringFieldUpdateOperationsInput | string | null
+    hasCompletedOnboarding?: BoolFieldUpdateOperationsInput | boolean
+    onboardingCompletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    profileCompleteness?: IntFieldUpdateOperationsInput | number
+    serviceProviderExperienceLevel?: NullableEnumExperienceLevelFieldUpdateOperationsInput | $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: BoolFieldUpdateOperationsInput | boolean
+    serviceProviderVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPremium?: BoolFieldUpdateOperationsInput | boolean
+    subscriptionStatus?: NullableEnumSubscriptionStatusFieldUpdateOperationsInput | $Enums.SubscriptionStatus | null
+    subscriptionTier?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionStartDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    subscriptionEndDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    themePreference?: EnumThemePreferenceFieldUpdateOperationsInput | $Enums.ThemePreference
+    notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    emailNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    smsNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
+    preferredLanguage?: StringFieldUpdateOperationsInput | string
+    isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
+    dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastActiveAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    addresses?: UserAddressUpdateManyWithoutUserNestedInput
+    interests?: UserInterestUpdateManyWithoutUserNestedInput
+    verificationDocuments?: VerificationDocumentUpdateManyWithoutUserNestedInput
+    services?: ServiceUpdateManyWithoutProviderNestedInput
+    clientOrders?: OrderUpdateManyWithoutClientNestedInput
+    providerOrders?: OrderUpdateManyWithoutProviderNestedInput
+    clientReviews?: ReviewUpdateManyWithoutClientNestedInput
+    providerReviews?: ReviewUpdateManyWithoutProviderNestedInput
+    providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
+    userConversations?: ConversationUpdateManyWithoutUserNestedInput
+    sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUpdateManyWithoutProviderNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutQuoteRequestsAsClientInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    email?: StringFieldUpdateOperationsInput | string
+    emailVerified?: BoolFieldUpdateOperationsInput | boolean
+    emailVerificationOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    emailVerificationExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    emailVerificationAttempts?: IntFieldUpdateOperationsInput | number
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    passwordResetAttempts?: IntFieldUpdateOperationsInput | number
+    role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
+    firstName?: NullableStringFieldUpdateOperationsInput | string | null
+    lastName?: NullableStringFieldUpdateOperationsInput | string | null
+    displayName?: NullableStringFieldUpdateOperationsInput | string | null
+    username?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    dateOfBirth?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    countryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    phoneVerified?: BoolFieldUpdateOperationsInput | boolean
+    googleId?: NullableStringFieldUpdateOperationsInput | string | null
+    appleId?: NullableStringFieldUpdateOperationsInput | string | null
+    facebookId?: NullableStringFieldUpdateOperationsInput | string | null
+    twitterId?: NullableStringFieldUpdateOperationsInput | string | null
+    hasCompletedOnboarding?: BoolFieldUpdateOperationsInput | boolean
+    onboardingCompletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    profileCompleteness?: IntFieldUpdateOperationsInput | number
+    serviceProviderExperienceLevel?: NullableEnumExperienceLevelFieldUpdateOperationsInput | $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: BoolFieldUpdateOperationsInput | boolean
+    serviceProviderVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPremium?: BoolFieldUpdateOperationsInput | boolean
+    subscriptionStatus?: NullableEnumSubscriptionStatusFieldUpdateOperationsInput | $Enums.SubscriptionStatus | null
+    subscriptionTier?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionStartDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    subscriptionEndDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    themePreference?: EnumThemePreferenceFieldUpdateOperationsInput | $Enums.ThemePreference
+    notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    emailNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    smsNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
+    preferredLanguage?: StringFieldUpdateOperationsInput | string
+    isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
+    dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastActiveAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    addresses?: UserAddressUncheckedUpdateManyWithoutUserNestedInput
+    interests?: UserInterestUncheckedUpdateManyWithoutUserNestedInput
+    verificationDocuments?: VerificationDocumentUncheckedUpdateManyWithoutUserNestedInput
+    services?: ServiceUncheckedUpdateManyWithoutProviderNestedInput
+    clientOrders?: OrderUncheckedUpdateManyWithoutClientNestedInput
+    providerOrders?: OrderUncheckedUpdateManyWithoutProviderNestedInput
+    clientReviews?: ReviewUncheckedUpdateManyWithoutClientNestedInput
+    providerReviews?: ReviewUncheckedUpdateManyWithoutProviderNestedInput
+    providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
+    userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
+    sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsProvider?: QuoteRequestUncheckedUpdateManyWithoutProviderNestedInput
+  }
+
+  export type UserUpsertWithoutQuoteRequestsAsProviderInput = {
+    update: XOR<UserUpdateWithoutQuoteRequestsAsProviderInput, UserUncheckedUpdateWithoutQuoteRequestsAsProviderInput>
+    create: XOR<UserCreateWithoutQuoteRequestsAsProviderInput, UserUncheckedCreateWithoutQuoteRequestsAsProviderInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutQuoteRequestsAsProviderInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutQuoteRequestsAsProviderInput, UserUncheckedUpdateWithoutQuoteRequestsAsProviderInput>
+  }
+
+  export type UserUpdateWithoutQuoteRequestsAsProviderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    email?: StringFieldUpdateOperationsInput | string
+    emailVerified?: BoolFieldUpdateOperationsInput | boolean
+    emailVerificationOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    emailVerificationExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    emailVerificationAttempts?: IntFieldUpdateOperationsInput | number
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    passwordResetAttempts?: IntFieldUpdateOperationsInput | number
+    role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
+    firstName?: NullableStringFieldUpdateOperationsInput | string | null
+    lastName?: NullableStringFieldUpdateOperationsInput | string | null
+    displayName?: NullableStringFieldUpdateOperationsInput | string | null
+    username?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    dateOfBirth?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    countryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    phoneVerified?: BoolFieldUpdateOperationsInput | boolean
+    googleId?: NullableStringFieldUpdateOperationsInput | string | null
+    appleId?: NullableStringFieldUpdateOperationsInput | string | null
+    facebookId?: NullableStringFieldUpdateOperationsInput | string | null
+    twitterId?: NullableStringFieldUpdateOperationsInput | string | null
+    hasCompletedOnboarding?: BoolFieldUpdateOperationsInput | boolean
+    onboardingCompletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    profileCompleteness?: IntFieldUpdateOperationsInput | number
+    serviceProviderExperienceLevel?: NullableEnumExperienceLevelFieldUpdateOperationsInput | $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: BoolFieldUpdateOperationsInput | boolean
+    serviceProviderVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPremium?: BoolFieldUpdateOperationsInput | boolean
+    subscriptionStatus?: NullableEnumSubscriptionStatusFieldUpdateOperationsInput | $Enums.SubscriptionStatus | null
+    subscriptionTier?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionStartDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    subscriptionEndDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    themePreference?: EnumThemePreferenceFieldUpdateOperationsInput | $Enums.ThemePreference
+    notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    emailNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    smsNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
+    preferredLanguage?: StringFieldUpdateOperationsInput | string
+    isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
+    dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastActiveAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    addresses?: UserAddressUpdateManyWithoutUserNestedInput
+    interests?: UserInterestUpdateManyWithoutUserNestedInput
+    verificationDocuments?: VerificationDocumentUpdateManyWithoutUserNestedInput
+    services?: ServiceUpdateManyWithoutProviderNestedInput
+    clientOrders?: OrderUpdateManyWithoutClientNestedInput
+    providerOrders?: OrderUpdateManyWithoutProviderNestedInput
+    clientReviews?: ReviewUpdateManyWithoutClientNestedInput
+    providerReviews?: ReviewUpdateManyWithoutProviderNestedInput
+    providerConversations?: ConversationUpdateManyWithoutProviderNestedInput
+    userConversations?: ConversationUpdateManyWithoutUserNestedInput
+    sentMessages?: MessageUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUpdateManyWithoutClientNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutQuoteRequestsAsProviderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    email?: StringFieldUpdateOperationsInput | string
+    emailVerified?: BoolFieldUpdateOperationsInput | boolean
+    emailVerificationOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    emailVerificationExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    emailVerificationAttempts?: IntFieldUpdateOperationsInput | number
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetOtp?: NullableStringFieldUpdateOperationsInput | string | null
+    passwordResetExpires?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    passwordResetAttempts?: IntFieldUpdateOperationsInput | number
+    role?: EnumRoleFieldUpdateOperationsInput | $Enums.Role
+    firstName?: NullableStringFieldUpdateOperationsInput | string | null
+    lastName?: NullableStringFieldUpdateOperationsInput | string | null
+    displayName?: NullableStringFieldUpdateOperationsInput | string | null
+    username?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    bio?: NullableStringFieldUpdateOperationsInput | string | null
+    dateOfBirth?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    timezone?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    countryCode?: NullableStringFieldUpdateOperationsInput | string | null
+    phoneVerified?: BoolFieldUpdateOperationsInput | boolean
+    googleId?: NullableStringFieldUpdateOperationsInput | string | null
+    appleId?: NullableStringFieldUpdateOperationsInput | string | null
+    facebookId?: NullableStringFieldUpdateOperationsInput | string | null
+    twitterId?: NullableStringFieldUpdateOperationsInput | string | null
+    hasCompletedOnboarding?: BoolFieldUpdateOperationsInput | boolean
+    onboardingCompletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    profileCompleteness?: IntFieldUpdateOperationsInput | number
+    serviceProviderExperienceLevel?: NullableEnumExperienceLevelFieldUpdateOperationsInput | $Enums.ExperienceLevel | null
+    isServiceProviderVerified?: BoolFieldUpdateOperationsInput | boolean
+    serviceProviderVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPremium?: BoolFieldUpdateOperationsInput | boolean
+    subscriptionStatus?: NullableEnumSubscriptionStatusFieldUpdateOperationsInput | $Enums.SubscriptionStatus | null
+    subscriptionTier?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionStartDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    subscriptionEndDate?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    themePreference?: EnumThemePreferenceFieldUpdateOperationsInput | $Enums.ThemePreference
+    notificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    emailNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    smsNotificationsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    marketingNotifications?: BoolFieldUpdateOperationsInput | boolean
+    preferredLanguage?: StringFieldUpdateOperationsInput | string
+    isProfilePublic?: BoolFieldUpdateOperationsInput | boolean
+    dataAnalyticsEnabled?: BoolFieldUpdateOperationsInput | boolean
+    status?: EnumUserStatusFieldUpdateOperationsInput | $Enums.UserStatus
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    lastActiveAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    addresses?: UserAddressUncheckedUpdateManyWithoutUserNestedInput
+    interests?: UserInterestUncheckedUpdateManyWithoutUserNestedInput
+    verificationDocuments?: VerificationDocumentUncheckedUpdateManyWithoutUserNestedInput
+    services?: ServiceUncheckedUpdateManyWithoutProviderNestedInput
+    clientOrders?: OrderUncheckedUpdateManyWithoutClientNestedInput
+    providerOrders?: OrderUncheckedUpdateManyWithoutProviderNestedInput
+    clientReviews?: ReviewUncheckedUpdateManyWithoutClientNestedInput
+    providerReviews?: ReviewUncheckedUpdateManyWithoutProviderNestedInput
+    providerConversations?: ConversationUncheckedUpdateManyWithoutProviderNestedInput
+    userConversations?: ConversationUncheckedUpdateManyWithoutUserNestedInput
+    sentMessages?: MessageUncheckedUpdateManyWithoutSenderNestedInput
+    quoteRequestsAsClient?: QuoteRequestUncheckedUpdateManyWithoutClientNestedInput
+  }
+
+  export type ServiceUpsertWithoutQuoteRequestsInput = {
+    update: XOR<ServiceUpdateWithoutQuoteRequestsInput, ServiceUncheckedUpdateWithoutQuoteRequestsInput>
+    create: XOR<ServiceCreateWithoutQuoteRequestsInput, ServiceUncheckedCreateWithoutQuoteRequestsInput>
+    where?: ServiceWhereInput
+  }
+
+  export type ServiceUpdateToOneWithWhereWithoutQuoteRequestsInput = {
+    where?: ServiceWhereInput
+    data: XOR<ServiceUpdateWithoutQuoteRequestsInput, ServiceUncheckedUpdateWithoutQuoteRequestsInput>
+  }
+
+  export type ServiceUpdateWithoutQuoteRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    overview?: StringFieldUpdateOperationsInput | string
+    coverImage?: NullableStringFieldUpdateOperationsInput | string | null
+    tags?: ServiceUpdatetagsInput | string[]
+    status?: EnumServiceStatusFieldUpdateOperationsInput | $Enums.ServiceStatus
+    provider?: UserUpdateOneRequiredWithoutServicesNestedInput
+    category?: CategoryUpdateOneRequiredWithoutServicesNestedInput
+    plans?: ServicePlanUpdateManyWithoutServiceNestedInput
+    addons?: ServiceAddonUpdateManyWithoutServiceNestedInput
+    images?: ServiceImageUpdateManyWithoutServiceNestedInput
+    orders?: OrderUpdateManyWithoutServiceNestedInput
+    reviews?: ReviewUpdateManyWithoutServiceNestedInput
+  }
+
+  export type ServiceUncheckedUpdateWithoutQuoteRequestsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    title?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    overview?: StringFieldUpdateOperationsInput | string
+    coverImage?: NullableStringFieldUpdateOperationsInput | string | null
+    tags?: ServiceUpdatetagsInput | string[]
+    status?: EnumServiceStatusFieldUpdateOperationsInput | $Enums.ServiceStatus
+    providerId?: StringFieldUpdateOperationsInput | string
+    categoryId?: StringFieldUpdateOperationsInput | string
+    plans?: ServicePlanUncheckedUpdateManyWithoutServiceNestedInput
+    addons?: ServiceAddonUncheckedUpdateManyWithoutServiceNestedInput
+    images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
+    orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
+    reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type UserAddressCreateManyUserInput = {
@@ -34241,6 +37252,40 @@ export namespace Prisma {
     conversationId: string
     content: string
     isRead?: boolean
+  }
+
+  export type QuoteRequestCreateManyClientInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    providerId: string
+    serviceId?: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
+  }
+
+  export type QuoteRequestCreateManyProviderInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    clientId: string
+    serviceId?: string | null
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
   }
 
   export type UserAddressUpdateWithoutUserInput = {
@@ -34379,6 +37424,7 @@ export namespace Prisma {
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutProviderInput = {
@@ -34397,6 +37443,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateManyWithoutProviderInput = {
@@ -34674,6 +37721,108 @@ export namespace Prisma {
     isRead?: BoolFieldUpdateOperationsInput | boolean
   }
 
+  export type QuoteRequestUpdateWithoutClientInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: UserUpdateOneRequiredWithoutQuoteRequestsAsProviderNestedInput
+    service?: ServiceUpdateOneWithoutQuoteRequestsNestedInput
+  }
+
+  export type QuoteRequestUncheckedUpdateWithoutClientInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    providerId?: StringFieldUpdateOperationsInput | string
+    serviceId?: NullableStringFieldUpdateOperationsInput | string | null
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestUncheckedUpdateManyWithoutClientInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    providerId?: StringFieldUpdateOperationsInput | string
+    serviceId?: NullableStringFieldUpdateOperationsInput | string | null
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestUpdateWithoutProviderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+    client?: UserUpdateOneRequiredWithoutQuoteRequestsAsClientNestedInput
+    service?: ServiceUpdateOneWithoutQuoteRequestsNestedInput
+  }
+
+  export type QuoteRequestUncheckedUpdateWithoutProviderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    clientId?: StringFieldUpdateOperationsInput | string
+    serviceId?: NullableStringFieldUpdateOperationsInput | string | null
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestUncheckedUpdateManyWithoutProviderInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    clientId?: StringFieldUpdateOperationsInput | string
+    serviceId?: NullableStringFieldUpdateOperationsInput | string | null
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
   export type CategoryCreateManyParentCategoryInput = {
     id?: string
     createdAt?: Date | string
@@ -34781,6 +37930,7 @@ export namespace Prisma {
     images?: ServiceImageUpdateManyWithoutServiceNestedInput
     orders?: OrderUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateWithoutCategoryInput = {
@@ -34799,6 +37949,7 @@ export namespace Prisma {
     images?: ServiceImageUncheckedUpdateManyWithoutServiceNestedInput
     orders?: OrderUncheckedUpdateManyWithoutServiceNestedInput
     reviews?: ReviewUncheckedUpdateManyWithoutServiceNestedInput
+    quoteRequests?: QuoteRequestUncheckedUpdateManyWithoutServiceNestedInput
   }
 
   export type ServiceUncheckedUpdateManyWithoutCategoryInput = {
@@ -34870,6 +38021,23 @@ export namespace Prisma {
     providerId: string
     rating: number
     comment?: string | null
+  }
+
+  export type QuoteRequestCreateManyServiceInput = {
+    id?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    clientId: string
+    providerId: string
+    projectTitle: string
+    description: string
+    deliveryTime: string
+    budget: Decimal | DecimalJsLike | number | string
+    currency?: string
+    attachments?: QuoteRequestCreateattachmentsInput | string[]
+    status?: $Enums.QuoteStatus
+    providerNote?: string | null
+    declineReason?: string | null
   }
 
   export type ServicePlanUpdateWithoutServiceInput = {
@@ -35050,6 +38218,57 @@ export namespace Prisma {
     providerId?: StringFieldUpdateOperationsInput | string
     rating?: IntFieldUpdateOperationsInput | number
     comment?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestUpdateWithoutServiceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+    client?: UserUpdateOneRequiredWithoutQuoteRequestsAsClientNestedInput
+    provider?: UserUpdateOneRequiredWithoutQuoteRequestsAsProviderNestedInput
+  }
+
+  export type QuoteRequestUncheckedUpdateWithoutServiceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    clientId?: StringFieldUpdateOperationsInput | string
+    providerId?: StringFieldUpdateOperationsInput | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type QuoteRequestUncheckedUpdateManyWithoutServiceInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    clientId?: StringFieldUpdateOperationsInput | string
+    providerId?: StringFieldUpdateOperationsInput | string
+    projectTitle?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    deliveryTime?: StringFieldUpdateOperationsInput | string
+    budget?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    currency?: StringFieldUpdateOperationsInput | string
+    attachments?: QuoteRequestUpdateattachmentsInput | string[]
+    status?: EnumQuoteStatusFieldUpdateOperationsInput | $Enums.QuoteStatus
+    providerNote?: NullableStringFieldUpdateOperationsInput | string | null
+    declineReason?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type OrderAddOnCreateManyOrderInput = {

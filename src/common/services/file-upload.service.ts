@@ -49,7 +49,7 @@ export class FileUploadService {
     // Get the configured provider, default to LOCAL for development
     const configuredProvider = this.configService.get<string>(
       'FILE_UPLOAD_PROVIDER',
-      FileUploadProvider.LOCAL,
+      FileUploadProvider.SUPABASE,
     );
 
     // Validate and set the provider
