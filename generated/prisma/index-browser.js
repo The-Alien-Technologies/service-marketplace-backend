@@ -370,6 +370,21 @@ exports.Prisma.QuoteRequestScalarFieldEnum = {
   declineReason: 'declineReason'
 };
 
+exports.Prisma.DisputeScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  orderId: 'orderId',
+  clientId: 'clientId',
+  providerId: 'providerId',
+  issueType: 'issueType',
+  description: 'description',
+  priority: 'priority',
+  status: 'status',
+  adminNote: 'adminNote',
+  resolvedAt: 'resolvedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -460,6 +475,28 @@ exports.QuoteStatus = exports.$Enums.QuoteStatus = {
   EXPIRED: 'EXPIRED'
 };
 
+exports.DisputeIssueType = exports.$Enums.DisputeIssueType = {
+  LATE_DELIVERY: 'LATE_DELIVERY',
+  NON_DELIVERY: 'NON_DELIVERY',
+  QUALITY_ISSUE: 'QUALITY_ISSUE',
+  PAYMENT_DISPUTE: 'PAYMENT_DISPUTE',
+  MISCOMMUNICATION: 'MISCOMMUNICATION',
+  OTHER: 'OTHER'
+};
+
+exports.DisputePriority = exports.$Enums.DisputePriority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH'
+};
+
+exports.DisputeStatus = exports.$Enums.DisputeStatus = {
+  OPEN: 'OPEN',
+  INVESTIGATING: 'INVESTIGATING',
+  RESOLVED: 'RESOLVED',
+  CLOSED: 'CLOSED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   UserAddress: 'UserAddress',
@@ -477,7 +514,8 @@ exports.Prisma.ModelName = {
   ReviewResponse: 'ReviewResponse',
   Conversation: 'Conversation',
   Message: 'Message',
-  QuoteRequest: 'QuoteRequest'
+  QuoteRequest: 'QuoteRequest',
+  Dispute: 'Dispute'
 };
 
 /**

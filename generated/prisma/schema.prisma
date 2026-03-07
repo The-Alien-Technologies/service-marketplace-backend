@@ -144,6 +144,8 @@ model User {
   sentMessages            Message[]              @relation("SentMessages")
   quoteRequestsAsClient   QuoteRequest[]         @relation("ClientQuoteRequests")
   quoteRequestsAsProvider QuoteRequest[]         @relation("ProviderQuoteRequests")
+  clientDisputes          Dispute[]              @relation("ClientDisputes")
+  providerDisputes        Dispute[]              @relation("ProviderDisputes")
 
   @@map("users")
 }
@@ -378,8 +380,9 @@ model Order {
   status OrderStatus @default(PENDING)
 
   // Add-ons (stored as order items)
-  addOns OrderAddOn[]
-  review Review?
+  addOns  OrderAddOn[]
+  review  Review?
+  dispute Dispute?
 
   @@map("orders")
 }
@@ -507,4 +510,55 @@ model QuoteRequest {
   declineReason String?
 
   @@map("quote_requests")
+}
+
+// Dispute Models
+enum DisputeIssueType {
+  LATE_DELIVERY
+  NON_DELIVERY
+  QUALITY_ISSUE
+  PAYMENT_DISPUTE
+  MISCOMMUNICATION
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum DisputePriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Dispute {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One dispute per order
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Parties
+  clientId   String
+  client     User   @relation("ClientDisputes", fields: [clientId], references: [id])
+  providerId String
+  provider   User   @relation("ProviderDisputes", fields: [providerId], references: [id])
+
+  // Details
+  issueType   DisputeIssueType
+  description String           @db.Text
+  priority    DisputePriority  @default(LOW)
+
+  // Resolution
+  status     DisputeStatus @default(OPEN)
+  adminNote  String?       @db.Text
+  resolvedAt DateTime?
+
+  @@map("disputes")
 }

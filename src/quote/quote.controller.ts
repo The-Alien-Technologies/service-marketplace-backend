@@ -106,4 +106,19 @@ export class QuoteController {
     );
     return ResponseUtil.success({ quote }, 'Offer sent successfully');
   }
+
+  /** Client: accept or decline a provider's offer */
+  @Patch(':id/respond')
+  async respondToOffer(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateQuoteStatusDto,
+  ) {
+    const quote = await this.quoteService.respondToOffer(
+      id,
+      req.currentUser.id,
+      dto,
+    );
+    return ResponseUtil.success({ quote }, 'Response submitted');
+  }
 }

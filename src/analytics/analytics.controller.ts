@@ -14,6 +14,12 @@ import { ResponseUtil } from '../common/utils/response.util';
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
+  @Get('user')
+  async userDashboard(@CurrentUser('userId') userId: string) {
+    const data = await this.analyticsService.getUserDashboard(userId);
+    return ResponseUtil.success(data, 'User analytics retrieved');
+  }
+
   @Get('provider')
   @IsServiceProvider()
   async providerDashboard(@CurrentUser('userId') userId: string) {

@@ -5,6 +5,7 @@ import {
   Min,
   IsNotEmpty,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateQuoteDto {
   @IsString()
@@ -27,6 +28,7 @@ export class CreateQuoteDto {
   @IsNotEmpty()
   deliveryTime: string;
 
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   budget: number;
@@ -51,6 +53,7 @@ export class SendQuoteOfferDto {
   @IsNotEmpty()
   projectTitle: string;
 
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   budget: number;

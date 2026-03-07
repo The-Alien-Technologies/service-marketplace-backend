@@ -120,10 +120,10 @@ export class AnalyticsService {
         reviewCount: ratingData._count.id,
       },
       orderStatusBreakdown: [
-        { name: 'Awaiting', value: awaitingOrders, color: '#facc15' },
-        { name: 'In-progress', value: inProgressOrders, color: '#3b82f6' },
-        { name: 'Declined', value: declinedOrders, color: '#f87171' },
-        { name: 'Completed', value: completedOrders, color: '#4ade80' },
+        { name: 'Awaiting', value: awaitingOrders },
+        { name: 'In-progress', value: inProgressOrders },
+        { name: 'Declined', value: declinedOrders },
+        { name: 'Completed', value: completedOrders },
       ],
       recentOrders: recentOrders.map((o) => ({
         id: o.id,
@@ -142,6 +142,99 @@ export class AnalyticsService {
     };
   }
 
+  async getUserDashboard(userId: string) {
+    const [
+      activeOrders,
+      completedOrders,
+      awaitingOrders,
+      declinedOrders,
+      inProgressOrders,
+      recentOrders,
+      completedOrderData,
+    ] = await Promise.all([
+      // Active = AWAITING + IN_PROGRESS
+      this.prisma.order.count({
+        where: {
+          clientId: userId,
+          status: { in: [OrderStatus.AWAITING, OrderStatus.IN_PROGRESS] },
+        },
+      }),
+      this.prisma.order.count({
+        where: { clientId: userId, status: OrderStatus.COMPLETED },
+      }),
+      this.prisma.order.count({
+        where: { clientId: userId, status: OrderStatus.AWAITING },
+      }),
+      this.prisma.order.count({
+        where: { clientId: userId, status: OrderStatus.DECLINED },
+      }),
+      this.prisma.order.count({
+        where: { clientId: userId, status: OrderStatus.IN_PROGRESS },
+      }),
+      // 5 most recent orders for user
+      this.prisma.order.findMany({
+        where: { clientId: userId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: {
+          provider: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              displayName: true,
+              avatar: true,
+            },
+          },
+          service: { select: { title: true } },
+        },
+      }),
+      // Get all completed orders to calculate total spent
+      this.prisma.order.findMany({
+        where: { clientId: userId, status: OrderStatus.COMPLETED },
+        select: { total: true },
+      }),
+    ]);
+
+    const totalOrders = activeOrders + completedOrders + declinedOrders;
+
+    // Calculate total spent using Decimal aggregation
+    const totalSpent = completedOrderData.reduce(
+      (sum, order) => sum + (order.total?.toNumber() || 0),
+      0,
+    );
+
+    return {
+      stats: {
+        activeOrders,
+        completedOrders,
+        totalOrders,
+        totalSpent,
+      },
+      orderStatusBreakdown: [
+        { name: 'Completed', value: completedOrders },
+        { name: 'Pending', value: awaitingOrders },
+        { name: 'In-progress', value: inProgressOrders },
+        { name: 'Declined', value: declinedOrders },
+      ],
+      recentOrders: recentOrders.map((o) => ({
+        id: o.id,
+        orderNumber: `#${o.orderNumber}`,
+        providerName: o.provider
+          ? o.provider.displayName ||
+            `${o.provider.firstName} ${o.provider.lastName}`.trim()
+          : 'Unknown',
+        providerAvatar: o.provider?.avatar || null,
+        plan: o.planTitle ?? '—',
+        serviceTitle: o.service?.title ?? '—',
+        status: o.status,
+        createdAt: o.createdAt,
+        total: o.total?.toNumber() || 0,
+      })),
+      spendingChart: mockMonthlyData(50), // Reusing mock chart logic for now
+    };
+  }
+
   async getAdminDashboard() {
     const [
       totalUsers,
@@ -151,7 +244,6 @@ export class AnalyticsService {
       awaitingOrders,
       declinedOrders,
       inProgressOrders,
-      expiredOrders,
       topCategories,
     ] = await Promise.all([
       this.prisma.user.count(),
@@ -165,8 +257,6 @@ export class AnalyticsService {
       this.prisma.order.count({ where: { status: OrderStatus.AWAITING } }),
       this.prisma.order.count({ where: { status: OrderStatus.DECLINED } }),
       this.prisma.order.count({ where: { status: OrderStatus.IN_PROGRESS } }),
-      // EXPIRED — use DECLINED as fallback if no EXPIRED status exists
-      this.prisma.order.count({ where: { status: OrderStatus.DECLINED } }),
       // Top categories by number of services
       this.prisma.category.findMany({
         take: 5,
@@ -192,11 +282,11 @@ export class AnalyticsService {
         revenue: 100500,
       },
       orderStatusBreakdown: [
-        { name: 'Completed', value: completedOrders, color: '#4ade80' },
-        { name: 'Pending', value: awaitingOrders, color: '#facc15' },
-        { name: 'In-progress', value: inProgressOrders, color: '#3b82f6' },
-        { name: 'Declined', value: declinedOrders, color: '#f87171' },
-        { name: 'Expired', value: 0, color: '#9ca3af' },
+        { name: 'Completed', value: completedOrders },
+        { name: 'Pending', value: awaitingOrders },
+        { name: 'In-progress', value: inProgressOrders },
+        { name: 'Declined', value: declinedOrders },
+        { name: 'Expired', value: 0 },
       ],
       totalOrders,
       topCategories: topCategories.map((c) => ({

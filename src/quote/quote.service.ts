@@ -140,4 +140,25 @@ export class QuoteService {
       include: QUOTE_INCLUDE,
     });
   }
+
+  async respondToOffer(
+    id: string,
+    clientId: string,
+    dto: UpdateQuoteStatusDto,
+  ) {
+    const quote = await this.prisma.quoteRequest.findUnique({ where: { id } });
+    if (!quote) throw new NotFoundException('Quote request not found');
+    if (quote.clientId !== clientId) {
+      throw new ForbiddenException('Only the client can respond to an offer');
+    }
+
+    return this.prisma.quoteRequest.update({
+      where: { id },
+      data: {
+        status: dto.status as QuoteStatus,
+        ...(dto.declineReason ? { declineReason: dto.declineReason } : {}),
+      },
+      include: QUOTE_INCLUDE,
+    });
+  }
 }
