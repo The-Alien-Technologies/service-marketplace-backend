@@ -18,6 +18,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ApplicationExceptionFilter } from './common/filters/http-filter.filter';
 import { SeederModule } from './common/seeders/seeder.module';
 import { ChatModule } from './chat/chat.module';
+import { QuoteModule } from './quote/quote.module';
+import { DisputeModule } from './dispute/dispute.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { ChatModule } from './chat/chat.module';
     PrismaModule,
     SeederModule,
     ChatModule,
+    QuoteModule,
+    DisputeModule,
   ],
   controllers: [AppController],
   providers: [
