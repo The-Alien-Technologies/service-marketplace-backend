@@ -26,6 +26,7 @@ import { UpdateServiceDto } from './dto/update-service.dto';
 import { ResponseUtil } from '../common/utils/response.util';
 import { ServiceStatus } from '../../generated/prisma';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
+import { Public } from '../common/decorators/is-public.decorator';
 
 @Controller('services')
 export class ServicesController {
@@ -61,6 +62,7 @@ export class ServicesController {
   }
 
   @Get()
+  @Public()
   async findAll(
     @Query('status') status?: ServiceStatus,
     @Query('categoryId') categoryId?: string,
@@ -116,6 +118,7 @@ export class ServicesController {
   }
 
   @Get(':id')
+  @Public()
   async findOne(@Param('id') id: string) {
     const service = await this.servicesService.findOne(id);
     return ResponseUtil.success(service, 'Service retrieved successfully');
@@ -128,9 +131,23 @@ export class ServicesController {
   async update(
     @Param('id') id: string,
     @CurrentUser('userId') userId: string,
-    @Body() updateServiceDto: UpdateServiceDto,
+    @Body() body: any, // Use 'any' to get raw body first
     @UploadedFile() coverImage?: Express.Multer.File,
   ) {
+    // Parse JSON strings from FormData
+    const updateServiceDto: UpdateServiceDto = {
+      ...body,
+      plans:
+        body.plans && typeof body.plans === 'string'
+          ? JSON.parse(body.plans)
+          : body.plans,
+      addons:
+        body.addons && typeof body.addons === 'string'
+          ? JSON.parse(body.addons)
+          : body.addons,
+      tags: Array.isArray(body.tags) ? body.tags : body.tags ? [body.tags] : [],
+    };
+
     const service = await this.servicesService.update(
       id,
       userId,

@@ -246,6 +246,39 @@ export class ServicesService {
         tags: updateServiceDto.tags,
         status: updateServiceDto.status,
         coverImage: coverImageUrl || service.coverImage,
+        // Delete all existing plans and create new ones
+        plans:
+          updateServiceDto.plans && updateServiceDto.plans.length > 0
+            ? {
+                deleteMany: {},
+                create: updateServiceDto.plans
+                  .filter(
+                    (plan) =>
+                      plan.title && plan.price !== undefined && plan.inclusions,
+                  )
+                  .map((plan, index) => ({
+                    title: plan.title,
+                    price: plan.price,
+                    inclusions: plan.inclusions,
+                    isPopular: plan.isPopular || false,
+                    sortOrder: plan.sortOrder ?? index,
+                  })),
+              }
+            : undefined,
+        // Delete all existing addons and create new ones
+        addons:
+          updateServiceDto.addons && updateServiceDto.addons.length > 0
+            ? {
+                deleteMany: {},
+                create: updateServiceDto.addons
+                  .filter((addon) => addon.title && addon.price !== undefined)
+                  .map((addon) => ({
+                    title: addon.title,
+                    description: addon.description || '',
+                    price: addon.price,
+                  })),
+              }
+            : undefined,
       },
       include: {
         plans: true,

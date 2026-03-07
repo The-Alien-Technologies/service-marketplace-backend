@@ -116,12 +116,14 @@ model User {
   subscriptionEndDate   DateTime?
 
   // Preferences
-  themePreference        ThemePreference @default(SYSTEM)
-  notificationsEnabled   Boolean         @default(true)
-  marketingNotifications Boolean         @default(false)
-  preferredLanguage      String          @default("en")
-  isProfilePublic        Boolean         @default(false)
-  dataAnalyticsEnabled   Boolean         @default(true)
+  themePreference           ThemePreference @default(SYSTEM)
+  notificationsEnabled      Boolean         @default(true)
+  emailNotificationsEnabled Boolean         @default(true)
+  smsNotificationsEnabled   Boolean         @default(false)
+  marketingNotifications    Boolean         @default(false)
+  preferredLanguage         String          @default("en")
+  isProfilePublic           Boolean         @default(false)
+  dataAnalyticsEnabled      Boolean         @default(true)
 
   // Status & Activity
   status       UserStatus @default(ACTIVE)
@@ -129,10 +131,21 @@ model User {
   lastActiveAt DateTime   @default(now())
 
   // Relations
-  addresses             UserAddress[]
-  interests             UserInterest[]
-  verificationDocuments VerificationDocument[]
-  services              Service[]
+  addresses               UserAddress[]
+  interests               UserInterest[]
+  verificationDocuments   VerificationDocument[]
+  services                Service[]
+  clientOrders            Order[]                @relation("ClientOrders")
+  providerOrders          Order[]                @relation("ProviderOrders")
+  clientReviews           Review[]               @relation("ClientReviews")
+  providerReviews         Review[]               @relation("ProviderReviews")
+  providerConversations   Conversation[]         @relation("ProviderConversations")
+  userConversations       Conversation[]         @relation("UserConversations")
+  sentMessages            Message[]              @relation("SentMessages")
+  quoteRequestsAsClient   QuoteRequest[]         @relation("ClientQuoteRequests")
+  quoteRequestsAsProvider QuoteRequest[]         @relation("ProviderQuoteRequests")
+  clientDisputes          Dispute[]              @relation("ClientDisputes")
+  providerDisputes        Dispute[]              @relation("ProviderDisputes")
 
   @@map("users")
 }
@@ -239,6 +252,23 @@ enum ServiceStatus {
   SUSPENDED
 }
 
+enum OrderStatus {
+  PENDING // Just created, payment not initiated
+  AWAITING // Payment completed, awaiting provider acceptance
+  IN_PROGRESS // Provider accepted, work in progress
+  COMPLETED // Work completed
+  DECLINED // Provider declined or order cancelled
+  REFUNDED // Order refunded
+}
+
+enum QuoteStatus {
+  NEW
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 // Service Models
 model Service {
   id        String   @id @default(cuid())
@@ -260,9 +290,12 @@ model Service {
   category   Category @relation(fields: [categoryId], references: [id])
 
   // Nested entities
-  plans  ServicePlan[]
-  addons ServiceAddon[]
-  images ServiceImage[]
+  plans         ServicePlan[]
+  addons        ServiceAddon[]
+  images        ServiceImage[]
+  orders        Order[]
+  reviews       Review[]
+  quoteRequests QuoteRequest[]
 
   @@map("services")
 }
@@ -313,4 +346,219 @@ model ServiceImage {
   service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@map("service_images")
+}
+
+// Order Models
+model Order {
+  id          String   @id @default(cuid())
+  orderNumber String   @unique // User-friendly ID like #WJ0BEWBFO
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  clientId   String
+  client     User    @relation("ClientOrders", fields: [clientId], references: [id])
+  providerId String
+  provider   User    @relation("ProviderOrders", fields: [providerId], references: [id])
+  serviceId  String
+  service    Service @relation(fields: [serviceId], references: [id])
+
+  // Selected plan details (snapshot at time of order)
+  planId         String? // Original plan ID (may be deleted later)
+  planTitle      String
+  planPrice      Decimal @db.Decimal(10, 2)
+  planInclusions String
+
+  // Pricing
+  subtotal       Decimal @db.Decimal(10, 2) // Plan price
+  addOnsTotal    Decimal @default(0) @db.Decimal(10, 2)
+  couponCode     String?
+  couponDiscount Decimal @default(0) @db.Decimal(10, 2)
+  total          Decimal @db.Decimal(10, 2)
+
+  // Status
+  status OrderStatus @default(PENDING)
+
+  // Add-ons (stored as order items)
+  addOns  OrderAddOn[]
+  review  Review?
+  dispute Dispute?
+
+  @@map("orders")
+}
+
+model OrderAddOn {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Snapshot of add-on at time of order
+  addonId     String? // Original addon ID (may be deleted later)
+  title       String
+  description String?
+  price       Decimal @db.Decimal(10, 2)
+
+  @@map("order_addons")
+}
+
+// Review Models
+model Review {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // The order this review is for (one review per order)
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Who wrote the review
+  clientId String
+  client   User   @relation("ClientReviews", fields: [clientId], references: [id])
+
+  // Who is being reviewed
+  providerId String
+  provider   User   @relation("ProviderReviews", fields: [providerId], references: [id])
+
+  // The service being reviewed
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  // Review content
+  rating  Int // 1-5
+  comment String?
+
+  // Provider response
+  response ReviewResponse?
+
+  @@map("reviews")
+}
+
+model ReviewResponse {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviewId String @unique
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  comment String
+
+  @@map("review_responses")
+}
+
+// Messaging Models
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  providerId String
+  provider   User   @relation("ProviderConversations", fields: [providerId], references: [id])
+
+  userId String
+  user   User   @relation("UserConversations", fields: [userId], references: [id])
+
+  messages Message[]
+
+  @@unique([providerId, userId])
+  @@map("conversations")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation("SentMessages", fields: [senderId], references: [id])
+
+  content String  @db.Text
+  isRead  Boolean @default(false)
+
+  @@map("messages")
+}
+
+// Quote Request Models
+model QuoteRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Participants
+  clientId   String
+  client     User   @relation("ClientQuoteRequests", fields: [clientId], references: [id])
+  providerId String
+  provider   User   @relation("ProviderQuoteRequests", fields: [providerId], references: [id])
+
+  // Service context (optional)
+  serviceId String?
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  // Request details
+  projectTitle String
+  description  String   @db.Text
+  deliveryTime String
+  budget       Decimal  @db.Decimal(10, 2)
+  currency     String   @default("GHS")
+  attachments  String[] // file URLs
+
+  // Status & response
+  status        QuoteStatus @default(NEW)
+  providerNote  String?     @db.Text // provider's offer note
+  declineReason String?
+
+  @@map("quote_requests")
+}
+
+// Dispute Models
+enum DisputeIssueType {
+  LATE_DELIVERY
+  NON_DELIVERY
+  QUALITY_ISSUE
+  PAYMENT_DISPUTE
+  MISCOMMUNICATION
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum DisputePriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Dispute {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One dispute per order
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Parties
+  clientId   String
+  client     User   @relation("ClientDisputes", fields: [clientId], references: [id])
+  providerId String
+  provider   User   @relation("ProviderDisputes", fields: [providerId], references: [id])
+
+  // Details
+  issueType   DisputeIssueType
+  description String           @db.Text
+  priority    DisputePriority  @default(LOW)
+
+  // Resolution
+  status     DisputeStatus @default(OPEN)
+  adminNote  String?       @db.Text
+  resolvedAt DateTime?
+
+  @@map("disputes")
 }

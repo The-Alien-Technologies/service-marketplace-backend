@@ -11,6 +11,7 @@ import {
 } from '../common/services/file-upload.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { FilterServicesDto } from './dto/filter-services.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -202,6 +203,152 @@ export class CategoriesService {
     }
 
     return category;
+  }
+
+  async findServicesByCategory(categoryId: string, filters: FilterServicesDto) {
+    // Verify category exists
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const {
+      search,
+      minPrice,
+      maxPrice,
+      minRating,
+      sortBy = 'best_match',
+      page = 1,
+      limit = 20,
+    } = filters;
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {
+      categoryId,
+      status: 'PUBLISHED', // Only show published services
+    };
+
+    // Search filter (title, overview, tags)
+    if (search) {
+      where.OR = [
+        {
+          title: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          overview: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+        {
+          tags: {
+            hasSome: [search],
+          },
+        },
+      ];
+    }
+
+    // Get services with basic filters
+    let services = await this.prisma.service.findMany({
+      where,
+      include: {
+        provider: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        plans: {
+          orderBy: {
+            price: 'asc',
+          },
+        },
+        _count: {
+          select: {
+            orders: true,
+          },
+        },
+      },
+    });
+
+    // Apply price filter (based on minimum plan price)
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      services = services.filter((service) => {
+        const minPlanPrice = Math.min(...service.plans.map((p) => Number(p.price)));
+        if (minPrice !== undefined && minPlanPrice < minPrice) return false;
+        if (maxPrice !== undefined && minPlanPrice > maxPrice) return false;
+        return true;
+      });
+    }
+
+    // Apply rating filter
+    // Note: Rating functionality will be implemented when review system is added
+    // For now, we'll skip rating filter
+    // if (minRating !== undefined) {
+    //   services = services.filter((service) => {
+    //     return (service.averageRating || 0) >= minRating;
+    //   });
+    // }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'price_asc':
+        services.sort((a, b) => {
+          const minPriceA = Math.min(...a.plans.map((p) => Number(p.price)));
+          const minPriceB = Math.min(...b.plans.map((p) => Number(p.price)));
+          return minPriceA - minPriceB;
+        });
+        break;
+      case 'price_desc':
+        services.sort((a, b) => {
+          const minPriceA = Math.min(...a.plans.map((p) => Number(p.price)));
+          const minPriceB = Math.min(...b.plans.map((p) => Number(p.price)));
+          return minPriceB - minPriceA;
+        });
+        break;
+      case 'rating':
+      case 'popular':
+        // Note: Rating sort will be implemented when review system is added
+        // For now, sort by order count as a proxy for popularity
+        services.sort((a, b) => {
+          return b._count.orders - a._count.orders;
+        });
+        break;
+      case 'best_match':
+      default:
+        // Keep default order (most recent first)
+        break;
+    }
+
+    // Get total count before pagination
+    const total = services.length;
+
+    // Apply pagination
+    const paginatedServices = services.slice(skip, skip + limit);
+
+    return {
+      services: paginatedServices,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async update(

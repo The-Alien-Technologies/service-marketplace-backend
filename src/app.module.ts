@@ -5,6 +5,9 @@ import { UsersModule } from './users/users.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { CategoriesModule } from './categories/categories.module';
 import { ServicesModule } from './services/services.module';
+import { OrdersModule } from './orders/orders.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AppController } from './app.controller';
 import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -14,6 +17,9 @@ import * as path from 'path';
 import { PrismaModule } from './prisma/prisma.module';
 import { ApplicationExceptionFilter } from './common/filters/http-filter.filter';
 import { SeederModule } from './common/seeders/seeder.module';
+import { ChatModule } from './chat/chat.module';
+import { QuoteModule } from './quote/quote.module';
+import { DisputeModule } from './dispute/dispute.module';
 
 @Module({
   imports: [
@@ -45,8 +51,14 @@ import { SeederModule } from './common/seeders/seeder.module';
     OnboardingModule,
     CategoriesModule,
     ServicesModule,
+    OrdersModule,
+    ReviewsModule,
+    AnalyticsModule,
     PrismaModule,
     SeederModule,
+    ChatModule,
+    QuoteModule,
+    DisputeModule,
   ],
   controllers: [AppController],
   providers: [
