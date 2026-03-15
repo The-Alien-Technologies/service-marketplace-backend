@@ -8,7 +8,366 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums
+model User {
+  id                             String                 @id @default(cuid())
+  createdAt                      DateTime               @default(now())
+  updatedAt                      DateTime               @updatedAt
+  email                          String                 @unique
+  emailVerified                  Boolean                @default(false)
+  password                       String?
+  passwordResetOtp               String?
+  passwordResetExpires           DateTime?
+  passwordResetAttempts          Int                    @default(0)
+  role                           Role                   @default(USER)
+  firstName                      String?
+  lastName                       String?
+  displayName                    String?
+  username                       String?                @unique
+  avatar                         String?
+  bio                            String?
+  dateOfBirth                    DateTime?
+  timezone                       String                 @default("UTC")
+  phoneNumber                    String?
+  countryCode                    String?
+  phoneVerified                  Boolean                @default(false)
+  googleId                       String?                @unique
+  appleId                        String?                @unique
+  facebookId                     String?                @unique
+  twitterId                      String?                @unique
+  hasCompletedOnboarding         Boolean                @default(false)
+  onboardingCompletedAt          DateTime?
+  profileCompleteness            Int                    @default(0)
+  serviceProviderExperienceLevel ExperienceLevel?
+  isServiceProviderVerified      Boolean                @default(false)
+  serviceProviderVerifiedAt      DateTime?
+  isPremium                      Boolean                @default(false)
+  subscriptionStatus             SubscriptionStatus?
+  subscriptionTier               String?
+  subscriptionStartDate          DateTime?
+  subscriptionEndDate            DateTime?
+  themePreference                ThemePreference        @default(SYSTEM)
+  notificationsEnabled           Boolean                @default(true)
+  marketingNotifications         Boolean                @default(false)
+  preferredLanguage              String                 @default("en")
+  isProfilePublic                Boolean                @default(false)
+  dataAnalyticsEnabled           Boolean                @default(true)
+  status                         UserStatus             @default(ACTIVE)
+  lastLoginAt                    DateTime?
+  lastActiveAt                   DateTime               @default(now())
+  emailVerificationAttempts      Int                    @default(0)
+  emailVerificationExpires       DateTime?
+  emailVerificationOtp           String?
+  emailNotificationsEnabled      Boolean                @default(true)
+  smsNotificationsEnabled        Boolean                @default(false)
+  providerConversations          Conversation[]         @relation("ProviderConversations")
+  userConversations              Conversation[]         @relation("UserConversations")
+  clientDisputes                 Dispute[]              @relation("ClientDisputes")
+  providerDisputes               Dispute[]              @relation("ProviderDisputes")
+  sentMessages                   Message[]              @relation("SentMessages")
+  clientOrders                   Order[]                @relation("ClientOrders")
+  providerOrders                 Order[]                @relation("ProviderOrders")
+  quoteRequestsAsClient          QuoteRequest[]         @relation("ClientQuoteRequests")
+  quoteRequestsAsProvider        QuoteRequest[]         @relation("ProviderQuoteRequests")
+  clientReviews                  Review[]               @relation("ClientReviews")
+  providerReviews                Review[]               @relation("ProviderReviews")
+  services                       Service[]
+  addresses                      UserAddress[]
+  interests                      UserInterest[]
+  verificationDocuments          VerificationDocument[]
+
+  @@map("users")
+}
+
+model UserAddress {
+  id               String   @id @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  userId           String
+  placeId          String?
+  addressName      String
+  formattedAddress String
+  latitude         Float
+  longitude        Float
+  city             String?
+  state            String?
+  country          String?
+  postalCode       String?
+  isPrimary        Boolean  @default(false)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_addresses")
+}
+
+model Category {
+  id               String         @id @default(cuid())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  name             String         @unique
+  description      String?
+  isActive         Boolean        @default(true)
+  featured         Boolean        @default(false)
+  parentCategoryId String?
+  imageUrl         String?
+  parentCategory   Category?      @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories    Category[]     @relation("CategoryHierarchy")
+  services         Service[]
+  userInterests    UserInterest[]
+
+  @@map("categories")
+}
+
+model UserInterest {
+  id         String           @id @default(cuid())
+  createdAt  DateTime         @default(now())
+  userId     String
+  categoryId String
+  type       UserInterestType
+  category   Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, type])
+  @@map("user_interests")
+}
+
+model VerificationDocument {
+  id           String         @id @default(cuid())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  userId       String
+  fileName     String
+  originalName String
+  fileUrl      String
+  fileType     String
+  fileSize     Int
+  documentType DocumentType
+  status       DocumentStatus @default(UPLOADED)
+  reviewNotes  String?
+  uploadedAt   DateTime       @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verification_documents")
+}
+
+model PhoneVerification {
+  id          String   @id @default(cuid())
+  phoneNumber String
+  otpCode     String
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  expiresAt   DateTime
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("phone_verifications")
+}
+
+model Service {
+  id            String         @id @default(cuid())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  title         String
+  slug          String         @unique
+  overview      String
+  coverImage    String?
+  tags          String[]
+  status        ServiceStatus  @default(DRAFT)
+  providerId    String
+  categoryId    String
+  orders        Order[]
+  quoteRequests QuoteRequest[]
+  reviews       Review[]
+  addons        ServiceAddon[]
+  images        ServiceImage[]
+  plans         ServicePlan[]
+  category      Category       @relation(fields: [categoryId], references: [id])
+  provider      User           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@map("services")
+}
+
+model ServicePlan {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  title      String
+  price      Decimal  @db.Decimal(10, 2)
+  inclusions String
+  isPopular  Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("service_plans")
+}
+
+model ServiceAddon {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("service_addons")
+}
+
+model ServiceImage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  url       String
+  fileName  String
+  sortOrder Int      @default(0)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("service_images")
+}
+
+model Order {
+  id             String       @id @default(cuid())
+  orderNumber    String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  clientId       String
+  providerId     String
+  serviceId      String
+  planId         String?
+  planTitle      String
+  planPrice      Decimal      @db.Decimal(10, 2)
+  planInclusions String
+  subtotal       Decimal      @db.Decimal(10, 2)
+  addOnsTotal    Decimal      @default(0) @db.Decimal(10, 2)
+  couponCode     String?
+  couponDiscount Decimal      @default(0) @db.Decimal(10, 2)
+  total          Decimal      @db.Decimal(10, 2)
+  status         OrderStatus  @default(PENDING)
+  dispute        Dispute?
+  addOns         OrderAddOn[]
+  client         User         @relation("ClientOrders", fields: [clientId], references: [id])
+  provider       User         @relation("ProviderOrders", fields: [providerId], references: [id])
+  service        Service      @relation(fields: [serviceId], references: [id])
+  review         Review?
+
+  @@map("orders")
+}
+
+model OrderAddOn {
+  id          String  @id @default(cuid())
+  orderId     String
+  addonId     String?
+  title       String
+  description String?
+  price       Decimal @db.Decimal(10, 2)
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_addons")
+}
+
+model Review {
+  id         String          @id @default(cuid())
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  orderId    String          @unique
+  clientId   String
+  providerId String
+  serviceId  String
+  rating     Int
+  comment    String?
+  response   ReviewResponse?
+  client     User            @relation("ClientReviews", fields: [clientId], references: [id])
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider   User            @relation("ProviderReviews", fields: [providerId], references: [id])
+  service    Service         @relation(fields: [serviceId], references: [id])
+
+  @@map("reviews")
+}
+
+model ReviewResponse {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reviewId  String   @unique
+  comment   String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("review_responses")
+}
+
+model Conversation {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  providerId String
+  userId     String
+  provider   User      @relation("ProviderConversations", fields: [providerId], references: [id])
+  user       User      @relation("UserConversations", fields: [userId], references: [id])
+  messages   Message[]
+
+  @@unique([providerId, userId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  conversationId String
+  senderId       String
+  content        String
+  isRead         Boolean      @default(false)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model QuoteRequest {
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  clientId      String
+  providerId    String
+  serviceId     String?
+  projectTitle  String
+  description   String
+  deliveryTime  String
+  budget        Decimal     @db.Decimal(10, 2)
+  currency      String      @default("GHS")
+  attachments   String[]
+  status        QuoteStatus @default(NEW)
+  providerNote  String?
+  declineReason String?
+  client        User        @relation("ClientQuoteRequests", fields: [clientId], references: [id])
+  provider      User        @relation("ProviderQuoteRequests", fields: [providerId], references: [id])
+  service       Service?    @relation(fields: [serviceId], references: [id])
+
+  @@map("quote_requests")
+}
+
+model Dispute {
+  id          String           @id @default(cuid())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  orderId     String           @unique
+  clientId    String
+  providerId  String
+  issueType   DisputeIssueType
+  description String
+  priority    DisputePriority  @default(LOW)
+  status      DisputeStatus    @default(OPEN)
+  adminNote   String?
+  resolvedAt  DateTime?
+  client      User             @relation("ClientDisputes", fields: [clientId], references: [id])
+  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider    User             @relation("ProviderDisputes", fields: [providerId], references: [id])
+
+  @@map("disputes")
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -61,190 +420,6 @@ enum DocumentStatus {
   REJECTED
 }
 
-// Models
-model User {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Auth & Basic Info
-  email                     String    @unique
-  emailVerified             Boolean   @default(false)
-  emailVerificationOtp      String?
-  emailVerificationExpires  DateTime?
-  emailVerificationAttempts Int       @default(0)
-  password                  String?
-  passwordResetOtp          String?
-  passwordResetExpires      DateTime?
-  passwordResetAttempts     Int       @default(0)
-  role                      Role      @default(USER)
-  firstName                 String?
-  lastName                  String?
-  displayName               String?
-  username                  String?   @unique
-  avatar                    String?
-  bio                       String?
-  dateOfBirth               DateTime?
-  timezone                  String    @default("UTC")
-
-  // Phone & Verification
-  phoneNumber   String?
-  countryCode   String?
-  phoneVerified Boolean @default(false)
-
-  // Social Auth
-  googleId   String? @unique
-  appleId    String? @unique
-  facebookId String? @unique
-  twitterId  String? @unique
-
-  // Onboarding & Profile
-  hasCompletedOnboarding Boolean   @default(false)
-  onboardingCompletedAt  DateTime?
-  profileCompleteness    Int       @default(0) // 0-100%
-
-  // Service Provider Specific
-  serviceProviderExperienceLevel ExperienceLevel?
-  isServiceProviderVerified      Boolean          @default(false)
-  serviceProviderVerifiedAt      DateTime?
-
-  // Subscription
-  isPremium             Boolean             @default(false)
-  subscriptionStatus    SubscriptionStatus?
-  subscriptionTier      String?
-  subscriptionStartDate DateTime?
-  subscriptionEndDate   DateTime?
-
-  // Preferences
-  themePreference           ThemePreference @default(SYSTEM)
-  notificationsEnabled      Boolean         @default(true)
-  emailNotificationsEnabled Boolean         @default(true)
-  smsNotificationsEnabled   Boolean         @default(false)
-  marketingNotifications    Boolean         @default(false)
-  preferredLanguage         String          @default("en")
-  isProfilePublic           Boolean         @default(false)
-  dataAnalyticsEnabled      Boolean         @default(true)
-
-  // Status & Activity
-  status       UserStatus @default(ACTIVE)
-  lastLoginAt  DateTime?
-  lastActiveAt DateTime   @default(now())
-
-  // Relations
-  addresses               UserAddress[]
-  interests               UserInterest[]
-  verificationDocuments   VerificationDocument[]
-  services                Service[]
-  clientOrders            Order[]                @relation("ClientOrders")
-  providerOrders          Order[]                @relation("ProviderOrders")
-  clientReviews           Review[]               @relation("ClientReviews")
-  providerReviews         Review[]               @relation("ProviderReviews")
-  providerConversations   Conversation[]         @relation("ProviderConversations")
-  userConversations       Conversation[]         @relation("UserConversations")
-  sentMessages            Message[]              @relation("SentMessages")
-  quoteRequestsAsClient   QuoteRequest[]         @relation("ClientQuoteRequests")
-  quoteRequestsAsProvider QuoteRequest[]         @relation("ProviderQuoteRequests")
-  clientDisputes          Dispute[]              @relation("ClientDisputes")
-  providerDisputes        Dispute[]              @relation("ProviderDisputes")
-
-  @@map("users")
-}
-
-model UserAddress {
-  id               String   @id @default(cuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  userId           String
-  placeId          String? // Google Places ID
-  addressName      String // User-friendly name like "Home", "Work"
-  formattedAddress String // Full formatted address from Google Places
-  latitude         Float
-  longitude        Float
-  city             String?
-  state            String?
-  country          String?
-  postalCode       String?
-  isPrimary        Boolean  @default(false)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_addresses")
-}
-
-model Category {
-  id               String   @id @default(cuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  name             String   @unique
-  description      String?
-  imageUrl         String? // Uploaded category icon/image
-  isActive         Boolean  @default(true)
-  featured         Boolean  @default(false)
-  parentCategoryId String?
-
-  // Relations
-  parentCategory Category?      @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
-  subCategories  Category[]     @relation("CategoryHierarchy")
-  userInterests  UserInterest[]
-  services       Service[]
-
-  @@map("categories")
-}
-
-model UserInterest {
-  id         String           @id @default(cuid())
-  createdAt  DateTime         @default(now())
-  userId     String
-  categoryId String
-  type       UserInterestType // INTEREST or SERVICE
-
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, categoryId, type])
-  @@map("user_interests")
-}
-
-model VerificationDocument {
-  id           String         @id @default(cuid())
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  userId       String
-  fileName     String // Stored file name
-  originalName String // Original file name from user
-  fileUrl      String // URL to access the file
-  fileType     String // MIME type
-  fileSize     Int // File size in bytes
-  documentType DocumentType
-  status       DocumentStatus @default(UPLOADED)
-  reviewNotes  String? // Admin notes during review
-  uploadedAt   DateTime       @default(now())
-  reviewedAt   DateTime?
-  reviewedBy   String? // Admin user ID who reviewed
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("verification_documents")
-}
-
-model PhoneVerification {
-  id          String   @id @default(cuid())
-  phoneNumber String
-  otpCode     String
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(5)
-  expiresAt   DateTime
-  verified    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("phone_verifications")
-}
-
-// Service Marketplace Enums
 enum ServiceStatus {
   DRAFT
   PUBLISHED
@@ -253,12 +428,12 @@ enum ServiceStatus {
 }
 
 enum OrderStatus {
-  PENDING // Just created, payment not initiated
-  AWAITING // Payment completed, awaiting provider acceptance
-  IN_PROGRESS // Provider accepted, work in progress
-  COMPLETED // Work completed
-  DECLINED // Provider declined or order cancelled
-  REFUNDED // Order refunded
+  PENDING
+  AWAITING
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+  REFUNDED
 }
 
 enum QuoteStatus {
@@ -269,250 +444,6 @@ enum QuoteStatus {
   EXPIRED
 }
 
-// Service Models
-model Service {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Core fields
-  title      String
-  slug       String        @unique
-  overview   String
-  coverImage String?
-  tags       String[]
-  status     ServiceStatus @default(DRAFT)
-
-  // Relations
-  providerId String
-  provider   User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  // Nested entities
-  plans         ServicePlan[]
-  addons        ServiceAddon[]
-  images        ServiceImage[]
-  orders        Order[]
-  reviews       Review[]
-  quoteRequests QuoteRequest[]
-
-  @@map("services")
-}
-
-model ServicePlan {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  title      String
-  price      Decimal @db.Decimal(10, 2)
-  inclusions String // Multiline text stored as-is
-  isPopular  Boolean @default(false)
-  sortOrder  Int     @default(0)
-
-  // Relations
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@map("service_plans")
-}
-
-model ServiceAddon {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  title       String
-  description String?
-  price       Decimal @db.Decimal(10, 2)
-
-  // Relations
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@map("service_addons")
-}
-
-model ServiceImage {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  url       String
-  fileName  String
-  sortOrder Int      @default(0)
-
-  // Relations
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@map("service_images")
-}
-
-// Order Models
-model Order {
-  id          String   @id @default(cuid())
-  orderNumber String   @unique // User-friendly ID like #WJ0BEWBFO
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  clientId   String
-  client     User    @relation("ClientOrders", fields: [clientId], references: [id])
-  providerId String
-  provider   User    @relation("ProviderOrders", fields: [providerId], references: [id])
-  serviceId  String
-  service    Service @relation(fields: [serviceId], references: [id])
-
-  // Selected plan details (snapshot at time of order)
-  planId         String? // Original plan ID (may be deleted later)
-  planTitle      String
-  planPrice      Decimal @db.Decimal(10, 2)
-  planInclusions String
-
-  // Pricing
-  subtotal       Decimal @db.Decimal(10, 2) // Plan price
-  addOnsTotal    Decimal @default(0) @db.Decimal(10, 2)
-  couponCode     String?
-  couponDiscount Decimal @default(0) @db.Decimal(10, 2)
-  total          Decimal @db.Decimal(10, 2)
-
-  // Status
-  status OrderStatus @default(PENDING)
-
-  // Add-ons (stored as order items)
-  addOns  OrderAddOn[]
-  review  Review?
-  dispute Dispute?
-
-  @@map("orders")
-}
-
-model OrderAddOn {
-  id      String @id @default(cuid())
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  // Snapshot of add-on at time of order
-  addonId     String? // Original addon ID (may be deleted later)
-  title       String
-  description String?
-  price       Decimal @db.Decimal(10, 2)
-
-  @@map("order_addons")
-}
-
-// Review Models
-model Review {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // The order this review is for (one review per order)
-  orderId String @unique
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  // Who wrote the review
-  clientId String
-  client   User   @relation("ClientReviews", fields: [clientId], references: [id])
-
-  // Who is being reviewed
-  providerId String
-  provider   User   @relation("ProviderReviews", fields: [providerId], references: [id])
-
-  // The service being reviewed
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id])
-
-  // Review content
-  rating  Int // 1-5
-  comment String?
-
-  // Provider response
-  response ReviewResponse?
-
-  @@map("reviews")
-}
-
-model ReviewResponse {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  reviewId String @unique
-  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-
-  comment String
-
-  @@map("review_responses")
-}
-
-// Messaging Models
-model Conversation {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  providerId String
-  provider   User   @relation("ProviderConversations", fields: [providerId], references: [id])
-
-  userId String
-  user   User   @relation("UserConversations", fields: [userId], references: [id])
-
-  messages Message[]
-
-  @@unique([providerId, userId])
-  @@map("conversations")
-}
-
-model Message {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  senderId String
-  sender   User   @relation("SentMessages", fields: [senderId], references: [id])
-
-  content String  @db.Text
-  isRead  Boolean @default(false)
-
-  @@map("messages")
-}
-
-// Quote Request Models
-model QuoteRequest {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Participants
-  clientId   String
-  client     User   @relation("ClientQuoteRequests", fields: [clientId], references: [id])
-  providerId String
-  provider   User   @relation("ProviderQuoteRequests", fields: [providerId], references: [id])
-
-  // Service context (optional)
-  serviceId String?
-  service   Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-
-  // Request details
-  projectTitle String
-  description  String   @db.Text
-  deliveryTime String
-  budget       Decimal  @db.Decimal(10, 2)
-  currency     String   @default("GHS")
-  attachments  String[] // file URLs
-
-  // Status & response
-  status        QuoteStatus @default(NEW)
-  providerNote  String?     @db.Text // provider's offer note
-  declineReason String?
-
-  @@map("quote_requests")
-}
-
-// Dispute Models
 enum DisputeIssueType {
   LATE_DELIVERY
   NON_DELIVERY
@@ -533,32 +464,4 @@ enum DisputePriority {
   LOW
   MEDIUM
   HIGH
-}
-
-model Dispute {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // One dispute per order
-  orderId String @unique
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  // Parties
-  clientId   String
-  client     User   @relation("ClientDisputes", fields: [clientId], references: [id])
-  providerId String
-  provider   User   @relation("ProviderDisputes", fields: [providerId], references: [id])
-
-  // Details
-  issueType   DisputeIssueType
-  description String           @db.Text
-  priority    DisputePriority  @default(LOW)
-
-  // Resolution
-  status     DisputeStatus @default(OPEN)
-  adminNote  String?       @db.Text
-  resolvedAt DateTime?
-
-  @@map("disputes")
 }

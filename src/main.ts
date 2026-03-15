@@ -20,6 +20,9 @@ async function bootstrap() {
   const seederService = app.get(SeederService);
   await seederService.runAllSeeders();
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+
+  await app.listen(port);
+  console.log(`Running on PORT ${process.env.PORT}`);
 }
 bootstrap();

@@ -20,6 +20,8 @@ import { SeederModule } from './common/seeders/seeder.module';
 import { ChatModule } from './chat/chat.module';
 import { QuoteModule } from './quote/quote.module';
 import { DisputeModule } from './dispute/dispute.module';
+import { BotChatController } from './botChat/botChat.controller';
+import { BotChatModule } from './botChat/botChat.module';
 
 @Module({
   imports: [
@@ -59,6 +61,7 @@ import { DisputeModule } from './dispute/dispute.module';
     ChatModule,
     QuoteModule,
     DisputeModule,
+    BotChatModule,
   ],
   controllers: [AppController],
   providers: [

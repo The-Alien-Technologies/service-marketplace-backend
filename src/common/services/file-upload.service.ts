@@ -26,6 +26,7 @@ export interface FileUploadOptions {
 export enum FileUploadProvider {
   SUPABASE = 'SUPABASE',
   AWS_S3 = 'AWS_S3',
+  CLOUDINARY = 'CLOUDINARY',
   LOCAL = 'LOCAL',
 }
 
@@ -49,7 +50,7 @@ export class FileUploadService {
     // Get the configured provider, default to LOCAL for development
     const configuredProvider = this.configService.get<string>(
       'FILE_UPLOAD_PROVIDER',
-      FileUploadProvider.SUPABASE,
+      FileUploadProvider.LOCAL,
     );
 
     // Validate and set the provider
@@ -105,6 +106,10 @@ export class FileUploadService {
 
     this.supabaseClient = createClient(supabaseUrl, supabaseKey);
     this.logger.log('Supabase client initialized successfully');
+  }
+
+  private initializeCloudinary(): void {
+    
   }
 
   private initializeS3(): void {
@@ -401,7 +406,7 @@ export class FileUploadService {
     } catch (error) {
       this.logger.error('Local upload error:', error);
       throw new BadRequestException(
-        `Failed to upload file locally: ${error.message}`,
+        `Failed to upload file locally: ${error}`,
       );
     }
   }
