@@ -71,6 +71,9 @@ model User {
   clientReviews                  Review[]               @relation("ClientReviews")
   providerReviews                Review[]               @relation("ProviderReviews")
   services                       Service[]
+  handledSupportConversations    SupportConversation[]  @relation("SupportAdmin")
+  initiatedSupportConversations  SupportConversation[]  @relation("SupportInitiator")
+  supportMessages                SupportMessage[]       @relation("SupportMessageSender")
   addresses                      UserAddress[]
   interests                      UserInterest[]
   verificationDocuments          VerificationDocument[]
@@ -325,6 +328,38 @@ model Message {
   @@map("messages")
 }
 
+model SupportConversation {
+  id            String                    @id @default(cuid())
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  initiatorId   String
+  initiatorType SupportSenderType
+  adminId       String?
+  status        SupportConversationStatus @default(BOT)
+  closedAt      DateTime?
+  adminJoinedAt DateTime?
+  admin         User?                     @relation("SupportAdmin", fields: [adminId], references: [id])
+  initiator     User                      @relation("SupportInitiator", fields: [initiatorId], references: [id])
+  messages      SupportMessage[]
+
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id             String              @id @default(cuid())
+  createdAt      DateTime            @default(now())
+  conversationId String
+  senderId       String?
+  senderType     SupportSenderType
+  content        String
+  botResponseId  String?
+  isRead         Boolean             @default(false)
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User?               @relation("SupportMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
 model QuoteRequest {
   id            String      @id @default(cuid())
   createdAt     DateTime    @default(now())
@@ -366,6 +401,56 @@ model Dispute {
   provider    User             @relation("ProviderDisputes", fields: [providerId], references: [id])
 
   @@map("disputes")
+}
+
+model account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamp(6)
+  refreshTokenExpiresAt DateTime? @db.Timestamp(6)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime  @default(now()) @db.Timestamp(6)
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model session {
+  id        String   @id
+  expiresAt DateTime @db.Timestamp(6)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @db.Timestamp(6)
+  account       account[]
+  session       session[]
+}
+
+model verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime  @db.Timestamp(6)
+  createdAt  DateTime? @db.Timestamp(6)
+  updatedAt  DateTime? @db.Timestamp(6)
 }
 
 enum UserStatus {
@@ -464,4 +549,18 @@ enum DisputePriority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum SupportConversationStatus {
+  BOT
+  AWAITING_FOR_ADMIN
+  ACTIVE_WITH_ADMIN
+  CLOSED
+}
+
+enum SupportSenderType {
+  USER
+  SERVICE_PROVIDER
+  ADMIN
+  BOT
 }
