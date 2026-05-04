@@ -531,10 +531,11 @@ export class AuthService {
 
       // Send SMS via AWS SNS
       // TEMPORARILY COMMENTED OUT for testing
-      // await this.smsService.sendVerificationCode(formattedPhoneNumber, otpCode);
+      await this.smsService.sendVerificationCode(formattedPhoneNumber, otpCode);
 
       this.logger.log(
         `[TESTING] Phone verification OTP created as 123456 for ${formattedPhoneNumber}`,
+        
       );
     } catch (error) {
       this.logger.error(
