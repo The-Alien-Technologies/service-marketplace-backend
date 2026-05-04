@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { ConfigService } from '@nestjs/config';
+const AfricasTalking = require('africastalking');
 
 export interface SmsOptions {
   phoneNumber: string;
@@ -10,16 +11,28 @@ export interface SmsOptions {
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
-  private readonly snsClient: SNSClient;
+  private readonly provider: string;
+  private snsClient: SNSClient;
+  private atSms: ReturnType<typeof AfricasTalking>['SMS'];
 
   constructor(private readonly configService: ConfigService) {
-    this.snsClient = new SNSClient({
-      region: this.configService.get('AWS_REGION'),
-      credentials: {
-        accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID')!,
-        secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY')!,
-      },
-    });
+    this.provider = this.configService.get<string>('SMS_PROVIDER', 'AWS_SNS');
+
+    if (this.provider === 'AFRICASTALKING') {
+      const at = AfricasTalking({
+        apiKey: this.configService.get<string>('AFRICASTALKING_API_KEY')!,
+        username: this.configService.get<string>('AFRICASTALKING_USERNAME', 'sandbox'),
+      });
+      this.atSms = at.SMS;
+    } else {
+      this.snsClient = new SNSClient({
+        region: this.configService.get('AWS_REGION'),
+        credentials: {
+          accessKeyId: this.configService.get('AWS_ACCESS_KEY_ID')!,
+          secretAccessKey: this.configService.get('AWS_SECRET_ACCESS_KEY')!,
+        },
+      });
+    }
   }
 
   async sendSms(options: SmsOptions): Promise<void> {
@@ -28,6 +41,21 @@ export class SmsService {
     // Validate phone number format (should start with + and country code)
     if (!phoneNumber.startsWith('+')) {
       throw new Error('Phone number must include country code (e.g., +1234567890)');
+    }
+
+    if (this.provider === 'AFRICASTALKING') {
+      try {
+        const result = await this.atSms.send({
+          to: [phoneNumber],
+          message,
+          from: this.configService.get('SMS_SENDER_ID', 'Pavodah'),
+        });
+        this.logger.log(`SMS sent via Africa's Talking to ${phoneNumber}: ${result.Message}`);
+      } catch (error) {
+        this.logger.error(`Africa's Talking SMS failed to ${phoneNumber}:`, error);
+        throw new Error(`Failed to send SMS: ${(error as Error).message}`);
+      }
+      return;
     }
 
     const command = new PublishCommand({
@@ -50,7 +78,7 @@ export class SmsService {
       this.logger.log(`SMS sent successfully to ${phoneNumber}. MessageId: ${result.MessageId}`);
     } catch (error) {
       this.logger.error(`Failed to send SMS to ${phoneNumber}:`, error);
-      throw new Error(`Failed to send SMS to ${phoneNumber}: ${error.message}`);
+      throw new Error(`Failed to send SMS to ${phoneNumber}: ${(error as Error).message}`);
     }
   }
 
