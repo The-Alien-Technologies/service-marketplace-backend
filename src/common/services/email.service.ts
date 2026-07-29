@@ -33,6 +33,7 @@ export interface WelcomeEmailData {
 
 enum EmailProvider {
   AWS = 'AWS',
+  ZEPTO = 'ZEPTO',
   RESEND = 'RESEND',
 }
 
@@ -42,6 +43,7 @@ export class EmailService {
   private readonly sesClient: SESClient;
   private readonly resendClient: Resend;
   private readonly templatesPath: string;
+  private readonly zeptomailApiKey: string;
 
   constructor(private readonly configService: ConfigService) {
     this.sesClient = new SESClient({
@@ -53,6 +55,7 @@ export class EmailService {
     });
 
     this.resendClient = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+    this.zeptomailApiKey = this.configService.get<string>('ZEPTO_API_KEY');
 
     this.templatesPath = path.join(__dirname, '../../templates/email');
   }
@@ -61,6 +64,9 @@ export class EmailService {
     const provider = this.configService.get<string>('EMAIL_PROVIDER', EmailProvider.AWS);
 
     switch (provider) {
+      case EmailProvider.ZEPTO:
+      await this.sendEmailWithZeptomail(options);
+      break;
       case EmailProvider.AWS:
         await this.sendEmailWithAws(options);
         break;
@@ -127,7 +133,7 @@ export class EmailService {
       userName: userName,
       userEmail: email,
       supportEmail: this.configService.get<string>('SUPPORT_EMAIL', 'support@pavodah.com'),
-      appUrl: this.configService.get<string>('APP_URL', 'http://localhost:3000'),
+      appUrl: this.configService.get<string>('APP_URL', 'www.pavodah.com'),
       currentYear: new Date().getFullYear(),
     };
 
@@ -135,12 +141,12 @@ export class EmailService {
     const text = await this.renderTemplate('welcome.txt', templateData);
 
     // TODO: uncomment for production
-    // await this.sendEmail({
-    //   to: [email],
-    //   subject: `${templateData.appName} - Welcome to Pavodah!`,
-    //   html,
-    //   text,
-    // });
+    await this.sendEmail({
+      to: [email],
+      subject: `${templateData.userName} - Welcome to ${templateData.appName}!`,
+      html,
+      text,
+    });
   }
 
   async sendEmailVerificationOtp(email: string, otpCode: string, userName?: string): Promise<void> {
@@ -159,6 +165,62 @@ export class EmailService {
       text,
     });
   }
+
+  private async sendEmailWithZeptomail(options: EmailOptions): Promise<void> {
+  const { to, subject, html, text } = options;
+
+  const fromEmail = this.configService.get<string>('SUPPORT_EMAIL');
+  const appName = this.configService.get<string>('APP_NAME', 'Pavodah');
+
+  const payload = {
+    from: { address: fromEmail, name: appName },
+    to: to.map((address) => ({
+      email_address: { address },
+    })),
+    subject,
+    htmlbody: html,
+    textbody: text,
+
+  };
+
+  try {
+    const response = await fetch('https://api.zeptomail.eu/v1.1/email', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Zoho-enczapikey ${this.zeptomailApiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+this.logger.error(`Zepto raw error response: ${errorData}`);
+
+      this.logger.error(
+        `ZeptoMail API error (${response.status}):`,
+        errorData,
+      );
+
+      throw new Error(
+        `ZeptoMail API returned ${response.status}: ${JSON.stringify(errorData)}`,
+      );
+    }
+
+    const result = await response.json();
+
+    this.logger.log(
+      `Email sent successfully to ${to} via ZeptoMail. RequestId: ${result.request_id}`,
+    );
+  } catch (error) {
+    this.logger.error(
+      `Failed to send email to ${to} with ZeptoMail:`,
+      error,
+    );
+    throw new Error(`Failed to send email to ${to}`);
+  }
+}
 
   private async sendEmailWithAws(options: EmailOptions): Promise<void> {
     const { to, subject, html, text } = options;

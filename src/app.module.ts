@@ -22,6 +22,7 @@ import { QuoteModule } from './quote/quote.module';
 import { DisputeModule } from './dispute/dispute.module';
 import { BotChatController } from './botChat/botChat.controller';
 import { BotChatModule } from './botChat/botChat.module';
+import { SupportChatModule } from './supportChat/supportChat.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { BotChatModule } from './botChat/botChat.module';
     QuoteModule,
     DisputeModule,
     BotChatModule,
+    SupportChatModule,
   ],
   controllers: [AppController],
   providers: [

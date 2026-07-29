@@ -121,6 +121,40 @@ JWT_REFRESH_EXPIRATION_TIME=30d   # Refresh token expiry (30 days)
 - `POST /auth/change-password` - Change password
 - `DELETE /auth/account` - Soft delete account
 
+
+   Summary of all WebSocket events for frontend
+   CLIENT → SERVER
+   
+   support:join          { conversationId }  Join a room
+   support:leave         { conversationId }   Leave a room
+   support:send_message   { conversationId, content }
+   support:escalate       conversationId     Request a human
+   support:join_as_admin   conversationId     Admin claims conversation
+   support:close      conversationId      End conversation
+
+   SERVER → CLIENT
+   
+   support:message         { message }       New message (any sender)
+   support:escalated        { conversation }     Status → WAITING
+   support:admin_joined   { conversation }     Admin entered room
+   support:admin_took_conversation { conversationId }  (admin room only)
+   support:new_waiting    { conversation }     (admin room only)
+   support:closed          { conversation }     Chat ended
+   support:error       { message }       Something went wrong
+
+   Summary of REST endpoints
+
+   POST /api/support/conversations            Start conversation
+   GET  /api/support/conversations/my         My conversations
+   GET     /api/support/conversations/:id          Conversation + messages
+   POST  /api/support/conversations/:id/messages Send message
+   PATCH  /api/support/conversations/:id/escalate Request human
+   PATCH /api/support/conversations/:id/close    Close
+
+   GET    /api/support/admin/conversations        All chats (grouped)
+   PATCH /api/support/admin/conversations/:id/join   Admin joins
+   PATCH    /api/support/admin/conversations/:id/close  Admin closes
+
 ### Usage Example
 
 ```javascript
