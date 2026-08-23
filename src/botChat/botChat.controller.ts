@@ -14,7 +14,7 @@ export class BotChatController {
     @Post('bot')
     async botController (@Body() clientBotResponseDto : ClientBotResponseDto) : Promise <BotChatResponseDto> {
        try{
-        let { prompt, conversationId } = clientBotResponseDto;
+        const { prompt, conversationId } = clientBotResponseDto;
         const response = await this.botChatService.sendMessage(prompt, conversationId);
         console.log(response)
         return {

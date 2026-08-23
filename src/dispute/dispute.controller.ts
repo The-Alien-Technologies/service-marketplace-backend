@@ -10,12 +10,17 @@ import {
   Query,
 } from '@nestjs/common';
 import { DisputeService } from './dispute.service';
-import { CreateDisputeDto, UpdateDisputeStatusDto } from './dto/dispute.dto';
+import {
+  CreateDisputeDto,
+  ResolveDisputeDto,
+  UpdateDisputeStatusDto,
+} from './dto/dispute.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { IsAdmin } from '../common/decorators/roles.decorator';
 
 @Controller('disputes')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class DisputeController {
   constructor(private readonly disputeService: DisputeService) {}
 
@@ -32,10 +37,10 @@ export class DisputeController {
     return this.disputeService.findAll({ status });
   }
 
-  /** USER: list own disputes */
+  /** CLIENT/PROVIDER: list disputes they are a party to */
   @Get('my')
   findMine(@Request() req) {
-    return this.disputeService.findByClient(req.user.id);
+    return this.disputeService.findByParticipant(req.user.id);
   }
 
   /** ADMIN or owner: get single dispute */
@@ -50,5 +55,12 @@ export class DisputeController {
   @IsAdmin()
   updateStatus(@Param('id') id: string, @Body() dto: UpdateDisputeStatusDto) {
     return this.disputeService.updateStatus(id, dto);
+  }
+
+  /** ADMIN: resolve the financial outcome of a service dispute */
+  @Post(':id/resolve')
+  @IsAdmin()
+  resolve(@Param('id') id: string, @Body() dto: ResolveDisputeDto) {
+    return this.disputeService.resolve(id, dto);
   }
 }

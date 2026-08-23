@@ -58,7 +58,7 @@ export class SupportChatGateway implements OnGatewayConnection, OnGatewayDisconn
             }
         }catch(error){
             this.logger.error(`Support connection rejected: ${error}`);
-            client.disconnect;
+            client.disconnect();
         }
     }
 

@@ -4,9 +4,10 @@ import { QuoteService } from './quote.service';
 import { QuoteController } from './quote.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { FileUploadService } from '../common/services/file-upload.service';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [PrismaModule, ConfigModule, OrdersModule],
   providers: [QuoteService, FileUploadService],
   controllers: [QuoteController],
 })
