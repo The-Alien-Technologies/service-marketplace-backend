@@ -462,7 +462,7 @@ export class ServicesService {
   }
 
   private async generateUniqueSlug(title: string): Promise<string> {
-    let slug = slugify(title, { lower: true, strict: true });
+    const slug = slugify(title, { lower: true, strict: true });
     let counter = 0;
 
     // Check if slug exists

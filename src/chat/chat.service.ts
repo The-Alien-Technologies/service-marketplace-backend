@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -10,7 +11,7 @@ export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getConversations(userId: string) {
-    return this.prisma.conversation.findMany({
+    const conversations = await this.prisma.conversation.findMany({
       where: {
         OR: [{ userId }, { providerId: userId }],
       },
@@ -25,9 +26,21 @@ export class ChatService {
           orderBy: { createdAt: 'desc' },
           take: 1,
         },
+        _count: {
+          select: {
+            messages: {
+              where: { senderId: { not: userId }, isRead: false },
+            },
+          },
+        },
       },
       orderBy: { updatedAt: 'desc' },
     });
+
+    return conversations.map(({ _count, ...conversation }) => ({
+      ...conversation,
+      unreadCount: _count.messages,
+    }));
   }
 
   async getConversation(id: string, userId: string) {
@@ -58,12 +71,17 @@ export class ChatService {
     take = 50,
   ) {
     await this.getConversation(conversationId, userId);
-    return this.prisma.message.findMany({
+    const safeSkip = Number.isFinite(skip) ? Math.max(0, Math.floor(skip)) : 0;
+    const safeTake = Number.isFinite(take)
+      ? Math.min(100, Math.max(1, Math.floor(take)))
+      : 50;
+    const messages = await this.prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: 'asc' },
-      skip,
-      take,
+      orderBy: { createdAt: 'desc' },
+      skip: safeSkip,
+      take: safeTake,
     });
+    return messages.reverse();
   }
 
   async getOrCreateConversation(userId: string, targetId: string) {
@@ -102,11 +120,18 @@ export class ChatService {
   }
 
   async saveMessage(conversationId: string, senderId: string, content: string) {
+    const normalizedContent = content?.trim();
+    if (!normalizedContent) {
+      throw new BadRequestException('Message content is required');
+    }
+    if (normalizedContent.length > 5000) {
+      throw new BadRequestException('Messages cannot exceed 5000 characters');
+    }
     const message = await this.prisma.message.create({
       data: {
         conversationId,
         senderId,
-        content,
+        content: normalizedContent,
       },
     });
 
@@ -116,5 +141,25 @@ export class ChatService {
     });
 
     return message;
+  }
+
+  async markConversationRead(conversationId: string, userId: string) {
+    await this.getConversation(conversationId, userId);
+    return this.prisma.message.updateMany({
+      where: { conversationId, senderId: { not: userId }, isRead: false },
+      data: { isRead: true },
+    });
+  }
+
+  async getUnreadCount(userId: string) {
+    return this.prisma.message.count({
+      where: {
+        senderId: { not: userId },
+        isRead: false,
+        conversation: {
+          OR: [{ userId }, { providerId: userId }],
+        },
+      },
+    });
   }
 }

@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { RequestReleaseReviewDto } from './dto/request-release-review.dto';
 import { ResponseUtil } from '../common/utils/response.util';
 import { OrderStatus } from '../../generated/prisma';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -109,8 +110,13 @@ export class OrdersController {
   async findOne(
     @Param('id') id: string,
     @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: string,
   ) {
-    const order = await this.ordersService.findOne(id, userId);
+    const order = await this.ordersService.findOne(
+      id,
+      userId,
+      role === 'ADMIN',
+    );
     return ResponseUtil.success(order, 'Order retrieved successfully');
   }
 
@@ -127,6 +133,35 @@ export class OrdersController {
       updateStatusDto.status,
     );
     return ResponseUtil.success(order, 'Order status updated successfully');
+  }
+
+  @Post(':id/accept')
+  @UseGuards(JwtAuthGuard)
+  async acceptWork(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const settlement = await this.ordersService.acceptWork(id, userId);
+    return ResponseUtil.success(
+      settlement,
+      'Work accepted and earnings released',
+    );
+  }
+
+  @Post(':id/release-review')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @IsServiceProvider()
+  async requestReleaseReview(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+    @Body() dto: RequestReleaseReviewDto,
+  ) {
+    const settlement = await this.ordersService.requestReleaseReview(
+      id,
+      userId,
+      dto.note,
+    );
+    return ResponseUtil.success(settlement, 'Release review requested');
   }
 
   @Delete(':id')

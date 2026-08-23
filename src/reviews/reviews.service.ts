@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { CreateReviewResponseDto } from './dto/create-review-response.dto';
 import { OrderStatus } from '../../generated/prisma';
+import { NotificationEventsService } from '../notifications/notification-events.service';
 
 const REVIEW_INCLUDE = {
   client: {
@@ -36,7 +37,10 @@ const REVIEW_INCLUDE = {
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationEvents?: NotificationEventsService,
+  ) {}
 
   // ─── Create Review (client only, on completed order) ─────────────────────────
   async create(clientId: string, dto: CreateReviewDto) {
@@ -56,7 +60,7 @@ export class ReviewsService {
     if (existing)
       throw new ConflictException('You have already reviewed this order');
 
-    return this.prisma.review.create({
+    const review = await this.prisma.review.create({
       data: {
         orderId: dto.orderId,
         clientId,
@@ -67,6 +71,8 @@ export class ReviewsService {
       },
       include: REVIEW_INCLUDE,
     });
+    await this.notificationEvents?.reviewReceived(review);
+    return review;
   }
 
   // ─── Get reviews for a service (public) ──────────────────────────────────────
@@ -214,17 +220,26 @@ export class ReviewsService {
     const existing = await this.prisma.reviewResponse.findUnique({
       where: { reviewId },
     });
+    let response;
     if (existing) {
       // Update existing response
-      return this.prisma.reviewResponse.update({
+      response = await this.prisma.reviewResponse.update({
         where: { reviewId },
         data: { comment: dto.comment },
       });
+    } else {
+      response = await this.prisma.reviewResponse.create({
+        data: { reviewId, comment: dto.comment },
+      });
     }
 
-    return this.prisma.reviewResponse.create({
-      data: { reviewId, comment: dto.comment },
+    await this.notificationEvents?.reviewResponse({
+      id: review.id,
+      clientId: review.clientId,
+      orderId: review.orderId,
+      updatedAt: response.updatedAt,
     });
+    return response;
   }
 
   // ─── Check if an order already has a review ──────────────────────────────────

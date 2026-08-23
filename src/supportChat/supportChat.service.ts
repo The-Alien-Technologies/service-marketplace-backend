@@ -1,8 +1,9 @@
-  import {Injectable, NotFoundException, ForbiddenException, BadRequestException} from '@nestjs/common';
+  import {Injectable, NotFoundException, ForbiddenException, BadRequestException, Optional} from '@nestjs/common';
   import * as fs from 'fs';
   import * as path from 'path';
   import { PrismaService } from '../prisma/prisma.service';
   import { llmClient } from './llm/client';
+  import { NotificationEventsService } from '../notifications/notification-events.service';
 
   import {
     SupportConversationStatus,
@@ -24,7 +25,11 @@ const USER_SELECT = {
 
 @Injectable()
 export class SupportChatService {
-    constructor(private readonly prisma: PrismaService){}
+    constructor(
+      private readonly prisma: PrismaService,
+      @Optional()
+      private readonly notificationEvents?: NotificationEventsService,
+    ){}
 
     //USER: start or resume a conversation...........................
     async startConversation(userId: string, userRole: Role){
@@ -172,6 +177,8 @@ export class SupportChatService {
             "You've been added to the support queue. A human agent will be with you shortly. Please hold on.",
         },
       });
+
+      await this.notificationEvents?.supportEscalated(conversationId);
 
       return { conversation: updated, systemMessage };
     }

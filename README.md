@@ -72,11 +72,70 @@ FROM_EMAIL="noreply@servicemarketplace.com"
 RESEND_API_KEY="your-resend-api-key"
 RESEND_FROM_EMAIL="noreply@servicemarketplace.com"
 
+# SMS Configuration
+# HUBTEL | ARKESEL | AFRICASTALKING | TEST
+SMS_PROVIDER="HUBTEL"
+SMS_REQUEST_TIMEOUT_MS="10000"
+HUBTEL_CLIENT_ID="your-hubtel-client-id"
+HUBTEL_CLIENT_SECRET="your-hubtel-client-secret"
+HUBTEL_SENDER_ID="your-approved-sender-id"
+
+# Optional alternative providers
+ARKESEL_API_KEY=""
+ARKESEL_SENDER_ID=""
+AFRICASTALKING_USERNAME=""
+AFRICASTALKING_API_KEY=""
+AFRICASTALKING_SENDER_ID=""
+AFRICASTALKING_SANDBOX="false"
+AFRICASTALKING_ENQUEUE="true"
+
 # App Configuration
 APP_NAME="Service Marketplace"
 APP_URL="http://localhost:3000"
 SUPPORT_EMAIL="support@servicemarketplace.com"
+
+# Paystack hosted checkout
+PAYSTACK_SECRET_KEY="sk_test_..."
+PAYSTACK_BASE_URL="https://api.paystack.co"
+PAYSTACK_CALLBACK_URL="http://localhost:3001/checkout/callback"
+WEBSITE_URL="http://localhost:3001"
+CORS_ORIGINS="http://localhost:3001"
+# Keep false until Ghana Transfers and production payout operations are approved.
+PAYOUTS_ENABLED="false"
+PAYOUT_RECONCILIATION_ENABLED="true"
+PAYOUT_RECONCILIATION_INTERVAL_MS="900000"
+# Refund reconciliation is independent of provider payouts and should normally stay enabled.
+REFUND_RECONCILIATION_ENABLED="true"
+REFUND_RECONCILIATION_INTERVAL_MS="900000"
 ```
+
+Configure the Paystack dashboard webhook URL as:
+
+```text
+https://<your-api-host>/api/payments/paystack/webhook
+```
+
+The same signed webhook handles charge, refund, transfer, and Paystack dispute
+events. Before setting `PAYOUTS_ENABLED="true"`, enable Ghana Transfers on the
+Paystack business, confirm the Paystack balance is funded by settlements, and
+choose whether Transfers OTP remains enabled. When it is enabled, admins finish
+approved payouts through the OTP prompt in the payout operations dashboard.
+Refunds with an uncertain provider response are reconciled automatically and
+also appear in the admin payout operations dashboard. A refund in
+`NEEDS_ATTENTION` can be retried there with the customer's receiving-account
+details once Paystack exposes its refund ID. The account is resolved with
+Paystack and its returned account name must be confirmed before submission.
+Failed automatic duplicate-charge refunds can be safely reattempted from the
+same queue without changing the order balance or provider settlement.
+
+Production startup fails when the Paystack key, HTTPS callback/web URL, or CORS
+origin configuration is missing or invalid. Keep automatic refund and payout
+reconciliation enabled so accepted provider outcomes are recovered after
+network interruptions.
+
+Use separate test and live credentials for staging and production. The
+Paystack secret key is backend-only and must never be exposed through a
+`NEXT_PUBLIC_` variable.
 
 4. Set up the database
 
@@ -269,6 +328,7 @@ Make sure to set all required environment variables in your production environme
 - Database connection string
 - JWT secrets
 - Email service credentials
+- SMS provider credentials
 - App configuration
 
 ## Contributing
