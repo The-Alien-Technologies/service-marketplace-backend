@@ -14,6 +14,8 @@ import {
   SendQuoteOfferDto,
 } from './dto/quote.dto';
 import { QuoteStatus } from '../../generated/prisma';
+import { OrdersService } from '../orders/orders.service';
+import { NotificationEventsService } from '../notifications/notification-events.service';
 
 const QUOTE_INCLUDE = {
   client: {
@@ -25,6 +27,15 @@ const QUOTE_INCLUDE = {
   service: {
     select: { id: true, title: true, coverImage: true },
   },
+  order: {
+    select: {
+      id: true,
+      orderNumber: true,
+      paymentStatus: true,
+      total: true,
+      currency: true,
+    },
+  },
 };
 
 @Injectable()
@@ -32,6 +43,8 @@ export class QuoteService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileUploadService: FileUploadService,
+    private readonly ordersService: OrdersService,
+    private readonly notificationEvents?: NotificationEventsService,
   ) {}
 
   async create(
@@ -50,7 +63,7 @@ export class QuoteService {
       attachmentUrls.push(result.url);
     }
 
-    return this.prisma.quoteRequest.create({
+    const quote = await this.prisma.quoteRequest.create({
       data: {
         clientId,
         providerId: dto.providerId,
@@ -64,6 +77,8 @@ export class QuoteService {
       },
       include: QUOTE_INCLUDE,
     });
+    await this.notificationEvents?.quoteReceived(quote);
+    return quote;
   }
 
   async findAllForProvider(providerId: string, status?: QuoteStatus) {
@@ -112,7 +127,7 @@ export class QuoteService {
       );
     }
 
-    return this.prisma.quoteRequest.update({
+    const updated = await this.prisma.quoteRequest.update({
       where: { id },
       data: {
         status: dto.status as QuoteStatus,
@@ -120,6 +135,11 @@ export class QuoteService {
       },
       include: QUOTE_INCLUDE,
     });
+    await this.notificationEvents?.quoteUpdated({
+      ...updated,
+      actor: 'provider',
+    });
+    return updated;
   }
 
   async sendOffer(id: string, providerId: string, dto: SendQuoteOfferDto) {
@@ -129,7 +149,7 @@ export class QuoteService {
       throw new ForbiddenException('Only the provider can send an offer');
     }
 
-    return this.prisma.quoteRequest.update({
+    const updated = await this.prisma.quoteRequest.update({
       where: { id },
       data: {
         status: QuoteStatus.PENDING,
@@ -139,6 +159,11 @@ export class QuoteService {
       },
       include: QUOTE_INCLUDE,
     });
+    await this.notificationEvents?.quoteUpdated({
+      ...updated,
+      actor: 'provider',
+    });
+    return updated;
   }
 
   async respondToOffer(
@@ -152,7 +177,22 @@ export class QuoteService {
       throw new ForbiddenException('Only the client can respond to an offer');
     }
 
-    return this.prisma.quoteRequest.update({
+    if (dto.status === 'ACCEPTED') {
+      await this.ordersService.createFromAcceptedQuote(id, clientId);
+      const updated = await this.prisma.quoteRequest.findUnique({
+        where: { id },
+        include: QUOTE_INCLUDE,
+      });
+      if (updated) {
+        await this.notificationEvents?.quoteUpdated({
+          ...updated,
+          actor: 'client',
+        });
+      }
+      return updated;
+    }
+
+    const updated = await this.prisma.quoteRequest.update({
       where: { id },
       data: {
         status: dto.status as QuoteStatus,
@@ -160,5 +200,10 @@ export class QuoteService {
       },
       include: QUOTE_INCLUDE,
     });
+    await this.notificationEvents?.quoteUpdated({
+      ...updated,
+      actor: 'client',
+    });
+    return updated;
   }
 }

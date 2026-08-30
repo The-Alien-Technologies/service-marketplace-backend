@@ -22,6 +22,11 @@ import { QuoteModule } from './quote/quote.module';
 import { DisputeModule } from './dispute/dispute.module';
 import { BotChatController } from './botChat/botChat.controller';
 import { BotChatModule } from './botChat/botChat.module';
+import { SupportChatModule } from './supportChat/supportChat.module';
+import { PaymentsModule } from './payments/payments.module';
+import { PayoutsModule } from './payouts/payouts.module';
+import { validateEnvironment } from './config/environment';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -47,6 +52,7 @@ import { BotChatModule } from './botChat/botChat.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      validate: validateEnvironment,
     }),
     AuthModule,
     UsersModule,
@@ -62,6 +68,10 @@ import { BotChatModule } from './botChat/botChat.module';
     QuoteModule,
     DisputeModule,
     BotChatModule,
+    SupportChatModule,
+    PaymentsModule,
+    PayoutsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

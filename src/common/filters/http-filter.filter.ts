@@ -11,11 +11,43 @@ import { ConfigService } from '@nestjs/config';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Request } from 'express';
 
+const SENSITIVE_LOG_KEYS = new Set([
+  'accountnumber',
+  'authorization',
+  'accesstoken',
+  'refreshtoken',
+  'idtoken',
+  'otp',
+  'otpcode',
+  'password',
+  'phonenumber',
+  'secret',
+  'token',
+]);
+
+function redactForLog(value: unknown, depth = 0): unknown {
+  if (depth > 8) return '[TRUNCATED]';
+  if (Array.isArray(value)) {
+    return value.map((item) => redactForLog(item, depth + 1));
+  }
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      SENSITIVE_LOG_KEYS.has(key.toLowerCase())
+        ? '[REDACTED]'
+        : redactForLog(item, depth + 1),
+    ]),
+  );
+}
+
 export interface IResponse {
   message: string;
   data?: any;
   error?: any;
   stack?: string;
+  attemptsLeft?: number;
 }
 
 @Catch()
@@ -40,7 +72,7 @@ export class ApplicationExceptionFilter implements ExceptionFilter {
     const errorContext = {
       method: request?.method,
       url: request?.url,
-      body: request?.body,
+      body: redactForLog(request?.body),
       params: request?.params,
       query: request?.query,
       timestamp: new Date().toISOString(),
@@ -55,8 +87,10 @@ export class ApplicationExceptionFilter implements ExceptionFilter {
           ? response.message[0]
           : response.message,
         error: response.error,
+        attemptsLeft: response.attemptsLeft,
       };
       if (!response?.error) delete response['error'];
+      if (response.attemptsLeft === undefined) delete response['attemptsLeft'];
 
       devErrorResponse = response;
       prodErrorResponse = response;

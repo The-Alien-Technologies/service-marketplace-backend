@@ -3,13 +3,21 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  BadGatewayException,
+  HttpException,
+  HttpStatus,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../common/services/email.service';
-import { SmsService } from '../common/services/sms.service';
+import {
+  SmsProvider,
+  SmsService,
+  TEST_OTP_CODE,
+} from '../common/services/sms.service';
 import { OnboardingStatusService } from '../onboarding/onboarding-status.service';
 import { GoogleAuthService } from './services/google-auth.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,7 +28,19 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcryptjs';
-import { User, UserStatus } from '../../generated/prisma';
+import {
+  PhoneVerificationPurpose,
+  User,
+  UserStatus,
+} from '../../generated/prisma';
+import { normalizePhoneNumber } from '../common/utils/phone.util';
+import { randomInt } from 'crypto';
+import { NotificationEventsService } from '../notifications/notification-events.service';
+
+const PHONE_OTP_EXPIRY_MS = 10 * 60 * 1000;
+const PHONE_OTP_COOLDOWN_MS = 60 * 1000;
+const PHONE_OTP_HOURLY_LIMIT = 5;
+const maskPhoneForLog = (phoneNumber: string) => `***${phoneNumber.slice(-4)}`;
 
 export interface AuthResponse {
   user: Partial<User>;
@@ -47,6 +67,8 @@ export class AuthService {
     private onboardingStatusService: OnboardingStatusService,
     private googleAuthService: GoogleAuthService,
     private prisma: PrismaService,
+    @Optional()
+    private notificationEvents?: NotificationEventsService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponse> {
@@ -266,7 +288,6 @@ export class AuthService {
       passwordResetExpires: otpExpires,
       passwordResetAttempts: 0,
     } as any);
-
     // Send OTP email
     try {
       const userName = user.firstName;
@@ -318,6 +339,13 @@ export class AuthService {
       passwordResetExpires: null,
       passwordResetAttempts: 0,
     } as any);
+    await this.notificationEvents?.securityAlert({
+      userId: user.id,
+      key: `password-reset:${Date.now()}`,
+      title: 'Password reset completed',
+      message:
+        'Your Pavodah password was reset. Contact support immediately if this was not you.',
+    });
   }
 
   async verifyPasswordResetOtp(
@@ -501,168 +529,353 @@ export class AuthService {
     await this.sendEmailVerificationOtp(user.id, user.email);
   }
 
-  async sendPhoneVerificationOtp(phoneNumber: string): Promise<void> {
-    try {
-      // Format phone number to E.164 format
-      const formattedPhoneNumber =
-        this.smsService.formatPhoneNumber(phoneNumber);
-
-      // Generate 6-digit OTP
-      // TEMPORARILY HARDCODED for testing
-      const otpCode = '123456'; // Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + 10); // 10 minutes expiry
-
-      // Delete any existing verification for this phone number
-      await this.prisma.phoneVerification.deleteMany({
-        where: { phoneNumber: formattedPhoneNumber },
+  async sendPhoneVerificationOtp(
+    userId: string,
+    phoneNumber: string,
+  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) {
+      throw new BadRequestException({
+        message: 'Enter a valid phone number including its country code.',
       });
+    }
 
-      // Store phone verification in database
-      await this.prisma.phoneVerification.create({
-        data: {
-          phoneNumber: formattedPhoneNumber,
-          otpCode,
-          expiresAt,
-          attempts: 0,
-          maxAttempts: 5,
+    const existingClaim = await this.prisma.verifiedPhone.findUnique({
+      where: { phoneNumber: normalized.phoneNumber },
+    });
+    if (existingClaim?.userId === userId) {
+      throw new ConflictException({
+        message: 'This phone number is already verified for your account.',
+      });
+    }
+    if (existingClaim) {
+      throw new ConflictException({
+        message: 'This phone number is already linked to another account.',
+      });
+    }
+
+    const now = new Date();
+    const latestAttempt = await this.prisma.phoneVerification.findFirst({
+      where: {
+        userId,
+        phoneNumber: normalized.phoneNumber,
+        purpose: PhoneVerificationPurpose.ACCOUNT_VERIFICATION,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (
+      latestAttempt &&
+      now.getTime() - latestAttempt.createdAt.getTime() < PHONE_OTP_COOLDOWN_MS
+    ) {
+      throw new HttpException(
+        {
+          message:
+            'Please wait one minute before requesting another verification code.',
         },
-      });
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
 
-      // Send SMS via AWS SNS
-      // TEMPORARILY COMMENTED OUT for testing
-      // await this.smsService.sendVerificationCode(formattedPhoneNumber, otpCode);
+    const recentAttempts = await this.prisma.phoneVerification.count({
+      where: {
+        userId,
+        phoneNumber: normalized.phoneNumber,
+        purpose: PhoneVerificationPurpose.ACCOUNT_VERIFICATION,
+        createdAt: { gte: new Date(now.getTime() - 60 * 60 * 1000) },
+      },
+    });
+    if (recentAttempts >= PHONE_OTP_HOURLY_LIMIT) {
+      throw new HttpException(
+        {
+          message:
+            'Too many verification codes requested. Please try again in an hour.',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
 
-      this.logger.log(
-        `[TESTING] Phone verification OTP created as 123456 for ${formattedPhoneNumber}`,
+    const otpCode =
+      this.smsService.getProvider() === SmsProvider.TEST
+        ? TEST_OTP_CODE
+        : randomInt(100000, 1000000).toString();
+    const expiresAt = new Date(now.getTime() + PHONE_OTP_EXPIRY_MS);
+    const attempt = await this.prisma.phoneVerification.create({
+      data: {
+        userId,
+        phoneNumber: normalized.phoneNumber,
+        otpCode,
+        expiresAt,
+        attempts: 0,
+        maxAttempts: 5,
+        purpose: PhoneVerificationPurpose.ACCOUNT_VERIFICATION,
+      },
+    });
+
+    try {
+      await this.smsService.sendVerificationCode(
+        normalized.phoneNumber,
+        otpCode,
       );
     } catch (error) {
       this.logger.error(
-        `Failed to send phone verification OTP to ${phoneNumber}:`,
+        `Failed to send phone verification OTP to ${maskPhoneForLog(normalized.phoneNumber)}:`,
         error,
       );
-      throw new BadRequestException({
-        message: 'Failed to send verification code. Please try again.',
+      await this.prisma.phoneVerification
+        .delete({ where: { id: attempt.id } })
+        .catch(() => undefined);
+      throw new BadGatewayException({
+        message: 'We could not send the verification code. Please try again.',
       });
     }
+
+    this.logger.log(
+      `Phone verification OTP sent to ${maskPhoneForLog(normalized.phoneNumber)}`,
+    );
+    return { phoneNumber: normalized.phoneNumber, expiresAt };
   }
 
   async verifyPhoneOtp(
+    userId: string,
     phoneNumber: string,
     otpCode: string,
-  ): Promise<{ valid: boolean; attemptsLeft?: number }> {
-    try {
-      // Format phone number to E.164 format
-      const formattedPhoneNumber =
-        this.smsService.formatPhoneNumber(phoneNumber);
+  ): Promise<{
+    valid: boolean;
+    phoneNumber?: string;
+    attemptsLeft?: number;
+  }> {
+    const normalized = normalizePhoneNumber(phoneNumber);
+    if (!normalized) return { valid: false };
 
-      // Find the phone verification record
-      const phoneVerification = await this.prisma.phoneVerification.findFirst({
-        where: {
-          phoneNumber: formattedPhoneNumber,
-          verified: false,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+    const phoneVerification = await this.prisma.phoneVerification.findFirst({
+      where: {
+        userId,
+        phoneNumber: normalized.phoneNumber,
+        verified: false,
+        purpose: PhoneVerificationPurpose.ACCOUNT_VERIFICATION,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-      if (!phoneVerification) {
-        this.logger.warn(
-          `No phone verification found for ${formattedPhoneNumber}`,
-        );
-        return { valid: false };
-      }
+    if (!phoneVerification) return { valid: false };
 
-      // Check if expired
-      if (new Date() > phoneVerification.expiresAt) {
-        this.logger.warn(
-          `Phone verification expired for ${formattedPhoneNumber}`,
-        );
-        await this.prisma.phoneVerification.delete({
-          where: { id: phoneVerification.id },
-        });
-        return { valid: false };
-      }
-
-      // Check if max attempts reached
-      if (phoneVerification.attempts >= phoneVerification.maxAttempts) {
-        this.logger.warn(
-          `Max attempts reached for phone verification ${formattedPhoneNumber}`,
-        );
-        await this.prisma.phoneVerification.delete({
-          where: { id: phoneVerification.id },
-        });
-        return { valid: false };
-      }
-
-      // Increment attempts
-      await this.prisma.phoneVerification.update({
+    if (new Date() > phoneVerification.expiresAt) {
+      await this.prisma.phoneVerification.delete({
         where: { id: phoneVerification.id },
-        data: { attempts: phoneVerification.attempts + 1 },
       });
-
-      // Check if OTP matches
-      if (phoneVerification.otpCode === otpCode) {
-        // Mark as verified and delete the record
-        await this.prisma.phoneVerification.update({
-          where: { id: phoneVerification.id },
-          data: { verified: true },
-        });
-
-        this.logger.log(
-          `Phone verification successful for ${formattedPhoneNumber}`,
-        );
-        return { valid: true };
-      } else {
-        const attemptsLeft =
-          phoneVerification.maxAttempts - (phoneVerification.attempts + 1);
-        this.logger.warn(
-          `Phone verification failed for ${formattedPhoneNumber}. Attempts left: ${attemptsLeft}`,
-        );
-        return { valid: false, attemptsLeft: Math.max(0, attemptsLeft) };
-      }
-    } catch (error) {
-      this.logger.error(`Error verifying phone OTP for ${phoneNumber}:`, error);
       return { valid: false };
     }
-  }
 
-  async resendPhoneVerificationOtp(phoneNumber: string): Promise<void> {
-    try {
-      // Format phone number to E.164 format
-      const formattedPhoneNumber =
-        this.smsService.formatPhoneNumber(phoneNumber);
-
-      // Check if there's a recent verification request (rate limiting)
-      const recentVerification = await this.prisma.phoneVerification.findFirst({
-        where: {
-          phoneNumber: formattedPhoneNumber,
-          createdAt: {
-            gte: new Date(Date.now() - 60000), // 1 minute ago
-          },
-        },
+    if (phoneVerification.attempts >= phoneVerification.maxAttempts) {
+      await this.prisma.phoneVerification.delete({
+        where: { id: phoneVerification.id },
       });
+      return { valid: false, attemptsLeft: 0 };
+    }
 
-      if (recentVerification) {
-        throw new BadRequestException({
-          message:
-            'Please wait at least 1 minute before requesting another verification code.',
-        });
-      }
+    if (phoneVerification.otpCode !== otpCode) {
+      const attempts = phoneVerification.attempts + 1;
+      await this.prisma.phoneVerification.update({
+        where: { id: phoneVerification.id },
+        data: { attempts },
+      });
+      return {
+        valid: false,
+        attemptsLeft: Math.max(0, phoneVerification.maxAttempts - attempts),
+      };
+    }
 
-      // Send new verification code
-      await this.sendPhoneVerificationOtp(phoneNumber);
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      this.logger.error(
-        `Failed to resend phone verification OTP to ${phoneNumber}:`,
-        error,
-      );
-      throw new BadRequestException({
-        message: 'Failed to resend verification code. Please try again.',
+    const claimedByAnotherUser = await this.prisma.verifiedPhone.findUnique({
+      where: { phoneNumber: normalized.phoneNumber },
+    });
+    if (
+      claimedByAnotherUser?.userId !== undefined &&
+      claimedByAnotherUser.userId !== userId
+    ) {
+      throw new ConflictException({
+        message: 'This phone number is already linked to another account.',
       });
     }
+
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.verifiedPhone.deleteMany({ where: { userId } });
+      await transaction.verifiedPhone.create({
+        data: { userId, phoneNumber: normalized.phoneNumber },
+      });
+      await transaction.phoneVerification.updateMany({
+        where: {
+          userId,
+          phoneNumber: normalized.phoneNumber,
+          verified: false,
+          purpose: PhoneVerificationPurpose.ACCOUNT_VERIFICATION,
+        },
+        data: { verified: true },
+      });
+      await transaction.user.update({
+        where: { id: userId },
+        data: {
+          phoneNumber: normalized.phoneNumber,
+          countryCode: normalized.countryCode,
+          phoneVerified: true,
+        },
+      });
+    });
+
+    await this.notificationEvents?.securityAlert({
+      userId,
+      key: `phone-verified:${phoneVerification.id}`,
+      title: 'Phone number verified',
+      message:
+        'A phone number was verified and linked to your Pavodah account.',
+    });
+
+    this.logger.log(
+      `Phone verification successful for ${maskPhoneForLog(normalized.phoneNumber)}`,
+    );
+    return { valid: true, phoneNumber: normalized.phoneNumber };
+  }
+
+  async resendPhoneVerificationOtp(
+    userId: string,
+    phoneNumber: string,
+  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+    return this.sendPhoneVerificationOtp(userId, phoneNumber);
+  }
+
+  async sendPayoutAccountOtp(
+    userId: string,
+  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+    const verifiedPhone = await this.prisma.verifiedPhone.findUnique({
+      where: { userId },
+    });
+    if (!verifiedPhone) {
+      throw new BadRequestException({
+        message: 'Verify your phone number before setting up payouts.',
+      });
+    }
+
+    const now = new Date();
+    const latestAttempt = await this.prisma.phoneVerification.findFirst({
+      where: {
+        userId,
+        phoneNumber: verifiedPhone.phoneNumber,
+        purpose: PhoneVerificationPurpose.PAYOUT_ACCOUNT_CHANGE,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (
+      latestAttempt &&
+      now.getTime() - latestAttempt.createdAt.getTime() < PHONE_OTP_COOLDOWN_MS
+    ) {
+      throw new HttpException(
+        { message: 'Please wait one minute before requesting another code.' },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const recentAttempts = await this.prisma.phoneVerification.count({
+      where: {
+        userId,
+        phoneNumber: verifiedPhone.phoneNumber,
+        purpose: PhoneVerificationPurpose.PAYOUT_ACCOUNT_CHANGE,
+        createdAt: { gte: new Date(now.getTime() - 60 * 60 * 1000) },
+      },
+    });
+    if (recentAttempts >= PHONE_OTP_HOURLY_LIMIT) {
+      throw new HttpException(
+        { message: 'Too many codes requested. Please try again in an hour.' },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const otpCode =
+      this.smsService.getProvider() === SmsProvider.TEST
+        ? TEST_OTP_CODE
+        : randomInt(100000, 1000000).toString();
+    const expiresAt = new Date(now.getTime() + PHONE_OTP_EXPIRY_MS);
+    const attempt = await this.prisma.phoneVerification.create({
+      data: {
+        userId,
+        phoneNumber: verifiedPhone.phoneNumber,
+        otpCode,
+        expiresAt,
+        purpose: PhoneVerificationPurpose.PAYOUT_ACCOUNT_CHANGE,
+      },
+    });
+
+    try {
+      await this.smsService.sendVerificationCode(
+        verifiedPhone.phoneNumber,
+        otpCode,
+      );
+    } catch (error) {
+      await this.prisma.phoneVerification
+        .delete({ where: { id: attempt.id } })
+        .catch(() => undefined);
+      throw new BadGatewayException({
+        message: 'We could not send the verification code. Please try again.',
+      });
+    }
+
+    return { phoneNumber: verifiedPhone.phoneNumber, expiresAt };
+  }
+
+  async verifyPayoutAccountOtp(userId: string, otpCode: string) {
+    const verifiedPhone = await this.prisma.verifiedPhone.findUnique({
+      where: { userId },
+    });
+    if (!verifiedPhone) return false;
+
+    const attempt = await this.prisma.phoneVerification.findFirst({
+      where: {
+        userId,
+        phoneNumber: verifiedPhone.phoneNumber,
+        purpose: PhoneVerificationPurpose.PAYOUT_ACCOUNT_CHANGE,
+        verified: false,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!attempt || attempt.expiresAt < new Date()) return false;
+    if (attempt.attempts >= attempt.maxAttempts) return false;
+    if (attempt.otpCode !== otpCode) {
+      await this.prisma.phoneVerification.update({
+        where: { id: attempt.id },
+        data: { attempts: { increment: 1 } },
+      });
+      return false;
+    }
+
+    const claimed = await this.prisma.phoneVerification.updateMany({
+      where: {
+        id: attempt.id,
+        otpCode,
+        verified: false,
+        expiresAt: { gt: new Date() },
+        attempts: { lt: attempt.maxAttempts },
+      },
+      data: { verified: true },
+    });
+    return claimed.count === 1;
+  }
+
+  async restorePayoutAccountOtp(userId: string, otpCode: string) {
+    const attempt = await this.prisma.phoneVerification.findFirst({
+      where: {
+        userId,
+        otpCode,
+        purpose: PhoneVerificationPurpose.PAYOUT_ACCOUNT_CHANGE,
+        verified: true,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    if (!attempt) return;
+
+    await this.prisma.phoneVerification.updateMany({
+      where: { id: attempt.id, verified: true },
+      data: { verified: false },
+    });
   }
 
   async refreshTokenFromRefreshToken(
@@ -754,6 +967,13 @@ export class AuthService {
     await this.usersService.updateProfile(userId, {
       password: hashedNewPassword,
     } as any);
+    await this.notificationEvents?.securityAlert({
+      userId,
+      key: `password-changed:${Date.now()}`,
+      title: 'Password changed',
+      message:
+        'Your Pavodah password was changed. Contact support immediately if this was not you.',
+    });
   }
 
   async softDeleteAccount(userId: string): Promise<void> {

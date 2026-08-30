@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 
@@ -44,6 +45,7 @@ export class FileUploadService {
   private readonly logger = new Logger(FileUploadService.name);
   private supabaseClient: SupabaseClient;
   private s3Client: S3Client;
+  private cloudinaryInitialized = false;
   private provider: FileUploadProvider;
 
   constructor(private readonly configService: ConfigService) {
@@ -81,6 +83,9 @@ export class FileUploadService {
       case FileUploadProvider.AWS_S3:
         this.initializeS3();
         break;
+      case FileUploadProvider.CLOUDINARY:
+        this.initializeCloudinary();
+        break;
       case FileUploadProvider.LOCAL:
         this.logger.log('Using LOCAL file upload provider');
         break;
@@ -109,7 +114,27 @@ export class FileUploadService {
   }
 
   private initializeCloudinary(): void {
-    
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRETE');
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      this.logger.error(
+        'Cloudinary provider selected but CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRETE not configured',
+      );
+      this.provider = FileUploadProvider.LOCAL;
+      this.logger.warn('Falling back to LOCAL provider');
+      return;
+    }
+
+    cloudinary.config({
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
+    });
+
+    this.cloudinaryInitialized = true;
+    this.logger.log('Cloudinary client initialized successfully');
   }
 
   private initializeS3(): void {
@@ -153,6 +178,8 @@ export class FileUploadService {
         return this.uploadToSupabase(file, category, options);
       case FileUploadProvider.AWS_S3:
         return this.uploadToS3(file, category, options);
+      case FileUploadProvider.CLOUDINARY:
+        return this.uploadToCloudinary(file, category, options);
       case FileUploadProvider.LOCAL:
         return this.uploadToLocal(file, category, options);
       default:
@@ -171,6 +198,8 @@ export class FileUploadService {
         return this.deleteFromSupabase(fileUrl);
       case FileUploadProvider.AWS_S3:
         return this.deleteFromS3(fileUrl);
+      case FileUploadProvider.CLOUDINARY:
+        return this.deleteFromCloudinary(fileUrl);
       case FileUploadProvider.LOCAL:
         return this.deleteFromLocal(fileUrl);
       default:
@@ -358,6 +387,66 @@ export class FileUploadService {
     } catch (error) {
       this.logger.error('Failed to delete from S3:', error);
       throw new BadRequestException('Failed to delete file from S3 storage');
+    }
+  }
+
+  private async uploadToCloudinary(
+    file: Express.Multer.File,
+    category: FileCategory,
+    options: FileUploadOptions,
+  ): Promise<FileUploadResult> {
+    return new Promise((resolve, reject) => {
+      const folder = options.folder
+        ? `${category}/${options.folder}`
+        : category;
+
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: 'auto' },
+        (error, result: UploadApiResponse) => {
+          if (error) {
+            this.logger.error('Cloudinary upload error:', error);
+            reject(
+              new BadRequestException(
+                `Failed to upload file: ${error.message}`,
+              ),
+            );
+            return;
+          }
+          resolve({
+            url: result.secure_url,
+            fileName: result.public_id,
+            fileSize: file.size,
+            fileType: file.mimetype,
+          });
+        },
+      );
+
+      uploadStream.end(file.buffer);
+    });
+  }
+
+  private async deleteFromCloudinary(fileUrl: string): Promise<void> {
+    try {
+      // Cloudinary URL pattern:
+      // https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/v{version}/{folder/public_id}.{ext}
+      const url = new URL(fileUrl);
+      const parts = url.pathname.split('/');
+      const uploadIndex = parts.indexOf('upload');
+      if (uploadIndex === -1) {
+        this.logger.warn(
+          `Could not extract public_id from Cloudinary URL: ${fileUrl}`,
+        );
+        return;
+      }
+      // Skip 'upload' and the version segment (v1234567890)
+      const afterVersion = parts.slice(uploadIndex + 2).join('/');
+      const publicId = afterVersion.replace(/\.[^/.]+$/, ''); // strip extension
+
+      await cloudinary.uploader.destroy(publicId);
+      this.logger.log(`Deleted Cloudinary file: ${publicId}`);
+    } catch (error) {
+      this.logger.error('Failed to delete from Cloudinary:', error);
+      throw new BadRequestException('Failed to delete file from Cloudinary');
     }
   }
 

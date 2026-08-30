@@ -9,71 +9,84 @@ datasource db {
 }
 
 model User {
-  id                             String                 @id @default(cuid())
-  createdAt                      DateTime               @default(now())
-  updatedAt                      DateTime               @updatedAt
-  email                          String                 @unique
-  emailVerified                  Boolean                @default(false)
+  id                             String                      @id @default(cuid())
+  createdAt                      DateTime                    @default(now())
+  updatedAt                      DateTime                    @updatedAt
+  email                          String                      @unique
+  emailVerified                  Boolean                     @default(false)
   password                       String?
   passwordResetOtp               String?
   passwordResetExpires           DateTime?
-  passwordResetAttempts          Int                    @default(0)
-  role                           Role                   @default(USER)
+  passwordResetAttempts          Int                         @default(0)
+  role                           Role                        @default(USER)
   firstName                      String?
   lastName                       String?
   displayName                    String?
-  username                       String?                @unique
+  username                       String?                     @unique
   avatar                         String?
   bio                            String?
   dateOfBirth                    DateTime?
-  timezone                       String                 @default("UTC")
+  timezone                       String                      @default("UTC")
   phoneNumber                    String?
   countryCode                    String?
-  phoneVerified                  Boolean                @default(false)
-  googleId                       String?                @unique
-  appleId                        String?                @unique
-  facebookId                     String?                @unique
-  twitterId                      String?                @unique
-  hasCompletedOnboarding         Boolean                @default(false)
+  phoneVerified                  Boolean                     @default(false)
+  googleId                       String?                     @unique
+  appleId                        String?                     @unique
+  facebookId                     String?                     @unique
+  twitterId                      String?                     @unique
+  hasCompletedOnboarding         Boolean                     @default(false)
   onboardingCompletedAt          DateTime?
-  profileCompleteness            Int                    @default(0)
+  profileCompleteness            Int                         @default(0)
   serviceProviderExperienceLevel ExperienceLevel?
-  isServiceProviderVerified      Boolean                @default(false)
+  isServiceProviderVerified      Boolean                     @default(false)
   serviceProviderVerifiedAt      DateTime?
-  isPremium                      Boolean                @default(false)
+  isPremium                      Boolean                     @default(false)
   subscriptionStatus             SubscriptionStatus?
   subscriptionTier               String?
   subscriptionStartDate          DateTime?
   subscriptionEndDate            DateTime?
-  themePreference                ThemePreference        @default(SYSTEM)
-  notificationsEnabled           Boolean                @default(true)
-  marketingNotifications         Boolean                @default(false)
-  preferredLanguage              String                 @default("en")
-  isProfilePublic                Boolean                @default(false)
-  dataAnalyticsEnabled           Boolean                @default(true)
-  status                         UserStatus             @default(ACTIVE)
+  themePreference                ThemePreference             @default(SYSTEM)
+  notificationsEnabled           Boolean                     @default(true)
+  marketingNotifications         Boolean                     @default(false)
+  preferredLanguage              String                      @default("en")
+  isProfilePublic                Boolean                     @default(false)
+  dataAnalyticsEnabled           Boolean                     @default(true)
+  status                         UserStatus                  @default(ACTIVE)
   lastLoginAt                    DateTime?
-  lastActiveAt                   DateTime               @default(now())
-  emailVerificationAttempts      Int                    @default(0)
+  lastActiveAt                   DateTime                    @default(now())
+  emailVerificationAttempts      Int                         @default(0)
   emailVerificationExpires       DateTime?
   emailVerificationOtp           String?
-  emailNotificationsEnabled      Boolean                @default(true)
-  smsNotificationsEnabled        Boolean                @default(false)
-  providerConversations          Conversation[]         @relation("ProviderConversations")
-  userConversations              Conversation[]         @relation("UserConversations")
-  clientDisputes                 Dispute[]              @relation("ClientDisputes")
-  providerDisputes               Dispute[]              @relation("ProviderDisputes")
-  sentMessages                   Message[]              @relation("SentMessages")
-  clientOrders                   Order[]                @relation("ClientOrders")
-  providerOrders                 Order[]                @relation("ProviderOrders")
-  quoteRequestsAsClient          QuoteRequest[]         @relation("ClientQuoteRequests")
-  quoteRequestsAsProvider        QuoteRequest[]         @relation("ProviderQuoteRequests")
-  clientReviews                  Review[]               @relation("ClientReviews")
-  providerReviews                Review[]               @relation("ProviderReviews")
+  emailNotificationsEnabled      Boolean                     @default(true)
+  smsNotificationsEnabled        Boolean                     @default(false)
+  providerConversations          Conversation[]              @relation("ProviderConversations")
+  userConversations              Conversation[]              @relation("UserConversations")
+  clientDisputes                 Dispute[]                   @relation("ClientDisputes")
+  providerDisputes               Dispute[]                   @relation("ProviderDisputes")
+  sentMessages                   Message[]                   @relation("SentMessages")
+  clientOrders                   Order[]                     @relation("ClientOrders")
+  providerOrders                 Order[]                     @relation("ProviderOrders")
+  quoteRequestsAsClient          QuoteRequest[]              @relation("ClientQuoteRequests")
+  quoteRequestsAsProvider        QuoteRequest[]              @relation("ProviderQuoteRequests")
+  clientReviews                  Review[]                    @relation("ClientReviews")
+  providerReviews                Review[]                    @relation("ProviderReviews")
   services                       Service[]
+  handledSupportConversations    SupportConversation[]       @relation("SupportAdmin")
+  initiatedSupportConversations  SupportConversation[]       @relation("SupportInitiator")
+  supportMessages                SupportMessage[]            @relation("SupportMessageSender")
   addresses                      UserAddress[]
   interests                      UserInterest[]
   verificationDocuments          VerificationDocument[]
+  phoneVerifications             PhoneVerification[]
+  verifiedPhone                  VerifiedPhone?
+  paymentTransactions            PaymentTransaction[]
+  payoutAccount                  ProviderPayoutAccount?
+  orderSettlements               OrderSettlement[]
+  providerPayouts                ProviderPayout[]            @relation("ProviderPayouts")
+  approvedPayouts                ProviderPayout[]            @relation("PayoutApprover")
+  rejectedPayouts                ProviderPayout[]            @relation("PayoutRejector")
+  balanceAdjustments             ProviderBalanceAdjustment[]
+  notifications                  Notification[]
 
   @@map("users")
 }
@@ -151,17 +164,31 @@ model VerificationDocument {
 }
 
 model PhoneVerification {
-  id          String   @id @default(cuid())
+  id          String                   @id @default(cuid())
+  userId      String
   phoneNumber String
   otpCode     String
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(5)
+  attempts    Int                      @default(0)
+  maxAttempts Int                      @default(5)
   expiresAt   DateTime
-  verified    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  verified    Boolean                  @default(false)
+  purpose     PhoneVerificationPurpose @default(ACCOUNT_VERIFICATION)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, phoneNumber, createdAt])
   @@map("phone_verifications")
+}
+
+model VerifiedPhone {
+  phoneNumber String   @id
+  userId      String   @unique
+  verifiedAt  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verified_phones")
 }
 
 model Service {
@@ -229,31 +256,92 @@ model ServiceImage {
 }
 
 model Order {
-  id             String       @id @default(cuid())
-  orderNumber    String       @unique
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  clientId       String
-  providerId     String
-  serviceId      String
-  planId         String?
-  planTitle      String
-  planPrice      Decimal      @db.Decimal(10, 2)
-  planInclusions String
-  subtotal       Decimal      @db.Decimal(10, 2)
-  addOnsTotal    Decimal      @default(0) @db.Decimal(10, 2)
-  couponCode     String?
-  couponDiscount Decimal      @default(0) @db.Decimal(10, 2)
-  total          Decimal      @db.Decimal(10, 2)
-  status         OrderStatus  @default(PENDING)
-  dispute        Dispute?
-  addOns         OrderAddOn[]
-  client         User         @relation("ClientOrders", fields: [clientId], references: [id])
-  provider       User         @relation("ProviderOrders", fields: [providerId], references: [id])
-  service        Service      @relation(fields: [serviceId], references: [id])
-  review         Review?
+  id                  String                      @id @default(cuid())
+  orderNumber         String                      @unique
+  createdAt           DateTime                    @default(now())
+  updatedAt           DateTime                    @updatedAt
+  clientId            String
+  providerId          String
+  serviceId           String
+  planId              String?
+  planTitle           String
+  planPrice           Decimal                     @db.Decimal(10, 2)
+  planInclusions      String
+  subtotal            Decimal                     @db.Decimal(10, 2)
+  addOnsTotal         Decimal                     @default(0) @db.Decimal(10, 2)
+  couponCode          String?
+  couponDiscount      Decimal                     @default(0) @db.Decimal(10, 2)
+  total               Decimal                     @db.Decimal(10, 2)
+  currency            String                      @default("GHS")
+  status              OrderStatus                 @default(PENDING)
+  paymentStatus       OrderPaymentStatus          @default(UNPAID)
+  source              OrderSource                 @default(SERVICE_PLAN)
+  checkoutKey         String?                     @unique
+  quoteRequestId      String?                     @unique
+  paidAt              DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  commissionRate      Decimal                     @default(10.00) @db.Decimal(5, 2)
+  dispute             Dispute?
+  settlement          OrderSettlement?
+  refunds             PaymentRefund[]
+  externalDisputes    ExternalPaymentDispute[]
+  balanceAdjustments  ProviderBalanceAdjustment[]
+  addOns              OrderAddOn[]
+  paymentTransactions PaymentTransaction[]
+  client              User                        @relation("ClientOrders", fields: [clientId], references: [id])
+  provider            User                        @relation("ProviderOrders", fields: [providerId], references: [id])
+  service             Service                     @relation(fields: [serviceId], references: [id])
+  quoteRequest        QuoteRequest?               @relation(fields: [quoteRequestId], references: [id])
+  review              Review?
 
+  @@index([providerId, createdAt])
+  @@index([providerId, paymentStatus, status, createdAt])
+  @@index([providerId, paidAt])
+  @@index([providerId, completedAt])
+  @@index([clientId, createdAt])
+  @@index([clientId, paymentStatus, status, createdAt])
+  @@index([clientId, paidAt])
+  @@index([clientId, completedAt])
+  @@index([paidAt])
   @@map("orders")
+}
+
+model PaymentTransaction {
+  id                    String                   @id @default(cuid())
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  orderId               String
+  clientId              String
+  reference             String                   @unique
+  accessCode            String?
+  authorizationUrl      String?                  @db.Text
+  amount                Decimal                  @db.Decimal(10, 2)
+  amountMinor           Int
+  currency              String                   @default("GHS")
+  status                PaymentTransactionStatus @default(INITIALIZED)
+  channel               String?
+  providerTransactionId String?
+  failureMessage        String?
+  paidAt                DateTime?
+  verifiedAt            DateTime?
+  rawData               Json?
+  refundId              String?
+  refundReference       String?
+  refundStatus          String?
+  refundedAt            DateTime?
+  refundData            Json?
+  providerFeeMinor      Int?
+  isPrimary             Boolean                  @default(false)
+  refunds               PaymentRefund[]
+  externalDisputes      ExternalPaymentDispute[]
+  client                User                     @relation(fields: [clientId], references: [id])
+  order                 Order                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+  @@index([clientId, createdAt])
+  @@index([status, createdAt])
+  @@map("payment_transactions")
 }
 
 model OrderAddOn {
@@ -325,6 +413,81 @@ model Message {
   @@map("messages")
 }
 
+model SupportConversation {
+  id            String                    @id @default(cuid())
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  initiatorId   String
+  initiatorType SupportSenderType
+  adminId       String?
+  status        SupportConversationStatus @default(BOT)
+  closedAt      DateTime?
+  adminJoinedAt DateTime?
+  admin         User?                     @relation("SupportAdmin", fields: [adminId], references: [id])
+  initiator     User                      @relation("SupportInitiator", fields: [initiatorId], references: [id])
+  messages      SupportMessage[]
+
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id             String              @id @default(cuid())
+  createdAt      DateTime            @default(now())
+  conversationId String
+  senderId       String?
+  senderType     SupportSenderType
+  content        String
+  botResponseId  String?
+  isRead         Boolean             @default(false)
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User?               @relation("SupportMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
+model Notification {
+  id         String                 @id @default(cuid())
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  userId     String
+  type       NotificationType
+  priority   NotificationPriority   @default(INFO)
+  title      String
+  message    String
+  actionUrl  String?
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  dedupeKey  String?                @unique
+  readAt     DateTime?
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String                     @id @default(cuid())
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+  notificationId String
+  channel        NotificationChannel
+  status         NotificationDeliveryStatus @default(PENDING)
+  attempts       Int                        @default(0)
+  nextAttemptAt  DateTime                   @default(now())
+  collapseKey    String?                    @unique
+  cancelIfRead   Boolean                    @default(false)
+  sentAt         DateTime?
+  lastError      String?
+  notification   Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, nextAttemptAt])
+  @@map("notification_deliveries")
+}
+
 model QuoteRequest {
   id            String      @id @default(cuid())
   createdAt     DateTime    @default(now())
@@ -344,28 +507,277 @@ model QuoteRequest {
   client        User        @relation("ClientQuoteRequests", fields: [clientId], references: [id])
   provider      User        @relation("ProviderQuoteRequests", fields: [providerId], references: [id])
   service       Service?    @relation(fields: [serviceId], references: [id])
+  order         Order?
 
   @@map("quote_requests")
 }
 
 model Dispute {
-  id          String           @id @default(cuid())
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  orderId     String           @unique
-  clientId    String
-  providerId  String
-  issueType   DisputeIssueType
-  description String
-  priority    DisputePriority  @default(LOW)
-  status      DisputeStatus    @default(OPEN)
-  adminNote   String?
-  resolvedAt  DateTime?
-  client      User             @relation("ClientDisputes", fields: [clientId], references: [id])
-  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider    User             @relation("ProviderDisputes", fields: [providerId], references: [id])
+  id                     String                 @id @default(cuid())
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  orderId                String                 @unique
+  clientId               String
+  providerId             String
+  issueType              DisputeIssueType
+  description            String
+  priority               DisputePriority        @default(LOW)
+  status                 DisputeStatus          @default(OPEN)
+  adminNote              String?
+  resolvedAt             DateTime?
+  resolutionType         DisputeResolutionType?
+  resolutionRefundAmount Decimal?               @db.Decimal(10, 2)
+  resolutionRequestedAt  DateTime?
+  client                 User                   @relation("ClientDisputes", fields: [clientId], references: [id])
+  order                  Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider               User                   @relation("ProviderDisputes", fields: [providerId], references: [id])
+  refunds                PaymentRefund[]
 
   @@map("disputes")
+}
+
+model PaymentSetting {
+  id             String   @id @default("default")
+  commissionRate Decimal  @default(10.00) @db.Decimal(5, 2)
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("payment_settings")
+}
+
+model OrderSettlement {
+  id                       String                @id @default(cuid())
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  orderId                  String                @unique
+  providerId               String
+  grossAmount              Decimal               @db.Decimal(10, 2)
+  refundedAmount           Decimal               @default(0) @db.Decimal(10, 2)
+  retainedAmount           Decimal               @db.Decimal(10, 2)
+  commissionRate           Decimal               @db.Decimal(5, 2)
+  commissionAmount         Decimal               @db.Decimal(10, 2)
+  providerAmount           Decimal               @db.Decimal(10, 2)
+  status                   SettlementStatus      @default(HELD)
+  acceptedAt               DateTime?
+  acceptedBy               SettlementAcceptedBy?
+  releaseReviewStatus      ReleaseReviewStatus   @default(NONE)
+  releaseReviewRequestedAt DateTime?
+  releaseReviewNote        String?
+  order                    Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider                 User                  @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  payoutItems              ProviderPayoutItem[]
+
+  @@index([providerId, status, createdAt])
+  @@map("order_settlements")
+}
+
+model ProviderPayoutAccount {
+  id                 String                @id @default(cuid())
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  providerId         String                @unique
+  type               PayoutDestinationType
+  recipientCode      String                @unique
+  institutionCode    String
+  institutionName    String
+  accountName        String?
+  accountNumberLast4 String
+  currency           String                @default("GHS")
+  status             PayoutAccountStatus   @default(ACTIVE)
+  verifiedAt         DateTime              @default(now())
+  provider           User                  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  payouts            ProviderPayout[]
+
+  @@map("provider_payout_accounts")
+}
+
+model ProviderPayout {
+  id                  String                         @id @default(cuid())
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  providerId          String
+  payoutAccountId     String
+  reference           String                         @unique
+  amount              Decimal                        @db.Decimal(10, 2)
+  grossEarningsAmount Decimal                        @db.Decimal(10, 2)
+  adjustmentAmount    Decimal                        @default(0) @db.Decimal(10, 2)
+  amountMinor         Int
+  currency            String                         @default("GHS")
+  status              ProviderPayoutStatus           @default(REQUESTED)
+  transferCode        String?
+  recipientCode       String
+  destinationType     PayoutDestinationType
+  institutionName     String
+  accountName         String?
+  accountNumberLast4  String
+  requestedAt         DateTime                       @default(now())
+  approvedAt          DateTime?
+  approvedBy          String?
+  rejectedAt          DateTime?
+  rejectedBy          String?
+  rejectionReason     String?
+  processedAt         DateTime?
+  failureMessage      String?
+  providerFeeMinor    Int?
+  rawData             Json?
+  provider            User                           @relation("ProviderPayouts", fields: [providerId], references: [id], onDelete: Restrict)
+  payoutAccount       ProviderPayoutAccount          @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
+  approver            User?                          @relation("PayoutApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  rejector            User?                          @relation("PayoutRejector", fields: [rejectedBy], references: [id], onDelete: SetNull)
+  items               ProviderPayoutItem[]
+  adjustmentItems     ProviderPayoutAdjustmentItem[]
+
+  @@index([providerId, status, createdAt])
+  @@index([status, createdAt])
+  @@map("provider_payouts")
+}
+
+model ProviderPayoutItem {
+  id           String          @id @default(cuid())
+  payoutId     String
+  settlementId String
+  amount       Decimal         @db.Decimal(10, 2)
+  payout       ProviderPayout  @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  settlement   OrderSettlement @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, settlementId])
+  @@index([settlementId])
+  @@map("provider_payout_items")
+}
+
+model ProviderBalanceAdjustment {
+  id                String                         @id @default(cuid())
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  providerId        String
+  orderId           String
+  externalDisputeId String?                        @unique
+  type              BalanceAdjustmentType
+  amount            Decimal                        @db.Decimal(10, 2)
+  recoveredAmount   Decimal                        @default(0) @db.Decimal(10, 2)
+  status            BalanceAdjustmentStatus        @default(OPEN)
+  reason            String
+  provider          User                           @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  order             Order                          @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  externalDispute   ExternalPaymentDispute?        @relation(fields: [externalDisputeId], references: [id], onDelete: SetNull)
+  payoutItems       ProviderPayoutAdjustmentItem[]
+
+  @@index([providerId, status, createdAt])
+  @@map("provider_balance_adjustments")
+}
+
+model ProviderPayoutAdjustmentItem {
+  id           String                    @id @default(cuid())
+  payoutId     String
+  adjustmentId String
+  amount       Decimal                   @db.Decimal(10, 2)
+  payout       ProviderPayout            @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  adjustment   ProviderBalanceAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, adjustmentId])
+  @@index([adjustmentId])
+  @@map("provider_payout_adjustment_items")
+}
+
+model PaymentRefund {
+  id                      String              @id @default(cuid())
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  transactionId           String
+  orderId                 String
+  disputeId               String?
+  reference               String              @unique
+  providerRefundId        String?             @unique
+  providerRefundReference String?             @unique
+  amount                  Decimal             @db.Decimal(10, 2)
+  amountMinor             Int
+  currency                String              @default("GHS")
+  reason                  String?
+  status                  PaymentRefundStatus @default(INITIALIZED)
+  rawData                 Json?
+  processedAt             DateTime?
+  failureMessage          String?
+  affectsOrderBalance     Boolean             @default(true)
+  transaction             PaymentTransaction  @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  order                   Order               @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  dispute                 Dispute?            @relation(fields: [disputeId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, status, createdAt])
+  @@index([transactionId, createdAt])
+  @@map("payment_refunds")
+}
+
+model ExternalPaymentDispute {
+  id                  String                       @id @default(cuid())
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  providerDisputeId   String                       @unique
+  transactionId       String
+  orderId             String
+  status              ExternalPaymentDisputeStatus @default(OPEN)
+  refundAmount        Decimal                      @default(0) @db.Decimal(10, 2)
+  currency            String
+  affectsOrderBalance Boolean                      @default(true)
+  resolution          String?
+  rawData             Json?
+  resolvedAt          DateTime?
+  transaction         PaymentTransaction           @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  order               Order                        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  balanceAdjustment   ProviderBalanceAdjustment?
+
+  @@index([orderId, status, createdAt])
+  @@map("external_payment_disputes")
+}
+
+model account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamp(6)
+  refreshTokenExpiresAt DateTime? @db.Timestamp(6)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime  @default(now()) @db.Timestamp(6)
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model session {
+  id        String   @id
+  expiresAt DateTime @db.Timestamp(6)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model user {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime  @default(now()) @db.Timestamp(6)
+  account       account[]
+  session       session[]
+}
+
+model verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime  @db.Timestamp(6)
+  createdAt  DateTime? @db.Timestamp(6)
+  updatedAt  DateTime? @db.Timestamp(6)
 }
 
 enum UserStatus {
@@ -420,6 +832,11 @@ enum DocumentStatus {
   REJECTED
 }
 
+enum PhoneVerificationPurpose {
+  ACCOUNT_VERIFICATION
+  PAYOUT_ACCOUNT_CHANGE
+}
+
 enum ServiceStatus {
   DRAFT
   PUBLISHED
@@ -434,6 +851,30 @@ enum OrderStatus {
   COMPLETED
   DECLINED
   REFUNDED
+}
+
+enum OrderPaymentStatus {
+  UNPAID
+  PROCESSING
+  PAID
+  FAILED
+  REFUND_PENDING
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum PaymentTransactionStatus {
+  INITIALIZED
+  PENDING
+  SUCCESS
+  FAILED
+  ABANDONED
+  AMOUNT_MISMATCH
+}
+
+enum OrderSource {
+  SERVICE_PLAN
+  QUOTE
 }
 
 enum QuoteStatus {
@@ -464,4 +905,130 @@ enum DisputePriority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum SettlementStatus {
+  HELD
+  ELIGIBLE
+  RESERVED
+  PAID
+  VOID
+}
+
+enum SettlementAcceptedBy {
+  CUSTOMER
+  ADMIN
+}
+
+enum ReleaseReviewStatus {
+  NONE
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum PayoutDestinationType {
+  GHIPSS
+  MOBILE_MONEY
+}
+
+enum PayoutAccountStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProviderPayoutStatus {
+  REQUESTED
+  PROCESSING
+  OTP_REQUIRED
+  SUCCESS
+  FAILED
+  REVERSED
+  REJECTED
+}
+
+enum PaymentRefundStatus {
+  INITIALIZED
+  PENDING
+  PROCESSING
+  NEEDS_ATTENTION
+  PROCESSED
+  FAILED
+}
+
+enum DisputeResolutionType {
+  RELEASE_PROVIDER
+  FULL_REFUND
+  PARTIAL_REFUND
+}
+
+enum BalanceAdjustmentType {
+  CHARGEBACK
+  ADMIN
+}
+
+enum BalanceAdjustmentStatus {
+  OPEN
+  RESERVED
+  RECOVERED
+}
+
+enum ExternalPaymentDisputeStatus {
+  OPEN
+  REMINDER
+  RESOLVED_WON
+  RESOLVED_LOST
+}
+
+enum SupportConversationStatus {
+  BOT
+  AWAITING_FOR_ADMIN
+  ACTIVE_WITH_ADMIN
+  CLOSED
+}
+
+enum SupportSenderType {
+  USER
+  SERVICE_PROVIDER
+  ADMIN
+  BOT
+}
+
+enum NotificationType {
+  ORDER_PAID
+  ORDER_STATUS_CHANGED
+  QUOTE_RECEIVED
+  QUOTE_UPDATED
+  REVIEW_RECEIVED
+  REVIEW_RESPONSE
+  DISPUTE_OPENED
+  DISPUTE_UPDATED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  REFUND_UPDATED
+  PAYOUT_REQUESTED
+  PAYOUT_UPDATED
+  MESSAGE_RECEIVED
+  SUPPORT_ESCALATED
+  SECURITY_ALERT
+  SYSTEM_ALERT
+}
+
+enum NotificationPriority {
+  INFO
+  IMPORTANT
+  CRITICAL
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
 }

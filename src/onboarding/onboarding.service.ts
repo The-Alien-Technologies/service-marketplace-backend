@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadService } from '../common/services/file-upload.service';
 import { Role, UserInterestType, ExperienceLevel } from '../common/enums';
@@ -11,6 +17,7 @@ import {
   DocumentResponseDto,
 } from './dto';
 import { User, UserAddress, UserInterest } from '../../generated/prisma';
+import { normalizePhoneNumber } from '../common/utils/phone.util';
 
 @Injectable()
 export class OnboardingService {
@@ -42,7 +49,10 @@ export class OnboardingService {
     return user;
   }
 
-  async updateLocation(userId: string, locationDto: UpdateLocationDto): Promise<UserAddress> {
+  async updateLocation(
+    userId: string,
+    locationDto: UpdateLocationDto,
+  ): Promise<UserAddress> {
     // Check if user exists
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -85,7 +95,10 @@ export class OnboardingService {
     return address;
   }
 
-  async updateProfile(userId: string, profileDto: UpdateProfileDto): Promise<User> {
+  async updateProfile(
+    userId: string,
+    profileDto: UpdateProfileDto,
+  ): Promise<User> {
     // Check if username is unique (if provided)
     if (profileDto.username) {
       const existingUser = await this.prisma.user.findUnique({
@@ -96,11 +109,7 @@ export class OnboardingService {
       }
     }
 
-    // Convert dateOfBirth string to Date if provided
-    const updateData: any = { ...profileDto };
-    if (profileDto.dateOfBirth) {
-      updateData.dateOfBirth = new Date(profileDto.dateOfBirth);
-    }
+    const updateData = await this.prepareProfileUpdate(userId, profileDto);
 
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -118,18 +127,24 @@ export class OnboardingService {
     profileDto: UpdateProfileDto,
     avatarFile?: Express.Multer.File,
   ): Promise<User> {
+    const updateData = await this.prepareProfileUpdate(userId, profileDto);
     let avatarUrl: string | undefined;
 
     // Upload avatar if provided
     if (avatarFile) {
       try {
-        const uploadResult = await this.fileUploadService.uploadAvatar(avatarFile, userId);
+        const uploadResult = await this.fileUploadService.uploadAvatar(
+          avatarFile,
+          userId,
+        );
         avatarUrl = uploadResult.url;
 
         // Delete old avatar if exists
-        const existingUser = await this.prisma.user.findUnique({ where: { id: userId } });
+        const existingUser = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
         if (existingUser?.avatar) {
-            await this.fileUploadService.deleteFile(existingUser.avatar);
+          await this.fileUploadService.deleteFile(existingUser.avatar);
         }
       } catch (error) {
         this.logger.error('Failed to upload avatar:', error);
@@ -147,11 +162,6 @@ export class OnboardingService {
       }
     }
 
-    // Convert dateOfBirth string to Date if provided
-    const updateData: any = { ...profileDto };
-    if (profileDto.dateOfBirth) {
-      updateData.dateOfBirth = new Date(profileDto.dateOfBirth);
-    }
     if (avatarUrl) {
       updateData.avatar = avatarUrl;
     }
@@ -167,7 +177,43 @@ export class OnboardingService {
     return user;
   }
 
-  async updateInterests(userId: string, interestsDto: UpdateInterestsDto): Promise<UserInterest[]> {
+  private async prepareProfileUpdate(
+    userId: string,
+    profileDto: UpdateProfileDto,
+  ): Promise<any> {
+    const updateData: any = { ...profileDto };
+
+    if (profileDto.dateOfBirth) {
+      updateData.dateOfBirth = new Date(profileDto.dateOfBirth);
+    }
+
+    if (profileDto.phoneNumber) {
+      const normalized = normalizePhoneNumber(profileDto.phoneNumber);
+      if (!normalized) {
+        throw new BadRequestException('Enter a valid phone number.');
+      }
+
+      const verifiedPhone = await this.prisma.verifiedPhone.findUnique({
+        where: { phoneNumber: normalized.phoneNumber },
+      });
+      if (verifiedPhone?.userId !== userId) {
+        throw new BadRequestException(
+          'Verify this phone number before saving your profile.',
+        );
+      }
+
+      updateData.phoneNumber = normalized.phoneNumber;
+      updateData.countryCode = normalized.countryCode;
+      updateData.phoneVerified = true;
+    }
+
+    return updateData;
+  }
+
+  async updateInterests(
+    userId: string,
+    interestsDto: UpdateInterestsDto,
+  ): Promise<UserInterest[]> {
     const { categoryIds, type } = interestsDto;
 
     // Verify all categories exist
@@ -176,7 +222,9 @@ export class OnboardingService {
     });
 
     if (categories.length !== categoryIds.length) {
-      throw new BadRequestException('One or more categories not found or inactive');
+      throw new BadRequestException(
+        'One or more categories not found or inactive',
+      );
     }
 
     // Remove existing interests of this type for the user
@@ -206,7 +254,10 @@ export class OnboardingService {
     return interests;
   }
 
-  async updateExperience(userId: string, experienceDto: UpdateExperienceDto): Promise<User> {
+  async updateExperience(
+    userId: string,
+    experienceDto: UpdateExperienceDto,
+  ): Promise<User> {
     // Verify user is a service provider
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
@@ -214,7 +265,9 @@ export class OnboardingService {
     }
 
     if (user.role !== Role.SERVICE_PROVIDER) {
-      throw new BadRequestException('Only service providers can set experience level');
+      throw new BadRequestException(
+        'Only service providers can set experience level',
+      );
     }
 
     const updatedUser = await this.prisma.user.update({
@@ -242,7 +295,9 @@ export class OnboardingService {
     }
 
     if (user.role !== Role.SERVICE_PROVIDER) {
-      throw new BadRequestException('Only service providers can upload documents');
+      throw new BadRequestException(
+        'Only service providers can upload documents',
+      );
     }
 
     // Upload file to storage
@@ -343,7 +398,9 @@ export class OnboardingService {
     // Validate required fields based on user role
     const missingFields = this.validateOnboardingCompletion(user);
     if (missingFields.length > 0) {
-      throw new BadRequestException(`Missing required fields: ${missingFields.join(', ')}`);
+      throw new BadRequestException(
+        `Missing required fields: ${missingFields.join(', ')}`,
+      );
     }
 
     const updatedUser = await this.prisma.user.update({
@@ -474,9 +531,10 @@ export class OnboardingService {
   }
 
   private getNextStep(user: any, completedSteps: string[]): string | null {
-    const allSteps = user.role === Role.SERVICE_PROVIDER 
-      ? ['location', 'profile', 'interests', 'experience', 'documents']
-      : ['location', 'profile', 'interests'];
+    const allSteps =
+      user.role === Role.SERVICE_PROVIDER
+        ? ['location', 'profile', 'interests', 'experience', 'documents']
+        : ['location', 'profile', 'interests'];
 
     for (const step of allSteps) {
       if (!completedSteps.includes(step)) {
@@ -495,12 +553,16 @@ export class OnboardingService {
     if (!user.lastName) missing.push('lastName');
     if (!user.phoneNumber) missing.push('phoneNumber');
     if (!user.addresses || user.addresses.length === 0) missing.push('address');
-    if (!user.interests || user.interests.length === 0) missing.push('interests');
+    if (!user.interests || user.interests.length === 0)
+      missing.push('interests');
 
     // Required for service providers
     if (user.role === Role.SERVICE_PROVIDER) {
       if (!user.serviceProviderExperienceLevel) missing.push('experienceLevel');
-      if (!user.verificationDocuments || user.verificationDocuments.length === 0) {
+      if (
+        !user.verificationDocuments ||
+        user.verificationDocuments.length === 0
+      ) {
         missing.push('verificationDocuments');
       }
     }

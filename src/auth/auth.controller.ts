@@ -1,4 +1,16 @@
-import { Controller, Post, Body, Get, Req, Put, Delete, Patch, HttpCode, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Req,
+  Put,
+  Delete,
+  Patch,
+  HttpCode,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -9,6 +21,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto';
+import { VerifyPhoneDto } from './dto/verify-phone.dto';
 import { Request } from 'express';
 import { Public } from 'src/common/decorators/is-public.decorator';
 import { IsAdmin } from 'src/common/decorators/roles.decorator';
@@ -68,30 +82,39 @@ export class AuthController {
     );
   }
 
-
   @Public()
   @HttpCode(200)
   @Post('forgot-password')
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     await this.authService.forgotPassword(forgotPasswordDto);
 
-    return ResponseUtil.success(null, 'If an account with that email exists, a password reset code has been sent');
+    return ResponseUtil.success(
+      null,
+      'If an account with that email exists, a password reset code has been sent',
+    );
   }
 
   @Public()
   @Post('verify-email')
   async verifyEmail(@Body() verifyOtpDto: VerifyOtpDto) {
-    const result = await this.authService.verifyEmailOtp(verifyOtpDto.email, verifyOtpDto.otpCode);
+    const result = await this.authService.verifyEmailOtp(
+      verifyOtpDto.email,
+      verifyOtpDto.otpCode,
+    );
 
     if (result.valid) {
-      return ResponseUtil.success({ valid: true }, 'Email verified successfully');
+      return ResponseUtil.success(
+        { valid: true },
+        'Email verified successfully',
+      );
     } else {
       // Return proper error response with 400 status code
       const attemptsLeft = result.attemptsLeft;
-      const errorMessage = attemptsLeft !== undefined 
-        ? `Invalid verification code. ${attemptsLeft} attempts remaining.`
-        : 'Invalid verification code.';
-      
+      const errorMessage =
+        attemptsLeft !== undefined
+          ? `Invalid verification code. ${attemptsLeft} attempts remaining.`
+          : 'Invalid verification code.';
+
       throw new BadRequestException({
         message: errorMessage,
         attemptsLeft: result.attemptsLeft,
@@ -107,26 +130,38 @@ export class AuthController {
     return ResponseUtil.success(null, 'Verification code sent to your email');
   }
 
-  @Public()
   @HttpCode(200)
   @Post('send-phone-verification')
-  async sendPhoneVerification(@Body() body: { phoneNumber: string }) {
-    await this.authService.sendPhoneVerificationOtp(body.phoneNumber);
-    return ResponseUtil.success(null, 'Verification code sent to your phone');
+  async sendPhoneVerification(
+    @Req() req: Request,
+    @Body() body: SendPhoneVerificationDto,
+  ) {
+    const result = await this.authService.sendPhoneVerificationOtp(
+      req.currentUser.id,
+      body.phoneNumber,
+    );
+    return ResponseUtil.success(result, 'Verification code sent to your phone');
   }
 
-  @Public()
   @Post('verify-phone')
-  async verifyPhone(@Body() body: { phoneNumber: string; otpCode: string }) {
-    const result = await this.authService.verifyPhoneOtp(body.phoneNumber, body.otpCode);
-    
+  async verifyPhone(@Req() req: Request, @Body() body: VerifyPhoneDto) {
+    const result = await this.authService.verifyPhoneOtp(
+      req.currentUser.id,
+      body.phoneNumber,
+      body.otpCode,
+    );
+
     if (result.valid) {
-      return ResponseUtil.success({ valid: true }, 'Phone number verified successfully');
+      return ResponseUtil.success(
+        { valid: true, phoneNumber: result.phoneNumber },
+        'Phone number verified successfully',
+      );
     } else {
       const attemptsLeft = result.attemptsLeft;
-      const errorMessage = attemptsLeft !== undefined
-        ? `Invalid verification code. ${attemptsLeft} attempts remaining.`
-        : 'Invalid verification code.';
+      const errorMessage =
+        attemptsLeft !== undefined
+          ? `Invalid verification code. ${attemptsLeft} attempts remaining.`
+          : 'Invalid verification code.';
       throw new BadRequestException({
         message: errorMessage,
         attemptsLeft: result.attemptsLeft,
@@ -134,28 +169,37 @@ export class AuthController {
     }
   }
 
-  @Public()
   @HttpCode(200)
   @Post('resend-phone-verification')
-  async resendPhoneVerification(@Body() body: { phoneNumber: string }) {
-    await this.authService.resendPhoneVerificationOtp(body.phoneNumber);
-    return ResponseUtil.success(null, 'Verification code sent to your phone');
+  async resendPhoneVerification(
+    @Req() req: Request,
+    @Body() body: SendPhoneVerificationDto,
+  ) {
+    const result = await this.authService.resendPhoneVerificationOtp(
+      req.currentUser.id,
+      body.phoneNumber,
+    );
+    return ResponseUtil.success(result, 'Verification code sent to your phone');
   }
 
   @Public()
   @Post('verify-password-reset-otp')
   async verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
-    const result = await this.authService.verifyPasswordResetOtp(verifyOtpDto.email, verifyOtpDto.otpCode);
+    const result = await this.authService.verifyPasswordResetOtp(
+      verifyOtpDto.email,
+      verifyOtpDto.otpCode,
+    );
 
     if (result.valid) {
       return ResponseUtil.success({ valid: true }, 'OTP code is valid');
     } else {
       // Return proper error response with 400 status code
       const attemptsLeft = result.attemptsLeft;
-      const errorMessage = attemptsLeft !== undefined 
-        ? `Invalid OTP code. ${attemptsLeft} attempts remaining.`
-        : 'Invalid OTP code.';
-      
+      const errorMessage =
+        attemptsLeft !== undefined
+          ? `Invalid OTP code. ${attemptsLeft} attempts remaining.`
+          : 'Invalid OTP code.';
+
       throw new BadRequestException({
         message: errorMessage,
         attemptsLeft: result.attemptsLeft,
@@ -175,7 +219,9 @@ export class AuthController {
   @Public()
   @Post('refresh')
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
-    const result = await this.authService.refreshTokenFromRefreshToken(refreshTokenDto.refreshToken);
+    const result = await this.authService.refreshTokenFromRefreshToken(
+      refreshTokenDto.refreshToken,
+    );
 
     return ResponseUtil.success(
       {
@@ -195,7 +241,10 @@ export class AuthController {
   }
 
   @Patch('profile')
-  async updateProfile(@Req() req: Request, @Body() updateProfileDto: UpdateProfileDto) {
+  async updateProfile(
+    @Req() req: Request,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
     const userId = req.currentUser.id;
     const user = await this.authService.updateProfile(userId, updateProfileDto);
 
@@ -203,9 +252,16 @@ export class AuthController {
   }
 
   @Patch('password')
-  async changePassword(@Req() req: Request, @Body() changePasswordDto: ChangePasswordDto) {
+  async changePassword(
+    @Req() req: Request,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
     const userId = req.currentUser.id;
-    await this.authService.changePassword(userId, changePasswordDto.currentPassword, changePasswordDto.newPassword);
+    await this.authService.changePassword(
+      userId,
+      changePasswordDto.currentPassword,
+      changePasswordDto.newPassword,
+    );
 
     return ResponseUtil.success(null, 'Password changed successfully');
   }
@@ -223,6 +279,9 @@ export class AuthController {
   async getUserStats() {
     const stats = await this.authService.getUserStats();
 
-    return ResponseUtil.success(stats, 'User statistics retrieved successfully');
+    return ResponseUtil.success(
+      stats,
+      'User statistics retrieved successfully',
+    );
   }
 }

@@ -11,7 +11,9 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { ChatService } from './chat.service';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
+import { NotificationEventsService } from '../notifications/notification-events.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @WebSocketGateway({
   cors: {
@@ -28,6 +30,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly chatService: ChatService,
+    @Optional()
+    private readonly notificationEvents?: NotificationEventsService,
+    @Optional()
+    private readonly notifications?: NotificationsService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -68,13 +74,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      // Verify user has access before letting them join the room
       await this.chatService.getConversation(conversationId, userId);
-      client.join(conversationId);
+      await client.join(conversationId);
+      await this.markConversationRead(conversationId, userId);
       this.logger.log(`User ${userId} joined room: ${conversationId}`);
     } catch (e) {
       this.logger.warn(
         `User ${userId} failed to join room: ${conversationId} - ${e.message}`,
+      );
+    }
+  }
+
+  @SubscribeMessage('mark_conversation_read')
+  async handleMarkConversationRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() conversationId: string,
+  ) {
+    const userId = client.data.user?.id || client.data.user?.sub;
+    if (!userId) return;
+    try {
+      await this.chatService.getConversation(conversationId, userId);
+      await this.markConversationRead(conversationId, userId);
+    } catch (error) {
+      this.logger.warn(
+        `User ${userId} failed to mark ${conversationId} read: ${this.errorMessage(error)}`,
       );
     }
   }
@@ -99,19 +122,78 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     try {
-      // Save the message
+      const content = payload?.content?.trim();
+      if (!content) return;
+
+      const conversation = await this.chatService.getConversation(
+        payload.conversationId,
+        userId,
+      );
       const savedMessage = await this.chatService.saveMessage(
         payload.conversationId,
         userId,
-        payload.content,
+        content,
       );
 
-      // Broadcast to the room
+      const sender =
+        conversation.userId === userId
+          ? conversation.user
+          : conversation.provider;
+      const recipientId =
+        conversation.userId === userId
+          ? conversation.providerId
+          : conversation.userId;
+
+      if (this.notificationEvents) {
+        try {
+          await this.notificationEvents.messageReceived({
+            id: savedMessage.id,
+            conversationId: payload.conversationId,
+            senderId: userId,
+            recipientId,
+            senderName:
+              [sender.firstName, sender.lastName].filter(Boolean).join(' ') ||
+              'a Pavodah user',
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to create message notification: ${this.errorMessage(error)}`,
+          );
+        }
+      }
       this.server
         .to(payload.conversationId)
         .emit('receive_message', savedMessage);
     } catch (error) {
-      this.logger.error(`Failed to send message: ${error.message}`);
+      this.logger.error(`Failed to send message: ${this.errorMessage(error)}`);
     }
+  }
+
+  private async markConversationRead(conversationId: string, userId: string) {
+    const result = await this.chatService.markConversationRead(
+      conversationId,
+      userId,
+    );
+    this.server.to(conversationId).emit('messages_read', {
+      conversationId,
+      readerId: userId,
+      readAt: new Date(),
+    });
+    try {
+      await this.notifications?.markEntityRead(
+        userId,
+        'conversation',
+        conversationId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to mark conversation notifications read: ${this.errorMessage(error)}`,
+      );
+    }
+    return result;
+  }
+
+  private errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : 'Unknown error';
   }
 }
