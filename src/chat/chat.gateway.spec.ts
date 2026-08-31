@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { Role, UserStatus } from '../../generated/prisma';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -13,6 +15,7 @@ describe('ChatGateway', () => {
     saveMessage: jest.Mock;
   };
   let notificationEvents: { messageReceived: jest.Mock };
+  let prisma: { user: { findUnique: jest.Mock } };
 
   beforeEach(async () => {
     chatService = {
@@ -34,12 +37,21 @@ describe('ChatGateway', () => {
     notificationEvents = {
       messageReceived: jest.fn().mockResolvedValue(undefined),
     };
+    prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          role: Role.USER,
+          status: UserStatus.ACTIVE,
+        }),
+      },
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatGateway,
         { provide: JwtService, useValue: { verify: jest.fn() } },
         { provide: ConfigService, useValue: { get: jest.fn() } },
         { provide: ChatService, useValue: chatService },
+        { provide: PrismaService, useValue: prisma },
         { provide: NotificationEventsService, useValue: notificationEvents },
       ],
     }).compile();
@@ -49,6 +61,28 @@ describe('ChatGateway', () => {
 
   it('should be defined', () => {
     expect(gateway).toBeDefined();
+  });
+
+  it('disconnects an unapproved provider during the socket handshake', async () => {
+    const jwt = (gateway as any).jwtService as { verify: jest.Mock };
+    jwt.verify.mockReturnValue({
+      id: 'provider-1',
+      role: Role.SERVICE_PROVIDER,
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      role: Role.SERVICE_PROVIDER,
+      status: UserStatus.PENDING,
+    });
+    const disconnect = jest.fn();
+
+    await gateway.handleConnection({
+      id: 'socket-1',
+      handshake: { auth: { token: 'token' }, headers: {} },
+      data: {},
+      disconnect,
+    } as never);
+
+    expect(disconnect).toHaveBeenCalled();
   });
 
   it('broadcasts read receipts to the conversation room', async () => {

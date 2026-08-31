@@ -4,10 +4,11 @@ import {
   BadRequestException,
   ConflictException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadService } from '../common/services/file-upload.service';
-import { Role, UserInterestType, ExperienceLevel } from '../common/enums';
+import { Role } from '../common/enums';
 import {
   UpdateLocationDto,
   UpdateProfileDto,
@@ -16,8 +17,17 @@ import {
   UploadDocumentDto,
   DocumentResponseDto,
 } from './dto';
-import { User, UserAddress, UserInterest } from '../../generated/prisma';
+import {
+  DocumentStatus,
+  Prisma,
+  User,
+  UserAddress,
+  UserInterest,
+  UserInterestType,
+  UserStatus,
+} from '../../generated/prisma';
 import { normalizePhoneNumber } from '../common/utils/phone.util';
+import { NotificationEventsService } from '../notifications/notification-events.service';
 
 @Injectable()
 export class OnboardingService {
@@ -26,6 +36,8 @@ export class OnboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileUploadService: FileUploadService,
+    @Optional()
+    private readonly notificationEvents?: NotificationEventsService,
   ) {}
 
   async getUserWithRelations(userId: string): Promise<User> {
@@ -53,73 +65,71 @@ export class OnboardingService {
     userId: string,
     locationDto: UpdateLocationDto,
   ): Promise<UserAddress> {
-    // Check if user exists
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // If setting as primary, unset other primary addresses
-    if (locationDto.isPrimary) {
-      await this.prisma.userAddress.updateMany({
-        where: { userId, isPrimary: true },
-        data: { isPrimary: false },
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockUserRow(transaction, userId);
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
       });
-    }
+      if (!user) throw new NotFoundException('User not found');
+      this.assertProviderApplicationEditable(user);
 
-    // Create or update user address
-    const existingAddress = await this.prisma.userAddress.findFirst({
-      where: { userId },
+      if (locationDto.isPrimary) {
+        await transaction.userAddress.updateMany({
+          where: { userId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+      }
+
+      const existingAddress = await transaction.userAddress.findFirst({
+        where: { userId },
+      });
+      const address = existingAddress
+        ? await transaction.userAddress.update({
+            where: { id: existingAddress.id },
+            data: locationDto,
+          })
+        : await transaction.userAddress.create({
+            data: {
+              ...locationDto,
+              userId,
+              isPrimary: true,
+            },
+          });
+
+      await this.updateProfileCompleteness(userId, transaction);
+      return address;
     });
-
-    let address: UserAddress;
-
-    if (existingAddress) {
-      address = await this.prisma.userAddress.update({
-        where: { id: existingAddress.id },
-        data: locationDto,
-      });
-    } else {
-      address = await this.prisma.userAddress.create({
-        data: {
-          ...locationDto,
-          userId,
-          isPrimary: true, // First address is always primary
-        },
-      });
-    }
-
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
-
-    return address;
   }
 
   async updateProfile(
     userId: string,
     profileDto: UpdateProfileDto,
   ): Promise<User> {
-    // Check if username is unique (if provided)
-    if (profileDto.username) {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { username: profileDto.username },
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockUserRow(transaction, userId);
+      const currentUser = await transaction.user.findUnique({
+        where: { id: userId },
       });
-      if (existingUser && existingUser.id !== userId) {
-        throw new ConflictException('Username already taken');
-      }
-    }
+      if (!currentUser) throw new NotFoundException('User not found');
+      this.assertProviderApplicationEditable(currentUser);
+      await this.assertUsernameAvailable(
+        transaction,
+        userId,
+        profileDto.username,
+      );
 
-    const updateData = await this.prepareProfileUpdate(userId, profileDto);
-
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: updateData,
+      const updateData = await this.prepareProfileUpdate(
+        userId,
+        profileDto,
+        transaction,
+      );
+      const user = await transaction.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+      await this.updateProfileCompleteness(userId, transaction);
+      return user;
     });
-
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
-
-    return user;
   }
 
   async updateProfileWithAvatar(
@@ -127,10 +137,12 @@ export class OnboardingService {
     profileDto: UpdateProfileDto,
     avatarFile?: Express.Multer.File,
   ): Promise<User> {
-    const updateData = await this.prepareProfileUpdate(userId, profileDto);
+    // Fail fast before uploading, then re-check under a database lock before
+    // persisting so a concurrent submission cannot be edited afterward.
+    await this.ensureProviderApplicationEditable(userId);
+    await this.prepareProfileUpdate(userId, profileDto);
     let avatarUrl: string | undefined;
 
-    // Upload avatar if provided
     if (avatarFile) {
       try {
         const uploadResult = await this.fileUploadService.uploadAvatar(
@@ -138,41 +150,56 @@ export class OnboardingService {
           userId,
         );
         avatarUrl = uploadResult.url;
-
-        // Delete old avatar if exists
-        const existingUser = await this.prisma.user.findUnique({
-          where: { id: userId },
-        });
-        if (existingUser?.avatar) {
-          await this.fileUploadService.deleteFile(existingUser.avatar);
-        }
       } catch (error) {
         this.logger.error('Failed to upload avatar:', error);
         throw new BadRequestException('Failed to upload avatar');
       }
     }
 
-    // Check if username is unique (if provided)
-    if (profileDto.username) {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { username: profileDto.username },
+    let previousAvatar: string | null = null;
+    let user: User;
+    try {
+      user = await this.prisma.$transaction(async (transaction) => {
+        await this.lockUserRow(transaction, userId);
+        const currentUser = await transaction.user.findUnique({
+          where: { id: userId },
+        });
+        if (!currentUser) throw new NotFoundException('User not found');
+        this.assertProviderApplicationEditable(currentUser);
+        previousAvatar = currentUser.avatar;
+        await this.assertUsernameAvailable(
+          transaction,
+          userId,
+          profileDto.username,
+        );
+
+        const updateData = await this.prepareProfileUpdate(
+          userId,
+          profileDto,
+          transaction,
+        );
+        if (avatarUrl) updateData.avatar = avatarUrl;
+
+        const updatedUser = await transaction.user.update({
+          where: { id: userId },
+          data: updateData,
+        });
+        await this.updateProfileCompleteness(userId, transaction);
+        return updatedUser;
       });
-      if (existingUser && existingUser.id !== userId) {
-        throw new ConflictException('Username already taken');
+    } catch (error) {
+      if (avatarUrl) {
+        await this.deleteUploadedFileQuietly(
+          avatarUrl,
+          'new avatar after a rejected profile update',
+        );
       }
+      throw error;
     }
 
-    if (avatarUrl) {
-      updateData.avatar = avatarUrl;
+    if (avatarUrl && previousAvatar && previousAvatar !== avatarUrl) {
+      await this.deleteUploadedFileQuietly(previousAvatar, 'previous avatar');
     }
-
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-    });
-
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
 
     return user;
   }
@@ -180,6 +207,7 @@ export class OnboardingService {
   private async prepareProfileUpdate(
     userId: string,
     profileDto: UpdateProfileDto,
+    database: Pick<Prisma.TransactionClient, 'verifiedPhone'> = this.prisma,
   ): Promise<any> {
     const updateData: any = { ...profileDto };
 
@@ -193,7 +221,7 @@ export class OnboardingService {
         throw new BadRequestException('Enter a valid phone number.');
       }
 
-      const verifiedPhone = await this.prisma.verifiedPhone.findUnique({
+      const verifiedPhone = await database.verifiedPhone.findUnique({
         where: { phoneNumber: normalized.phoneNumber },
       });
       if (verifiedPhone?.userId !== userId) {
@@ -215,72 +243,63 @@ export class OnboardingService {
     interestsDto: UpdateInterestsDto,
   ): Promise<UserInterest[]> {
     const { categoryIds, type } = interestsDto;
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockUserRow(transaction, userId);
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+      });
+      if (!user) throw new NotFoundException('User not found');
+      this.assertProviderApplicationEditable(user);
 
-    // Verify all categories exist
-    const categories = await this.prisma.category.findMany({
-      where: { id: { in: categoryIds }, isActive: true },
-    });
+      const categories = await transaction.category.findMany({
+        where: { id: { in: categoryIds }, isActive: true },
+      });
+      if (categories.length !== categoryIds.length) {
+        throw new BadRequestException(
+          'One or more categories not found or inactive',
+        );
+      }
 
-    if (categories.length !== categoryIds.length) {
-      throw new BadRequestException(
-        'One or more categories not found or inactive',
+      await transaction.userInterest.deleteMany({ where: { userId, type } });
+      const interests = await Promise.all(
+        categoryIds.map((categoryId) =>
+          transaction.userInterest.create({
+            data: { userId, categoryId, type },
+            include: { category: true },
+          }),
+        ),
       );
-    }
-
-    // Remove existing interests of this type for the user
-    await this.prisma.userInterest.deleteMany({
-      where: { userId, type },
+      await this.updateProfileCompleteness(userId, transaction);
+      return interests;
     });
-
-    // Create new interests
-    const interests = await Promise.all(
-      categoryIds.map((categoryId) =>
-        this.prisma.userInterest.create({
-          data: {
-            userId,
-            categoryId,
-            type,
-          },
-          include: {
-            category: true,
-          },
-        }),
-      ),
-    );
-
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
-
-    return interests;
   }
 
   async updateExperience(
     userId: string,
     experienceDto: UpdateExperienceDto,
   ): Promise<User> {
-    // Verify user is a service provider
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    return this.prisma.$transaction(async (transaction) => {
+      await this.lockUserRow(transaction, userId);
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+      });
+      if (!user) throw new NotFoundException('User not found');
+      this.assertProviderApplicationEditable(user);
+      if (user.role !== Role.SERVICE_PROVIDER) {
+        throw new BadRequestException(
+          'Only service providers can set experience level',
+        );
+      }
 
-    if (user.role !== Role.SERVICE_PROVIDER) {
-      throw new BadRequestException(
-        'Only service providers can set experience level',
-      );
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        serviceProviderExperienceLevel: experienceDto.experienceLevel,
-      },
+      const updatedUser = await transaction.user.update({
+        where: { id: userId },
+        data: {
+          serviceProviderExperienceLevel: experienceDto.experienceLevel,
+        },
+      });
+      await this.updateProfileCompleteness(userId, transaction);
+      return updatedUser;
     });
-
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
-
-    return updatedUser;
   }
 
   async uploadDocument(
@@ -293,6 +312,7 @@ export class OnboardingService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
+    this.assertProviderApplicationEditable(user);
 
     if (user.role !== Role.SERVICE_PROVIDER) {
       throw new BadRequestException(
@@ -309,20 +329,42 @@ export class OnboardingService {
       throw new BadRequestException('Failed to upload document');
     }
 
-    const document = await this.prisma.verificationDocument.create({
-      data: {
-        userId,
-        fileName: uploadResult.fileName,
-        originalName: file.originalname,
-        fileUrl: uploadResult.url,
-        fileType: uploadResult.fileType,
-        fileSize: uploadResult.fileSize,
-        documentType: documentDto.documentType,
-      },
-    });
+    let document;
+    try {
+      document = await this.prisma.$transaction(async (transaction) => {
+        await this.lockUserRow(transaction, userId);
+        const currentUser = await transaction.user.findUnique({
+          where: { id: userId },
+        });
+        if (!currentUser) throw new NotFoundException('User not found');
+        this.assertProviderApplicationEditable(currentUser);
+        if (currentUser.role !== Role.SERVICE_PROVIDER) {
+          throw new BadRequestException(
+            'Only service providers can upload documents',
+          );
+        }
 
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
+        const created = await transaction.verificationDocument.create({
+          data: {
+            userId,
+            fileName: uploadResult.fileName,
+            originalName: file.originalname,
+            fileUrl: uploadResult.url,
+            fileType: uploadResult.fileType,
+            fileSize: uploadResult.fileSize,
+            documentType: documentDto.documentType,
+          },
+        });
+        await this.updateProfileCompleteness(userId, transaction);
+        return created;
+      });
+    } catch (error) {
+      await this.deleteUploadedFileQuietly(
+        uploadResult.url,
+        'document after a rejected application update',
+      );
+      throw error;
+    }
 
     return {
       id: document.id,
@@ -357,60 +399,113 @@ export class OnboardingService {
   }
 
   async deleteDocument(userId: string, documentId: string): Promise<void> {
-    const document = await this.prisma.verificationDocument.findFirst({
-      where: { id: documentId, userId },
+    const document = await this.prisma.$transaction(async (transaction) => {
+      await this.lockUserRow(transaction, userId);
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+      });
+      if (!user) throw new NotFoundException('User not found');
+      this.assertProviderApplicationEditable(user);
+
+      const existing = await transaction.verificationDocument.findFirst({
+        where: { id: documentId, userId },
+      });
+      if (!existing) throw new NotFoundException('Document not found');
+
+      await transaction.verificationDocument.delete({
+        where: { id: documentId },
+      });
+      await this.updateProfileCompleteness(userId, transaction);
+      return existing;
     });
 
-    if (!document) {
-      throw new NotFoundException('Document not found');
-    }
-
-    // Delete file from storage
-    try {
-      await this.fileUploadService.deleteFile(document.fileUrl);
-    } catch (error) {
-      // Log error but don't fail the deletion
-      console.warn('Failed to delete file from storage:', error);
-    }
-
-    await this.prisma.verificationDocument.delete({
-      where: { id: documentId },
-    });
-
-    // Update profile completeness
-    await this.updateProfileCompleteness(userId);
+    await this.deleteUploadedFileQuietly(document.fileUrl, 'deleted document');
   }
 
   async completeOnboarding(userId: string): Promise<User> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        addresses: true,
-        interests: true,
-        verificationDocuments: true,
-      },
+    let applicationWasSubmitted = false;
+    let submittedAt: Date | null = null;
+
+    const updatedUser = await this.prisma.$transaction(async (transaction) => {
+      await this.lockUserRow(transaction, userId);
+      const user = await transaction.user.findUnique({
+        where: { id: userId },
+        include: {
+          addresses: true,
+          interests: true,
+          verificationDocuments: true,
+        },
+      });
+      if (!user) throw new NotFoundException('User not found');
+
+      const missingFields = this.validateOnboardingCompletion(user);
+      if (missingFields.length > 0) {
+        throw new BadRequestException(
+          `Missing required fields: ${missingFields.join(', ')}`,
+        );
+      }
+
+      const shouldSubmitProviderApplication =
+        user.role === Role.SERVICE_PROVIDER &&
+        (user.status === UserStatus.REJECTED ||
+          (user.status === UserStatus.PENDING &&
+            !user.providerApplicationSubmittedAt));
+
+      if (shouldSubmitProviderApplication) {
+        submittedAt = new Date();
+        const submittedUser = await transaction.user.update({
+          where: { id: userId },
+          data: {
+            status: UserStatus.PENDING,
+            hasCompletedOnboarding: true,
+            onboardingCompletedAt: user.onboardingCompletedAt ?? new Date(),
+            profileCompleteness: 100,
+            isServiceProviderVerified: false,
+            serviceProviderVerifiedAt: null,
+            providerApplicationSubmittedAt: submittedAt,
+            providerApplicationReviewedAt: null,
+            providerApplicationReviewedBy: null,
+            providerApplicationRejectionReason: null,
+          },
+        });
+
+        await transaction.verificationDocument.updateMany({
+          where: { userId },
+          data: {
+            status: DocumentStatus.UNDER_REVIEW,
+            reviewNotes: null,
+            reviewedAt: null,
+            reviewedBy: null,
+          },
+        });
+
+        applicationWasSubmitted = true;
+        return submittedUser;
+      }
+
+      return transaction.user.update({
+        where: { id: userId },
+        data: {
+          hasCompletedOnboarding: true,
+          onboardingCompletedAt: user.onboardingCompletedAt ?? new Date(),
+          profileCompleteness: 100,
+        },
+      });
     });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
+    if (applicationWasSubmitted && submittedAt) {
+      const providerName =
+        [updatedUser.firstName, updatedUser.lastName]
+          .filter(Boolean)
+          .join(' ') ||
+        updatedUser.displayName ||
+        updatedUser.email;
+      await this.notificationEvents?.providerApplicationSubmitted({
+        providerId: updatedUser.id,
+        providerName,
+        submittedAt,
+      });
     }
-
-    // Validate required fields based on user role
-    const missingFields = this.validateOnboardingCompletion(user);
-    if (missingFields.length > 0) {
-      throw new BadRequestException(
-        `Missing required fields: ${missingFields.join(', ')}`,
-      );
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        hasCompletedOnboarding: true,
-        onboardingCompletedAt: new Date(),
-        profileCompleteness: 100,
-      },
-    });
 
     return updatedUser;
   }
@@ -448,8 +543,11 @@ export class OnboardingService {
     };
   }
 
-  private async updateProfileCompleteness(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({
+  private async updateProfileCompleteness(
+    userId: string,
+    database: Pick<Prisma.TransactionClient, 'user'> = this.prisma,
+  ): Promise<void> {
+    const user = await database.user.findUnique({
       where: { id: userId },
       include: {
         addresses: true,
@@ -462,7 +560,7 @@ export class OnboardingService {
 
     const completeness = this.calculateProfileCompleteness(user);
 
-    await this.prisma.user.update({
+    await database.user.update({
       where: { id: userId },
       data: { profileCompleteness: completeness },
     });
@@ -483,7 +581,7 @@ export class OnboardingService {
     }
 
     // Step 3: Interests (required for all)
-    if (user.interests && user.interests.length > 0) {
+    if (this.hasRequiredInterests(user)) {
       completedSteps++;
     }
 
@@ -513,7 +611,7 @@ export class OnboardingService {
       completed.push('profile');
     }
 
-    if (user.interests && user.interests.length > 0) {
+    if (this.hasRequiredInterests(user)) {
       completed.push('interests');
     }
 
@@ -553,11 +651,12 @@ export class OnboardingService {
     if (!user.lastName) missing.push('lastName');
     if (!user.phoneNumber) missing.push('phoneNumber');
     if (!user.addresses || user.addresses.length === 0) missing.push('address');
-    if (!user.interests || user.interests.length === 0)
-      missing.push('interests');
+    if (!this.hasRequiredInterests(user)) missing.push('interests');
 
     // Required for service providers
     if (user.role === Role.SERVICE_PROVIDER) {
+      if (!user.emailVerified) missing.push('emailVerification');
+      if (!user.phoneVerified) missing.push('phoneVerification');
       if (!user.serviceProviderExperienceLevel) missing.push('experienceLevel');
       if (
         !user.verificationDocuments ||
@@ -568,5 +667,76 @@ export class OnboardingService {
     }
 
     return missing;
+  }
+
+  private async ensureProviderApplicationEditable(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    this.assertProviderApplicationEditable(user);
+  }
+
+  private hasRequiredInterests(
+    user: Pick<User, 'role'> & { interests?: UserInterest[] },
+  ): boolean {
+    if (!user.interests) return false;
+    if (user.role !== Role.SERVICE_PROVIDER) return user.interests.length > 0;
+    return user.interests.some(
+      (interest) => interest.type === UserInterestType.SERVICE,
+    );
+  }
+
+  private async lockUserRow(
+    transaction: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    const rows = await transaction.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT "id" FROM "users" WHERE "id" = ${userId} FOR UPDATE`,
+    );
+    if (rows.length === 0) throw new NotFoundException('User not found');
+  }
+
+  private async assertUsernameAvailable(
+    database: Pick<Prisma.TransactionClient, 'user'>,
+    userId: string,
+    username?: string,
+  ): Promise<void> {
+    if (!username) return;
+    const existingUser = await database.user.findUnique({
+      where: { username },
+    });
+    if (existingUser && existingUser.id !== userId) {
+      throw new ConflictException('Username already taken');
+    }
+  }
+
+  private async deleteUploadedFileQuietly(
+    fileUrl: string,
+    description: string,
+  ): Promise<void> {
+    try {
+      await this.fileUploadService.deleteFile(fileUrl);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to delete ${description}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
+    }
+  }
+
+  private assertProviderApplicationEditable(
+    user: Pick<User, 'role' | 'status' | 'providerApplicationSubmittedAt'>,
+  ) {
+    if (
+      user.role === Role.SERVICE_PROVIDER &&
+      user.providerApplicationSubmittedAt &&
+      user.status !== UserStatus.REJECTED
+    ) {
+      throw new ConflictException(
+        user.status === UserStatus.PENDING
+          ? 'Your provider application is locked while it is under review'
+          : 'Approved provider application documents cannot be changed',
+      );
+    }
   }
 }

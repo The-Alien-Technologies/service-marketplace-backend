@@ -71,12 +71,12 @@ export class SmsService {
       throw new Error('HUBTEL_CLIENT_ID and HUBTEL_CLIENT_SECRET are required');
     }
 
-    const url = new URL('https://sms.hubtel.com/v1/messages/send');
+    const url = new URL('https://smsc.hubtel.com/v1/messages/send');
     url.search = new URLSearchParams({
       clientid: clientId,
       clientsecret: clientSecret,
       from: senderId || 'Pavodah',
-      to: phone,
+      to: phone.trim().replace(/^\+/, ''),
       content: message,
     }).toString();
 

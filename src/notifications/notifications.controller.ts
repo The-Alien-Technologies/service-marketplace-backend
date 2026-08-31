@@ -3,8 +3,10 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ResponseUtil } from '../common/utils/response.util';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { NotificationsService } from './notifications.service';
+import { AllowUnapprovedProvider } from '../common/decorators/allow-unapproved-provider.decorator';
 
 @Controller('notifications')
+@AllowUnapprovedProvider()
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
@@ -41,7 +43,9 @@ export class NotificationsController {
     @Param('id') notificationId: string,
   ) {
     return ResponseUtil.success(
-      { notification: await this.notifications.markRead(userId, notificationId) },
+      {
+        notification: await this.notifications.markRead(userId, notificationId),
+      },
       'Notification marked as read',
     );
   }

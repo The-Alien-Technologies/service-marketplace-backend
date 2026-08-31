@@ -3,10 +3,10 @@ import { CategoriesService } from './categories.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadService } from '../common/services/file-upload.service';
 import { NotFoundException } from '@nestjs/common';
+import { UserStatus } from '../../generated/prisma';
 
 describe('CategoriesService', () => {
   let service: CategoriesService;
-  let prismaService: PrismaService;
 
   const mockPrismaService = {
     category: {
@@ -40,7 +40,6 @@ describe('CategoriesService', () => {
     }).compile();
 
     service = module.get<CategoriesService>(CategoriesService);
-    prismaService = module.get<PrismaService>(PrismaService);
   });
 
   afterEach(() => {
@@ -95,6 +94,17 @@ describe('CategoriesService', () => {
         where: { id: categoryId },
       });
       expect(mockPrismaService.service.findMany).toHaveBeenCalled();
+      expect(mockPrismaService.service.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'PUBLISHED',
+            provider: {
+              status: UserStatus.ACTIVE,
+              isServiceProviderVerified: true,
+            },
+          }),
+        }),
+      );
       expect(result.services).toHaveLength(3);
       expect(result.total).toBe(3);
       expect(result.page).toBe(1);
@@ -121,9 +131,11 @@ describe('CategoriesService', () => {
       // srv-1 min 100 >= 80 -> keep
       // srv-2 min 50 < 80 -> exclude
       // srv-3 min 300 >= 80 -> keep
-      
+
       expect(result.services).toHaveLength(2);
-      expect(result.services.map(s => s.id)).toEqual(expect.arrayContaining(['srv-1', 'srv-3']));
+      expect(result.services.map((s) => s.id)).toEqual(
+        expect.arrayContaining(['srv-1', 'srv-3']),
+      );
     });
 
     it('should filter by max price', async () => {
@@ -139,7 +151,9 @@ describe('CategoriesService', () => {
       // srv-3 min 300 > 200 -> exclude
 
       expect(result.services).toHaveLength(2);
-      expect(result.services.map(s => s.id)).toEqual(expect.arrayContaining(['srv-1', 'srv-2']));
+      expect(result.services.map((s) => s.id)).toEqual(
+        expect.arrayContaining(['srv-1', 'srv-2']),
+      );
     });
 
     it('should sort by price asc', async () => {

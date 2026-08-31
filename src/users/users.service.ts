@@ -1,17 +1,31 @@
 import {
+  BadRequestException,
   Injectable,
   ConflictException,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from '../auth/dto/register.dto';
 import { SocialAuthDto, SocialProvider } from '../auth/dto/social-auth.dto';
 import { UpdateProfileDto } from '../auth/dto/update-profile.dto';
-import { User, UserStatus } from '../../generated/prisma';
+import {
+  DocumentStatus,
+  Role,
+  User,
+  UserInterestType,
+  UserStatus,
+} from '../../generated/prisma';
+import { NotificationEventsService } from '../notifications/notification-events.service';
+import { ProviderApplicationDecision } from './dto/review-provider-application.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    private readonly notificationEvents?: NotificationEventsService,
+  ) {}
 
   async create(
     userData: Partial<RegisterDto> & {
@@ -34,8 +48,11 @@ export class UsersService {
         password: userData.password,
         firstName: userData.firstName,
         lastName: userData.lastName,
-        role: userData.role || 'USER',
-        status: UserStatus.ACTIVE,
+        role: userData.role || Role.USER,
+        status:
+          userData.role === Role.SERVICE_PROVIDER
+            ? UserStatus.PENDING
+            : UserStatus.ACTIVE,
         emailVerified: false,
       },
     });
@@ -50,6 +67,13 @@ export class UsersService {
         message: 'Only Google authentication is supported',
       });
     }
+
+    if (role && role !== Role.USER && role !== Role.SERVICE_PROVIDER) {
+      throw new BadRequestException({ message: 'Invalid account role' });
+    }
+
+    const requestedRole =
+      role === Role.SERVICE_PROVIDER ? Role.SERVICE_PROVIDER : Role.USER;
 
     // Check if user already exists by email
     let user = await this.findByEmail(email);
@@ -75,8 +99,11 @@ export class UsersService {
         lastName: '', // Empty initially, will be filled during onboarding
         googleId: providerId,
         emailVerified: true, // Google accounts are pre-verified
-        status: UserStatus.ACTIVE,
-        role: role || 'USER', // Use role from frontend or default to USER
+        status:
+          requestedRole === Role.SERVICE_PROVIDER
+            ? UserStatus.PENDING
+            : UserStatus.ACTIVE,
+        role: requestedRole,
         lastLoginAt: new Date(),
         lastActiveAt: new Date(),
         hasCompletedOnboarding: false,
@@ -186,6 +213,7 @@ export class UsersService {
           phoneVerified: true,
           hasCompletedOnboarding: true,
           isServiceProviderVerified: true,
+          providerApplicationSubmittedAt: true,
           createdAt: true,
           lastLoginAt: true,
           lastActiveAt: true,
@@ -203,10 +231,288 @@ export class UsersService {
     };
   }
 
+  async findProviderApplications(options: {
+    page: number;
+    limit: number;
+    search?: string;
+    status?: UserStatus;
+  }) {
+    const { page, limit, search } = options;
+    const status = options.status ?? UserStatus.PENDING;
+    const skip = (page - 1) * limit;
+    const allowedStatuses: UserStatus[] = [
+      UserStatus.PENDING,
+      UserStatus.REJECTED,
+      UserStatus.ACTIVE,
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      throw new BadRequestException({
+        message: 'Provider application status is invalid',
+      });
+    }
+
+    const where = {
+      role: Role.SERVICE_PROVIDER,
+      status,
+      providerApplicationSubmittedAt: { not: null },
+      ...(search
+        ? {
+            OR: [
+              { email: { contains: search, mode: 'insensitive' as const } },
+              {
+                firstName: {
+                  contains: search,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                lastName: {
+                  contains: search,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                displayName: {
+                  contains: search,
+                  mode: 'insensitive' as const,
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [applications, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { providerApplicationSubmittedAt: 'asc' },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          displayName: true,
+          avatar: true,
+          status: true,
+          emailVerified: true,
+          phoneVerified: true,
+          isServiceProviderVerified: true,
+          providerApplicationSubmittedAt: true,
+          providerApplicationReviewedAt: true,
+          providerApplicationRejectionReason: true,
+          _count: { select: { verificationDocuments: true } },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      applications,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findProviderApplicationById(userId: string) {
+    const application = await this.prisma.user.findUnique({
+      where: { id: userId },
+      omit: {
+        password: true,
+        passwordResetOtp: true,
+        passwordResetExpires: true,
+        passwordResetAttempts: true,
+        emailVerificationOtp: true,
+        emailVerificationExpires: true,
+        emailVerificationAttempts: true,
+      },
+      include: {
+        addresses: { orderBy: { createdAt: 'asc' } },
+        interests: {
+          where: { type: UserInterestType.SERVICE },
+          include: { category: true },
+        },
+        verificationDocuments: { orderBy: { uploadedAt: 'desc' } },
+      },
+    });
+
+    if (
+      !application ||
+      application.role !== Role.SERVICE_PROVIDER ||
+      !application.providerApplicationSubmittedAt
+    ) {
+      throw new NotFoundException({
+        message: 'Provider application not found',
+      });
+    }
+
+    const reviewer = application.providerApplicationReviewedBy
+      ? await this.prisma.user.findUnique({
+          where: { id: application.providerApplicationReviewedBy },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            displayName: true,
+            email: true,
+          },
+        })
+      : null;
+
+    return { ...application, reviewer };
+  }
+
+  async reviewProviderApplication(
+    userId: string,
+    reviewerId: string,
+    decision: ProviderApplicationDecision,
+    reason?: string,
+  ) {
+    const application = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        hasCompletedOnboarding: true,
+        providerApplicationSubmittedAt: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        emailVerified: true,
+        phoneVerified: true,
+        serviceProviderExperienceLevel: true,
+        _count: {
+          select: {
+            addresses: true,
+            interests: { where: { type: UserInterestType.SERVICE } },
+            verificationDocuments: true,
+          },
+        },
+      },
+    });
+
+    if (!application || application.role !== Role.SERVICE_PROVIDER) {
+      throw new NotFoundException({
+        message: 'Provider application not found',
+      });
+    }
+    if (
+      !application.hasCompletedOnboarding ||
+      !application.providerApplicationSubmittedAt
+    ) {
+      throw new ConflictException({
+        message: 'This provider has not submitted an application',
+      });
+    }
+    if (application.status !== UserStatus.PENDING) {
+      throw new ConflictException({
+        message: 'This provider application has already been reviewed',
+      });
+    }
+
+    const rejectionReason = reason?.trim();
+    const approved = decision === ProviderApplicationDecision.APPROVE;
+    if (decision === ProviderApplicationDecision.REJECT && !rejectionReason) {
+      throw new BadRequestException({
+        message: 'A rejection reason is required',
+      });
+    }
+
+    if (approved) {
+      const missingRequirements = [
+        !application.firstName && 'first name',
+        !application.lastName && 'last name',
+        !application.phoneNumber && 'phone number',
+        !application.emailVerified && 'email verification',
+        !application.phoneVerified && 'phone verification',
+        !application.serviceProviderExperienceLevel && 'experience level',
+        application._count.addresses === 0 && 'address',
+        application._count.interests === 0 && 'service categories',
+        application._count.verificationDocuments === 0 &&
+          'verification documents',
+      ].filter(Boolean);
+
+      if (missingRequirements.length > 0) {
+        throw new ConflictException({
+          message: `This application is missing: ${missingRequirements.join(', ')}`,
+        });
+      }
+    }
+
+    const reviewedAt = new Date();
+    const updated = await this.prisma.$transaction(async (transaction) => {
+      const claimed = await transaction.user.updateMany({
+        where: { id: userId, status: UserStatus.PENDING },
+        data: {
+          status: approved ? UserStatus.ACTIVE : UserStatus.REJECTED,
+          isServiceProviderVerified: approved,
+          serviceProviderVerifiedAt: approved ? reviewedAt : null,
+          providerApplicationReviewedAt: reviewedAt,
+          providerApplicationReviewedBy: reviewerId,
+          providerApplicationRejectionReason: approved ? null : rejectionReason,
+        },
+      });
+
+      if (claimed.count !== 1) {
+        throw new ConflictException({
+          message: 'This provider application was reviewed by another admin',
+        });
+      }
+
+      await transaction.verificationDocument.updateMany({
+        where: { userId },
+        data: {
+          status: approved ? DocumentStatus.APPROVED : DocumentStatus.REJECTED,
+          reviewNotes: approved ? null : rejectionReason,
+          reviewedAt,
+          reviewedBy: reviewerId,
+        },
+      });
+
+      return transaction.user.findUnique({
+        where: { id: userId },
+        omit: {
+          password: true,
+          passwordResetOtp: true,
+          passwordResetExpires: true,
+          passwordResetAttempts: true,
+          emailVerificationOtp: true,
+          emailVerificationExpires: true,
+          emailVerificationAttempts: true,
+        },
+      });
+    });
+
+    await this.notificationEvents?.providerApplicationDecision({
+      providerId: userId,
+      approved,
+      reason: rejectionReason,
+      reviewedAt,
+    });
+
+    return updated;
+  }
+
   async updateStatus(userId: string, status: UserStatus): Promise<User> {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException({ message: 'User not found' });
+    }
+
+    if (
+      user.role === Role.SERVICE_PROVIDER &&
+      status === UserStatus.ACTIVE &&
+      !user.isServiceProviderVerified
+    ) {
+      throw new ConflictException({
+        message:
+          'Provider applications must be approved through the review queue',
+      });
     }
 
     return this.prisma.user.update({

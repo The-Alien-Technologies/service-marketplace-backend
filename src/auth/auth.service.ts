@@ -30,6 +30,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as bcrypt from 'bcryptjs';
 import {
   PhoneVerificationPurpose,
+  Role,
   User,
   UserStatus,
 } from '../../generated/prisma';
@@ -134,7 +135,7 @@ export class AuthService {
     }
 
     // Check if account is active
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!this.canAuthenticate(user)) {
       throw new UnauthorizedException({
         message: 'Account is suspended or deleted',
       });
@@ -229,6 +230,12 @@ export class AuthService {
         validatedSocialAuthDto,
       );
 
+      if (!this.canAuthenticate(user)) {
+        throw new UnauthorizedException({
+          message: 'Account is suspended or deleted',
+        });
+      }
+
       // Send welcome email for new users only
       if (isNewUser) {
         const userName = user.firstName || user.displayName || 'User';
@@ -254,7 +261,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error('Social authentication failed:', error);
-      if (error instanceof BadRequestException) {
+      if (error instanceof HttpException) {
         throw error;
       }
       throw new BadRequestException({
@@ -274,7 +281,7 @@ export class AuthService {
     }
 
     // Check if account is active
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!this.canAuthenticate(user)) {
       return;
     }
 
@@ -317,7 +324,7 @@ export class AuthService {
     }
 
     // Check if account is active
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!this.canAuthenticate(user)) {
       throw new BadRequestException({ message: 'Account is not active' });
     }
 
@@ -377,7 +384,7 @@ export class AuthService {
     }
 
     // Check if account is active
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!this.canAuthenticate(user)) {
       return { valid: false };
     }
 
@@ -397,7 +404,7 @@ export class AuthService {
       throw new UnauthorizedException({ message: 'User not found' });
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!this.canAuthenticate(user)) {
       throw new UnauthorizedException({ message: 'Account is not active' });
     }
 
@@ -481,7 +488,7 @@ export class AuthService {
     }
 
     // Check if account is active
-    if (user.status !== UserStatus.ACTIVE) {
+    if (!this.canAuthenticate(user)) {
       return { valid: false };
     }
 
@@ -891,7 +898,7 @@ export class AuthService {
         throw new UnauthorizedException({ message: 'User not found' });
       }
 
-      if (user.status !== UserStatus.ACTIVE) {
+      if (!this.canAuthenticate(user)) {
         throw new UnauthorizedException({ message: 'Account is not active' });
       }
 
@@ -1005,7 +1012,7 @@ export class AuthService {
   async validateUser(payload: UserPayload): Promise<User | null> {
     const user = await this.usersService.findById(payload.id);
 
-    if (!user || user.status !== UserStatus.ACTIVE) {
+    if (!user || !this.canAuthenticate(user)) {
       return null;
     }
 
@@ -1013,6 +1020,16 @@ export class AuthService {
     await this.usersService.updateLastActivity(payload.id);
 
     return user;
+  }
+
+  private canAuthenticate(user: Pick<User, 'role' | 'status'>): boolean {
+    if (user.status === UserStatus.ACTIVE) return true;
+
+    return (
+      user.role === Role.SERVICE_PROVIDER &&
+      (user.status === UserStatus.PENDING ||
+        user.status === UserStatus.REJECTED)
+    );
   }
 
   // Admin/Analytics method

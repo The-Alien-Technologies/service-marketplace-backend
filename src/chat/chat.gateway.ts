@@ -14,6 +14,8 @@ import { ChatService } from './chat.service';
 import { Logger, Optional } from '@nestjs/common';
 import { NotificationEventsService } from '../notifications/notification-events.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { UserStatus } from '../../generated/prisma';
 
 @WebSocketGateway({
   cors: {
@@ -30,6 +32,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly chatService: ChatService,
+    private readonly prisma: PrismaService,
     @Optional()
     private readonly notificationEvents?: NotificationEventsService,
     @Optional()
@@ -51,7 +54,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Usually 'id' or 'sub' depending on your JWT strategy
       const userId = decoded.id || decoded.sub;
-      client.data.user = decoded;
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, status: true },
+      });
+      if (!user || user.status !== UserStatus.ACTIVE) {
+        throw new Error('Account is not approved for chat access');
+      }
+
+      client.data.user = { ...decoded, ...user };
       this.logger.log(`Client connected: ${client.id} (User: ${userId})`);
     } catch (error) {
       this.logger.error(`Connection failed: ${error.message}`);

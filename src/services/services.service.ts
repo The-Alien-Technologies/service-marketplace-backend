@@ -11,7 +11,12 @@ import {
 } from '../common/services/file-upload.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
-import { Service, ServiceStatus } from '../../generated/prisma';
+import {
+  Prisma,
+  Service,
+  ServiceStatus,
+  UserStatus,
+} from '../../generated/prisma';
 import slugify from 'slugify';
 
 @Injectable()
@@ -117,6 +122,10 @@ export class ServicesService {
     } else if (!options?.providerId) {
       // Public view: Only show published services
       where.status = ServiceStatus.PUBLISHED;
+      where.provider = {
+        status: UserStatus.ACTIVE,
+        isServiceProviderVerified: true,
+      };
     } else {
       // Provider view: Provider can see their own services with any status
       where.providerId = options.providerId;
@@ -168,8 +177,25 @@ export class ServicesService {
   }
 
   async findOne(id: string): Promise<Service> {
-    const service = await this.prisma.service.findUnique({
-      where: { id },
+    return this.findOneWhere({
+      id,
+      status: ServiceStatus.PUBLISHED,
+      provider: {
+        status: UserStatus.ACTIVE,
+        isServiceProviderVerified: true,
+      },
+    });
+  }
+
+  async findOneForProvider(id: string, providerId: string): Promise<Service> {
+    return this.findOneWhere({ id, providerId });
+  }
+
+  private async findOneWhere(
+    where: Prisma.ServiceWhereInput,
+  ): Promise<Service> {
+    const service = await this.prisma.service.findFirst({
+      where,
       include: {
         plans: {
           orderBy: { sortOrder: 'asc' },

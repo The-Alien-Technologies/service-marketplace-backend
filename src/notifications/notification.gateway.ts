@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { Notification } from '../../generated/prisma';
+import { Role, UserStatus } from '../../generated/prisma';
+import { PrismaService } from '../prisma/prisma.service';
 
 @WebSocketGateway({
   namespace: '/notifications',
@@ -22,7 +24,10 @@ export class NotificationGateway
 
   private readonly logger = new Logger(NotificationGateway.name);
 
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async handleConnection(@ConnectedSocket() client: Socket) {
     try {
@@ -34,6 +39,17 @@ export class NotificationGateway
       const decoded = this.jwt.verify<{ id?: string; sub?: string }>(token);
       const userId = decoded.id || decoded.sub;
       if (!userId) throw new Error('Unauthorized');
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true, status: true },
+      });
+      const canReceiveNotifications =
+        user?.status === UserStatus.ACTIVE ||
+        (user?.role === Role.SERVICE_PROVIDER &&
+          (user.status === UserStatus.PENDING ||
+            user.status === UserStatus.REJECTED));
+      if (!canReceiveNotifications) throw new Error('Unauthorized');
 
       client.data.userId = userId;
       await client.join(this.userRoom(userId));

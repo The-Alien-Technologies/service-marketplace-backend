@@ -40,6 +40,10 @@ model User {
   serviceProviderExperienceLevel ExperienceLevel?
   isServiceProviderVerified      Boolean                     @default(false)
   serviceProviderVerifiedAt      DateTime?
+  providerApplicationSubmittedAt DateTime?
+  providerApplicationReviewedAt  DateTime?
+  providerApplicationReviewedBy  String?
+  providerApplicationRejectionReason String?
   isPremium                      Boolean                     @default(false)
   subscriptionStatus             SubscriptionStatus?
   subscriptionTier               String?
@@ -88,6 +92,7 @@ model User {
   balanceAdjustments             ProviderBalanceAdjustment[]
   notifications                  Notification[]
 
+  @@index([role, status, providerApplicationSubmittedAt])
   @@map("users")
 }
 
@@ -781,7 +786,9 @@ model verification {
 }
 
 enum UserStatus {
+  PENDING
   ACTIVE
+  REJECTED
   SUSPENDED
   DELETED
 }
