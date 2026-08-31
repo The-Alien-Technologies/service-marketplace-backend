@@ -4,7 +4,6 @@ import {
   Body,
   Get,
   Req,
-  Put,
   Delete,
   Patch,
   HttpCode,
@@ -28,6 +27,7 @@ import { Public } from 'src/common/decorators/is-public.decorator';
 import { IsAdmin } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { ResponseUtil } from 'src/common/utils/response.util';
+import { AllowUnapprovedProvider } from 'src/common/decorators/allow-unapproved-provider.decorator';
 
 @Controller('auth')
 @UseGuards(RolesGuard)
@@ -132,6 +132,7 @@ export class AuthController {
 
   @HttpCode(200)
   @Post('send-phone-verification')
+  @AllowUnapprovedProvider()
   async sendPhoneVerification(
     @Req() req: Request,
     @Body() body: SendPhoneVerificationDto,
@@ -144,6 +145,7 @@ export class AuthController {
   }
 
   @Post('verify-phone')
+  @AllowUnapprovedProvider()
   async verifyPhone(@Req() req: Request, @Body() body: VerifyPhoneDto) {
     const result = await this.authService.verifyPhoneOtp(
       req.currentUser.id,
@@ -171,6 +173,7 @@ export class AuthController {
 
   @HttpCode(200)
   @Post('resend-phone-verification')
+  @AllowUnapprovedProvider()
   async resendPhoneVerification(
     @Req() req: Request,
     @Body() body: SendPhoneVerificationDto,
@@ -233,6 +236,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AllowUnapprovedProvider()
   async getProfile(@Req() req: Request) {
     const userId = req.currentUser.id;
     const user = await this.authService.getUserById(userId);
@@ -252,6 +256,7 @@ export class AuthController {
   }
 
   @Patch('password')
+  @AllowUnapprovedProvider()
   async changePassword(
     @Req() req: Request,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -267,6 +272,7 @@ export class AuthController {
   }
 
   @Delete('account')
+  @AllowUnapprovedProvider()
   async softDeleteAccount(@Req() req: Request) {
     const userId = req.currentUser.id;
     await this.authService.softDeleteAccount(userId);

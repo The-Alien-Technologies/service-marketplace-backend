@@ -19,7 +19,10 @@ const makeService = (verifiedUserId: string | null) => {
       findUnique: jest.fn().mockResolvedValue({ id: USER_ID, avatar: null }),
       update: jest.fn().mockResolvedValue({ id: USER_ID }),
     },
+    $queryRaw: jest.fn().mockResolvedValue([{ id: USER_ID }]),
+    $transaction: jest.fn(),
   };
+  prisma.$transaction.mockImplementation(async (callback) => callback(prisma));
   const fileUploadService = {
     uploadAvatar: jest.fn(),
     deleteFile: jest.fn(),

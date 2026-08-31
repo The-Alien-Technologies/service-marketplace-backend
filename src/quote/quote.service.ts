@@ -13,7 +13,12 @@ import {
   UpdateQuoteStatusDto,
   SendQuoteOfferDto,
 } from './dto/quote.dto';
-import { QuoteStatus } from '../../generated/prisma';
+import {
+  QuoteStatus,
+  Role,
+  ServiceStatus,
+  UserStatus,
+} from '../../generated/prisma';
 import { OrdersService } from '../orders/orders.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
 
@@ -52,6 +57,33 @@ export class QuoteService {
     dto: CreateQuoteDto,
     files: Express.Multer.File[] = [],
   ) {
+    const provider = await this.prisma.user.findFirst({
+      where: {
+        id: dto.providerId,
+        role: Role.SERVICE_PROVIDER,
+        status: UserStatus.ACTIVE,
+        isServiceProviderVerified: true,
+      },
+      select: { id: true },
+    });
+    if (!provider) {
+      throw new NotFoundException('Provider is not available for quotes');
+    }
+
+    if (dto.serviceId) {
+      const service = await this.prisma.service.findFirst({
+        where: {
+          id: dto.serviceId,
+          providerId: dto.providerId,
+          status: ServiceStatus.PUBLISHED,
+        },
+        select: { id: true },
+      });
+      if (!service) {
+        throw new NotFoundException('Service is not available for quotes');
+      }
+    }
+
     // Upload attachments
     const attachmentUrls: string[] = [];
     for (const file of files) {

@@ -12,7 +12,9 @@ import {
   OrderStatus,
   Prisma,
   QuoteStatus,
+  Role,
   ServiceStatus,
+  UserStatus,
 } from '../../generated/prisma';
 import { SettlementsService } from '../settlements/settlements.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
@@ -63,6 +65,13 @@ export class OrdersService {
         addons: {
           where: { id: { in: requestedAddOnIds } },
         },
+        provider: {
+          select: {
+            role: true,
+            status: true,
+            isServiceProviderVerified: true,
+          },
+        },
       },
     });
 
@@ -72,6 +81,16 @@ export class OrdersService {
 
     if (service.status !== ServiceStatus.PUBLISHED) {
       throw new BadRequestException('This service is not available to order');
+    }
+
+    if (
+      service.provider.role !== Role.SERVICE_PROVIDER ||
+      service.provider.status !== UserStatus.ACTIVE ||
+      !service.provider.isServiceProviderVerified
+    ) {
+      throw new BadRequestException(
+        'This provider is not available for orders',
+      );
     }
 
     if (service.providerId === clientId) {
@@ -199,6 +218,21 @@ export class OrdersService {
     }
     if (quote.budget.lessThanOrEqualTo(0)) {
       throw new BadRequestException('Quote amount must be greater than zero');
+    }
+
+    const provider = await this.prisma.user.findFirst({
+      where: {
+        id: quote.providerId,
+        role: Role.SERVICE_PROVIDER,
+        status: UserStatus.ACTIVE,
+        isServiceProviderVerified: true,
+      },
+      select: { id: true },
+    });
+    if (!provider) {
+      throw new BadRequestException(
+        'This provider is not available for orders',
+      );
     }
 
     const orderNumber = await this.createUniqueOrderNumber();

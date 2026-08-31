@@ -96,6 +96,17 @@ export class ServicesController {
     return ResponseUtil.success(result, 'Your services retrieved successfully');
   }
 
+  @Get('my/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @IsServiceProvider()
+  async findMyService(
+    @Param('id') id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    const service = await this.servicesService.findOneForProvider(id, userId);
+    return ResponseUtil.success(service, 'Your service retrieved successfully');
+  }
+
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @IsAdmin()

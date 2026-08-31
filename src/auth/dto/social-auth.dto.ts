@@ -1,4 +1,12 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsEnum, IsString, IsUrl } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsString,
+  IsUrl,
+  IsIn,
+} from 'class-validator';
 
 export enum SocialProvider {
   GOOGLE = 'google',
@@ -47,6 +55,6 @@ export class SocialAuthDto {
   supabaseUserId?: string; // Supabase user ID for reference
 
   @IsOptional()
-  @IsString()
+  @IsIn(['USER', 'SERVICE_PROVIDER'])
   role?: 'USER' | 'SERVICE_PROVIDER'; // Intended user role from frontend
 }

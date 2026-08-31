@@ -8,6 +8,7 @@ declare global {
         lastName: string;
         username?: string;
         role: string;
+        status: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;

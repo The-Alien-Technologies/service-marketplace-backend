@@ -25,9 +25,11 @@ import {
   UploadDocumentDto,
 } from './dto';
 import { ResponseUtil } from '../common/utils/response.util';
+import { AllowUnapprovedProvider } from '../common/decorators/allow-unapproved-provider.decorator';
 
 @Controller('onboarding')
 @UseGuards(JwtAuthGuard)
+@AllowUnapprovedProvider()
 export class OnboardingController {
   constructor(
     private readonly onboardingService: OnboardingService,
@@ -147,16 +149,35 @@ export class OnboardingController {
 
   @Post('complete')
   async completeOnboarding(@Req() req: Request) {
-      const user = await this.onboardingService.completeOnboarding(req.currentUser.id);
-      return ResponseUtil.success(
-        {
+    const user = await this.onboardingService.completeOnboarding(
+      req.currentUser.id,
+    );
+    return ResponseUtil.success(
+      {
+        user: {
           id: user.id,
+          email: user.email,
+          emailVerified: user.emailVerified,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          displayName: user.displayName,
+          avatar: user.avatar,
+          role: user.role,
+          status: user.status,
+          phoneVerified: user.phoneVerified,
           hasCompletedOnboarding: user.hasCompletedOnboarding,
           onboardingCompletedAt: user.onboardingCompletedAt,
           profileCompleteness: user.profileCompleteness,
+          isServiceProviderVerified: user.isServiceProviderVerified,
+          serviceProviderVerifiedAt: user.serviceProviderVerifiedAt,
+          providerApplicationSubmittedAt: user.providerApplicationSubmittedAt,
+          providerApplicationReviewedAt: user.providerApplicationReviewedAt,
+          providerApplicationRejectionReason:
+            user.providerApplicationRejectionReason,
         },
-        'Onboarding completed successfully',
-      );
+      },
+      'Onboarding completed successfully',
+    );
   }
 
 }

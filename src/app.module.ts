@@ -20,13 +20,13 @@ import { SeederModule } from './common/seeders/seeder.module';
 import { ChatModule } from './chat/chat.module';
 import { QuoteModule } from './quote/quote.module';
 import { DisputeModule } from './dispute/dispute.module';
-import { BotChatController } from './botChat/botChat.controller';
 import { BotChatModule } from './botChat/botChat.module';
 import { SupportChatModule } from './supportChat/supportChat.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { validateEnvironment } from './config/environment';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ProviderApprovalGuard } from './auth/guards/provider-approval.guard';
 
 @Module({
   imports: [
@@ -78,6 +78,10 @@ import { NotificationsModule } from './notifications/notifications.module';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ProviderApprovalGuard,
     },
     {
       provide: APP_FILTER,

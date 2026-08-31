@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { User, Role, UserAddress, UserInterest, VerificationDocument } from '../../generated/prisma';
+import {
+  Role,
+  User,
+  UserAddress,
+  UserInterest,
+  UserInterestType,
+  VerificationDocument,
+} from '../../generated/prisma';
 
 // Extended User type with relations
 type UserWithRelations = User & {
@@ -27,17 +34,20 @@ export interface OnboardingStatus {
 
 @Injectable()
 export class OnboardingStatusService {
-  
   /**
    * Get comprehensive onboarding status for a user
    */
   getOnboardingStatus(user: UserWithRelations): OnboardingStatus {
     const steps = this.getAllSteps(user);
-    const completedSteps = steps.filter(step => step.completed).map(step => step.step);
-    const requiredSteps = steps.filter(step => step.required).map(step => step.step);
+    const completedSteps = steps
+      .filter((step) => step.completed)
+      .map((step) => step.step);
+    const requiredSteps = steps
+      .filter((step) => step.required)
+      .map((step) => step.step);
     const nextRequiredStep = this.getNextRequiredStep(steps);
     const completionPercentage = this.calculateCompletionPercentage(steps);
-    
+
     return {
       isComplete: nextRequiredStep === null,
       nextRequiredStep,
@@ -115,7 +125,7 @@ export class OnboardingStatusService {
           completed: this.isVerificationDocumentsComplete(user),
           label: 'Verification Documents',
           description: 'Upload verification documents',
-        }
+        },
       );
     }
 
@@ -131,10 +141,12 @@ export class OnboardingStatusService {
 
   private isBasicProfileComplete(user: UserWithRelations): boolean {
     return !!(
-      user.firstName && 
+      user.firstName &&
       user.firstName.trim() !== '' &&
-      user.lastName && 
-      user.lastName.trim() !== ''
+      user.lastName &&
+      user.lastName.trim() !== '' &&
+      user.phoneNumber &&
+      user.phoneVerified
     );
   }
 
@@ -144,24 +156,29 @@ export class OnboardingStatusService {
   }
 
   private isInterestsComplete(user: UserWithRelations): boolean {
-    // Check if user has selected at least one interest/category
-    return !!(user.interests && user.interests.length > 0);
+    if (!user.interests) return false;
+    if (user.role !== Role.SERVICE_PROVIDER) return user.interests.length > 0;
+    return user.interests.some(
+      (interest) => interest.type === UserInterestType.SERVICE,
+    );
   }
 
   private isExperienceComplete(user: UserWithRelations): boolean {
-    return !!(user.serviceProviderExperienceLevel);
+    return !!user.serviceProviderExperienceLevel;
   }
 
   private isVerificationDocumentsComplete(user: UserWithRelations): boolean {
     // Check if user has uploaded at least one verification document
-    return !!(user.verificationDocuments && user.verificationDocuments.length > 0);
+    return !!(
+      user.verificationDocuments && user.verificationDocuments.length > 0
+    );
   }
 
   /**
    * Get the next required step that's not completed
    */
   private getNextRequiredStep(steps: OnboardingStep[]): string | null {
-    const nextStep = steps.find(step => step.required && !step.completed);
+    const nextStep = steps.find((step) => step.required && !step.completed);
     return nextStep ? nextStep.step : null;
   }
 
@@ -169,12 +186,16 @@ export class OnboardingStatusService {
    * Calculate completion percentage based on required steps
    */
   private calculateCompletionPercentage(steps: OnboardingStep[]): number {
-    const requiredSteps = steps.filter(step => step.required);
-    const completedRequiredSteps = requiredSteps.filter(step => step.completed);
-    
+    const requiredSteps = steps.filter((step) => step.required);
+    const completedRequiredSteps = requiredSteps.filter(
+      (step) => step.completed,
+    );
+
     if (requiredSteps.length === 0) return 100;
-    
-    return Math.round((completedRequiredSteps.length / requiredSteps.length) * 100);
+
+    return Math.round(
+      (completedRequiredSteps.length / requiredSteps.length) * 100,
+    );
   }
 
   /**
@@ -182,12 +203,12 @@ export class OnboardingStatusService {
    */
   getStepRoute(step: string): string {
     const stepRouteMap: Record<string, string> = {
-      'email_verification': 'verify-email',
-      'basic_profile': 'onboarding-profile',
-      'location': 'onboarding-location',
-      'interests': 'onboarding-interests',
-      'experience': 'onboarding-experience',
-      'verification_documents': 'onboarding-documents',
+      email_verification: 'verify-email',
+      basic_profile: 'onboarding-profile',
+      location: 'onboarding-location',
+      interests: 'onboarding-interests',
+      experience: 'onboarding-experience',
+      verification_documents: 'onboarding-documents',
     };
 
     return stepRouteMap[step] || 'onboarding-personalize';
@@ -198,12 +219,12 @@ export class OnboardingStatusService {
    */
   getStepMessage(step: string): string {
     const stepMessageMap: Record<string, string> = {
-      'email_verification': 'Please verify your email address to continue.',
-      'basic_profile': 'Complete your basic profile information.',
-      'location': 'Please add your location details.',
-      'interests': 'Select your interests and services.',
-      'experience': 'Set your experience level.',
-      'verification_documents': 'Upload your verification documents.',
+      email_verification: 'Please verify your email address to continue.',
+      basic_profile: 'Complete your basic profile information.',
+      location: 'Please add your location details.',
+      interests: 'Select your interests and services.',
+      experience: 'Set your experience level.',
+      verification_documents: 'Upload your verification documents.',
     };
 
     return stepMessageMap[step] || 'Please complete your profile setup.';
