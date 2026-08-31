@@ -35,12 +35,12 @@ describe('SmsService', () => {
 
     const [rawUrl, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const url = new URL(rawUrl);
-    expect(url.origin).toBe('https://sms.hubtel.com');
+    expect(url.origin).toBe('https://smsc.hubtel.com');
     expect(url.pathname).toBe('/v1/messages/send');
     expect(url.searchParams.get('clientid')).toBe('client-id');
     expect(url.searchParams.get('clientsecret')).toBe('client-secret');
     expect(url.searchParams.get('from')).toBe('Pavodah');
-    expect(url.searchParams.get('to')).toBe('+233241234567');
+    expect(url.searchParams.get('to')).toBe('233241234567');
     expect(url.searchParams.get('content')).toBe('Your code is 123456');
     expect(init.method).toBe('GET');
     expect(init.signal).toBeInstanceOf(AbortSignal);

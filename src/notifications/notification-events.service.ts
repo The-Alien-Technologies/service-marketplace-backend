@@ -411,6 +411,51 @@ export class NotificationEventsService {
     ]);
   }
 
+  async providerApplicationSubmitted(input: {
+    providerId: string;
+    providerName: string;
+    submittedAt: Date;
+  }) {
+    await this.safeCreate([
+      this.notifications.createForRole(Role.ADMIN, {
+        type: NotificationType.SYSTEM_ALERT,
+        priority: NotificationPriority.IMPORTANT,
+        title: 'Provider application ready for review',
+        message: `${input.providerName} submitted a provider application.`,
+        actionUrl: `/dashboard/provider-applications?application=${input.providerId}`,
+        entityType: 'providerApplication',
+        entityId: input.providerId,
+        dedupeKey: (userId) =>
+          `provider-application-submitted:${input.providerId}:${input.submittedAt.toISOString()}:${userId}`,
+      }),
+    ]);
+  }
+
+  async providerApplicationDecision(input: {
+    providerId: string;
+    approved: boolean;
+    reason?: string;
+    reviewedAt: Date;
+  }) {
+    await this.safeCreate([
+      this.notifications.create({
+        userId: input.providerId,
+        type: NotificationType.SYSTEM_ALERT,
+        priority: NotificationPriority.IMPORTANT,
+        title: input.approved
+          ? 'Your provider application was approved'
+          : 'Your provider application needs changes',
+        message: input.approved
+          ? 'You can now open your provider dashboard and start creating services.'
+          : `Your application was not approved yet. ${input.reason ?? 'Review the requested changes and resubmit.'}`,
+        actionUrl: input.approved ? '/dashboard' : '/provider-application',
+        entityType: 'providerApplication',
+        entityId: input.providerId,
+        dedupeKey: `provider-application-decision:${input.providerId}:${input.reviewedAt.toISOString()}`,
+      }),
+    ]);
+  }
+
   private async safeCreate(tasks: Promise<unknown>[]) {
     const results = await Promise.allSettled(tasks);
     for (const result of results) {

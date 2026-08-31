@@ -1,4 +1,10 @@
-import { Prisma, ServiceStatus } from '../../generated/prisma';
+import {
+  Prisma,
+  Role,
+  ServiceStatus,
+  UserStatus,
+} from '../../generated/prisma';
+import { BadRequestException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 
 describe('OrdersService payment pricing', () => {
@@ -16,6 +22,11 @@ describe('OrdersService payment pricing', () => {
           id: 'service-1',
           providerId: 'provider-1',
           status: ServiceStatus.PUBLISHED,
+          provider: {
+            role: Role.SERVICE_PROVIDER,
+            status: UserStatus.ACTIVE,
+            isServiceProviderVerified: true,
+          },
           plans: [
             {
               id: 'plan-1',
@@ -67,6 +78,11 @@ describe('OrdersService payment pricing', () => {
           id: 'service-1',
           providerId: 'provider-1',
           status: ServiceStatus.PUBLISHED,
+          provider: {
+            role: Role.SERVICE_PROVIDER,
+            status: UserStatus.ACTIVE,
+            isServiceProviderVerified: true,
+          },
           plans: [
             {
               id: 'plan-1',
@@ -91,5 +107,34 @@ describe('OrdersService payment pricing', () => {
     ).rejects.toThrow(
       'One or more selected add-ons do not belong to this service',
     );
+  });
+
+  it('rejects orders for a provider whose approval is no longer active', async () => {
+    const prisma = {
+      order: { findUnique: jest.fn().mockResolvedValue(null) },
+      service: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'service-1',
+          providerId: 'provider-1',
+          status: ServiceStatus.PUBLISHED,
+          provider: {
+            role: Role.SERVICE_PROVIDER,
+            status: UserStatus.PENDING,
+            isServiceProviderVerified: false,
+          },
+          plans: [],
+          addons: [],
+        }),
+      },
+    };
+    const service = new OrdersService(prisma as never, settlements as never);
+
+    await expect(
+      service.create('client-1', {
+        serviceId: 'service-1',
+        planId: 'plan-1',
+        checkoutKey: '20aa425a-0f14-4baf-8cf8-41d1201768b5',
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

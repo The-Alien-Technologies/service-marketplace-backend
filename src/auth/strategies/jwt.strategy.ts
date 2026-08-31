@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
@@ -39,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       lastName: user.lastName,
       username: user.username,
       role: user.role,
+      status: user.status,
       isActive: user.status === 'ACTIVE',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

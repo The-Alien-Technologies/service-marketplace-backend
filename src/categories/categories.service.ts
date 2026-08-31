@@ -12,6 +12,7 @@ import {
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { FilterServicesDto } from './dto/filter-services.dto';
+import { UserStatus } from '../../generated/prisma';
 
 @Injectable()
 export class CategoriesService {
@@ -231,6 +232,10 @@ export class CategoriesService {
     const where: any = {
       categoryId,
       status: 'PUBLISHED', // Only show published services
+      provider: {
+        status: UserStatus.ACTIVE,
+        isServiceProviderVerified: true,
+      },
     };
 
     // Search filter (title, overview, tags)
@@ -290,7 +295,9 @@ export class CategoriesService {
     // Apply price filter (based on minimum plan price)
     if (minPrice !== undefined || maxPrice !== undefined) {
       services = services.filter((service) => {
-        const minPlanPrice = Math.min(...service.plans.map((p) => Number(p.price)));
+        const minPlanPrice = Math.min(
+          ...service.plans.map((p) => Number(p.price)),
+        );
         if (minPrice !== undefined && minPlanPrice < minPrice) return false;
         if (maxPrice !== undefined && minPlanPrice > maxPrice) return false;
         return true;

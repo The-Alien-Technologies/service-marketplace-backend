@@ -12,7 +12,8 @@
   import { ConfigService } from '@nestjs/config';
   import { Logger } from '@nestjs/common';
   import { SupportChatService } from './supportChat.service';
-  import { Role } from '../../generated/prisma';
+  import { Role, UserStatus } from '../../generated/prisma';
+  import { PrismaService } from '../prisma/prisma.service';
 
 const ADMIN_ROOM = 'support-admins';
 
@@ -30,6 +31,7 @@ export class SupportChatGateway implements OnGatewayConnection, OnGatewayDisconn
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
         private readonly supportChatService: SupportChatService,
+        private readonly prisma: PrismaService,
     ){};
 
     //Connection Lifecycle------------------
@@ -37,7 +39,7 @@ export class SupportChatGateway implements OnGatewayConnection, OnGatewayDisconn
         try{
             const token = 
             client.handshake.auth.token || 
-            client.handshake.headers.authorization.split(' ')[1];
+            client.handshake.headers.authorization?.split(' ')[1];
 
             if(!token) throw new Error('No token provided');
 
@@ -45,9 +47,17 @@ export class SupportChatGateway implements OnGatewayConnection, OnGatewayDisconn
                 secret: this.configService.get('JWT_SECRET'),
             });
 
-            client.data.user = decoded;
             const userId = decoded.id || decoded.sub;
-            const role: Role = decoded.Role;
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: { role: true, status: true },
+            });
+            if (!user || user.status !== UserStatus.ACTIVE) {
+                throw new Error('Account is not approved for support chat access');
+            }
+
+            client.data.user = { ...decoded, ...user };
+            const role: Role = user.role;
 
             this.logger.log(`Support socket connected: ${client.id} {User: ${userId}, Role ${role}`);
 
@@ -77,7 +87,7 @@ export class SupportChatGateway implements OnGatewayConnection, OnGatewayDisconn
 
         if(!userId) return;
 
-        const canAccess = this.supportChatService.canAccessConversation(
+        const canAccess = await this.supportChatService.canAccessConversation(
             conversationId,
             userId,
             role,
