@@ -9,91 +9,121 @@ datasource db {
 }
 
 model User {
-  id                             String                      @id @default(cuid())
-  createdAt                      DateTime                    @default(now())
-  updatedAt                      DateTime                    @updatedAt
-  email                          String                      @unique
-  emailVerified                  Boolean                     @default(false)
-  password                       String?
-  passwordResetOtp               String?
-  passwordResetExpires           DateTime?
-  passwordResetAttempts          Int                         @default(0)
-  role                           Role                        @default(USER)
-  firstName                      String?
-  lastName                       String?
-  displayName                    String?
-  username                       String?                     @unique
-  avatar                         String?
-  bio                            String?
-  dateOfBirth                    DateTime?
-  timezone                       String                      @default("UTC")
-  phoneNumber                    String?
-  countryCode                    String?
-  phoneVerified                  Boolean                     @default(false)
-  googleId                       String?                     @unique
-  appleId                        String?                     @unique
-  facebookId                     String?                     @unique
-  twitterId                      String?                     @unique
-  hasCompletedOnboarding         Boolean                     @default(false)
-  onboardingCompletedAt          DateTime?
-  profileCompleteness            Int                         @default(0)
-  serviceProviderExperienceLevel ExperienceLevel?
-  isServiceProviderVerified      Boolean                     @default(false)
-  serviceProviderVerifiedAt      DateTime?
-  providerApplicationSubmittedAt DateTime?
-  providerApplicationReviewedAt  DateTime?
-  providerApplicationReviewedBy  String?
+  id                                 String                      @id @default(cuid())
+  createdAt                          DateTime                    @default(now())
+  updatedAt                          DateTime                    @updatedAt
+  email                              String                      @unique
+  emailVerified                      Boolean                     @default(false)
+  password                           String?
+  passwordResetOtp                   String?
+  passwordResetExpires               DateTime?
+  passwordResetAttempts              Int                         @default(0)
+  role                               Role                        @default(USER)
+  firstName                          String?
+  lastName                           String?
+  displayName                        String?
+  username                           String?                     @unique
+  avatar                             String?
+  bio                                String?
+  dateOfBirth                        DateTime?
+  timezone                           String                      @default("UTC")
+  phoneNumber                        String?
+  countryCode                        String?
+  phoneVerified                      Boolean                     @default(false)
+  googleId                           String?                     @unique
+  appleId                            String?                     @unique
+  facebookId                         String?                     @unique
+  twitterId                          String?                     @unique
+  hasCompletedOnboarding             Boolean                     @default(false)
+  onboardingCompletedAt              DateTime?
+  profileCompleteness                Int                         @default(0)
+  serviceProviderExperienceLevel     ExperienceLevel?
+  isServiceProviderVerified          Boolean                     @default(false)
+  serviceProviderVerifiedAt          DateTime?
+  providerApplicationSubmittedAt     DateTime?
+  providerApplicationReviewedAt      DateTime?
+  providerApplicationReviewedBy      String?
   providerApplicationRejectionReason String?
-  isPremium                      Boolean                     @default(false)
-  subscriptionStatus             SubscriptionStatus?
-  subscriptionTier               String?
-  subscriptionStartDate          DateTime?
-  subscriptionEndDate            DateTime?
-  themePreference                ThemePreference             @default(SYSTEM)
-  notificationsEnabled           Boolean                     @default(true)
-  marketingNotifications         Boolean                     @default(false)
-  preferredLanguage              String                      @default("en")
-  isProfilePublic                Boolean                     @default(false)
-  dataAnalyticsEnabled           Boolean                     @default(true)
-  status                         UserStatus                  @default(ACTIVE)
-  lastLoginAt                    DateTime?
-  lastActiveAt                   DateTime                    @default(now())
-  emailVerificationAttempts      Int                         @default(0)
-  emailVerificationExpires       DateTime?
-  emailVerificationOtp           String?
-  emailNotificationsEnabled      Boolean                     @default(true)
-  smsNotificationsEnabled        Boolean                     @default(false)
-  providerConversations          Conversation[]              @relation("ProviderConversations")
-  userConversations              Conversation[]              @relation("UserConversations")
-  clientDisputes                 Dispute[]                   @relation("ClientDisputes")
-  providerDisputes               Dispute[]                   @relation("ProviderDisputes")
-  sentMessages                   Message[]                   @relation("SentMessages")
-  clientOrders                   Order[]                     @relation("ClientOrders")
-  providerOrders                 Order[]                     @relation("ProviderOrders")
-  quoteRequestsAsClient          QuoteRequest[]              @relation("ClientQuoteRequests")
-  quoteRequestsAsProvider        QuoteRequest[]              @relation("ProviderQuoteRequests")
-  clientReviews                  Review[]                    @relation("ClientReviews")
-  providerReviews                Review[]                    @relation("ProviderReviews")
-  services                       Service[]
-  handledSupportConversations    SupportConversation[]       @relation("SupportAdmin")
-  initiatedSupportConversations  SupportConversation[]       @relation("SupportInitiator")
-  supportMessages                SupportMessage[]            @relation("SupportMessageSender")
-  addresses                      UserAddress[]
-  interests                      UserInterest[]
-  verificationDocuments          VerificationDocument[]
-  phoneVerifications             PhoneVerification[]
-  verifiedPhone                  VerifiedPhone?
-  paymentTransactions            PaymentTransaction[]
-  payoutAccount                  ProviderPayoutAccount?
-  orderSettlements               OrderSettlement[]
-  providerPayouts                ProviderPayout[]            @relation("ProviderPayouts")
-  approvedPayouts                ProviderPayout[]            @relation("PayoutApprover")
-  rejectedPayouts                ProviderPayout[]            @relation("PayoutRejector")
-  balanceAdjustments             ProviderBalanceAdjustment[]
-  notifications                  Notification[]
+  isPremium                          Boolean                     @default(false)
+  subscriptionStatus                 SubscriptionStatus?
+  subscriptionTier                   String?
+  subscriptionStartDate              DateTime?
+  subscriptionEndDate                DateTime?
+  themePreference                    ThemePreference             @default(SYSTEM)
+  notificationsEnabled               Boolean                     @default(true)
+  marketingNotifications             Boolean                     @default(false)
+  preferredLanguage                  String                      @default("en")
+  isProfilePublic                    Boolean                     @default(false)
+  dataAnalyticsEnabled               Boolean                     @default(true)
+  status                             UserStatus                  @default(ACTIVE)
+  lastLoginAt                        DateTime?
+  lastActiveAt                       DateTime                    @default(now())
+  emailVerificationAttempts          Int                         @default(0)
+  emailVerificationExpires           DateTime?
+  emailVerificationOtp               String?
+  emailNotificationsEnabled          Boolean                     @default(true)
+  smsNotificationsEnabled            Boolean                     @default(false)
+  tokenVersion                       Int                         @default(0)
+  homeMarketId                       String?
+  selectedMarketId                   String?
+  adminMarketId                      String?
+  providerConversations              Conversation[]              @relation("ProviderConversations")
+  userConversations                  Conversation[]              @relation("UserConversations")
+  clientDisputes                     Dispute[]                   @relation("ClientDisputes")
+  providerDisputes                   Dispute[]                   @relation("ProviderDisputes")
+  sentMessages                       Message[]                   @relation("SentMessages")
+  clientOrders                       Order[]                     @relation("ClientOrders")
+  providerOrders                     Order[]                     @relation("ProviderOrders")
+  quoteRequestsAsClient              QuoteRequest[]              @relation("ClientQuoteRequests")
+  quoteRequestsAsProvider            QuoteRequest[]              @relation("ProviderQuoteRequests")
+  clientReviews                      Review[]                    @relation("ClientReviews")
+  providerReviews                    Review[]                    @relation("ProviderReviews")
+  services                           Service[]
+  handledSupportConversations        SupportConversation[]       @relation("SupportAdmin")
+  initiatedSupportConversations      SupportConversation[]       @relation("SupportInitiator")
+  supportMessages                    SupportMessage[]            @relation("SupportMessageSender")
+  addresses                          UserAddress[]
+  interests                          UserInterest[]
+  verificationDocuments              VerificationDocument[]
+  phoneVerifications                 PhoneVerification[]
+  verifiedPhone                      VerifiedPhone?
+  paymentTransactions                PaymentTransaction[]
+  payoutAccounts                     ProviderPayoutAccount[]
+  orderSettlements                   OrderSettlement[]
+  providerPayouts                    ProviderPayout[]            @relation("ProviderPayouts")
+  approvedPayouts                    ProviderPayout[]            @relation("PayoutApprover")
+  rejectedPayouts                    ProviderPayout[]            @relation("PayoutRejector")
+  balanceAdjustments                 ProviderBalanceAdjustment[]
+  partnerPayoutsApproved             MarketPartnerPayout[]       @relation("PartnerPayoutApprover")
+  notifications                      Notification[]
+  homeMarket                         Market?                     @relation("UserHomeMarket", fields: [homeMarketId], references: [id], onDelete: SetNull)
+  selectedMarket                     Market?                     @relation("UserSelectedMarket", fields: [selectedMarketId], references: [id], onDelete: SetNull)
+  adminMarket                        Market?                     @relation("CountryAdmins", fields: [adminMarketId], references: [id], onDelete: Restrict)
+  providerMarketMemberships          ProviderMarketMembership[]  @relation("ProviderMarketMemberships")
+  reviewedMarketMemberships          ProviderMarketMembership[]  @relation("MembershipReviewer")
+  createdCredentialVersions          PaymentCredentialVersion[]  @relation("CredentialCreator")
+  adminAuditLogs                     AdminAuditLog[]             @relation("AuditActor")
+  authSessions                       AuthSession[]
 
   @@index([role, status, providerApplicationSubmittedAt])
+  @@index([homeMarketId, role, status])
+  @@index([adminMarketId, role])
   @@map("users")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  userId           String
+  refreshTokenHash String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
 }
 
 model UserAddress {
@@ -109,6 +139,7 @@ model UserAddress {
   city             String?
   state            String?
   country          String?
+  countryIso2      String?
   postalCode       String?
   isPrimary        Boolean  @default(false)
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -116,20 +147,97 @@ model UserAddress {
   @@map("user_addresses")
 }
 
+model Market {
+  id                        String                       @id @default(cuid())
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
+  code                      String                       @unique
+  name                      String
+  currency                  String
+  locale                    String
+  minorUnit                 Int                          @default(2)
+  paystackCountry           String
+  status                    MarketStatus                 @default(ACTIVE)
+  checkoutEnabled           Boolean                      @default(true)
+  providerOnboardingEnabled Boolean                      @default(true)
+  servicePublishingEnabled  Boolean                      @default(true)
+  sortOrder                 Int                          @default(0)
+  homeUsers                 User[]                       @relation("UserHomeMarket")
+  selectedUsers             User[]                       @relation("UserSelectedMarket")
+  admins                    User[]                       @relation("CountryAdmins")
+  providerMemberships       ProviderMarketMembership[]
+  services                  Service[]
+  orders                    Order[]
+  quoteRequests             QuoteRequest[]
+  supportConversations      SupportConversation[]
+  paymentSetting            PaymentSetting?
+  paymentIntegrations       PaymentIntegration[]
+  payoutAccounts            ProviderPayoutAccount[]
+  payouts                   ProviderPayout[]
+  settlements               OrderSettlement[]
+  balanceAdjustments        ProviderBalanceAdjustment[]
+  partnerPayoutAccount      MarketPartnerPayoutAccount?
+  partnerPayouts            MarketPartnerPayout[]
+  commissionAdjustments     MarketCommissionAdjustment[]
+  categorySettings          MarketCategory[]
+  auditLogs                 AdminAuditLog[]
+
+  @@index([status, sortOrder])
+  @@map("markets")
+}
+
+model ProviderMarketMembership {
+  id              String                         @id @default(cuid())
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+  providerId      String
+  marketId        String
+  status          ProviderMarketMembershipStatus @default(PENDING)
+  isPrimary       Boolean                        @default(false)
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  rejectionReason String?
+  provider        User                           @relation("ProviderMarketMemberships", fields: [providerId], references: [id], onDelete: Cascade)
+  market          Market                         @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  reviewer        User?                          @relation("MembershipReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@unique([providerId, marketId])
+  @@index([marketId, status, createdAt])
+  @@map("provider_market_memberships")
+}
+
+model MarketCategory {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  marketId   String
+  categoryId String
+  isActive   Boolean  @default(true)
+  featured   Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  market     Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([marketId, categoryId])
+  @@index([marketId, isActive, featured, sortOrder])
+  @@map("market_categories")
+}
+
 model Category {
-  id               String         @id @default(cuid())
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  name             String         @unique
+  id               String           @id @default(cuid())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  name             String           @unique
   description      String?
-  isActive         Boolean        @default(true)
-  featured         Boolean        @default(false)
+  isActive         Boolean          @default(true)
+  featured         Boolean          @default(false)
   parentCategoryId String?
   imageUrl         String?
-  parentCategory   Category?      @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
-  subCategories    Category[]     @relation("CategoryHierarchy")
+  parentCategory   Category?        @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories    Category[]       @relation("CategoryHierarchy")
   services         Service[]
   userInterests    UserInterest[]
+  marketSettings   MarketCategory[]
 
   @@map("categories")
 }
@@ -197,26 +305,32 @@ model VerifiedPhone {
 }
 
 model Service {
-  id            String         @id @default(cuid())
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id            String              @id @default(cuid())
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   title         String
-  slug          String         @unique
+  slug          String              @unique
   overview      String
   coverImage    String?
   tags          String[]
-  status        ServiceStatus  @default(DRAFT)
+  status        ServiceStatus       @default(DRAFT)
   providerId    String
   categoryId    String
+  marketId      String
+  currency      String
+  availability  ServiceAvailability @default(MARKET)
   orders        Order[]
   quoteRequests QuoteRequest[]
   reviews       Review[]
   addons        ServiceAddon[]
   images        ServiceImage[]
   plans         ServicePlan[]
-  category      Category       @relation(fields: [categoryId], references: [id])
-  provider      User           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category      Category            @relation(fields: [categoryId], references: [id])
+  provider      User                @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  market        Market              @relation(fields: [marketId], references: [id], onDelete: Restrict)
 
+  @@index([marketId, status, createdAt])
+  @@index([marketId, categoryId, status])
   @@map("services")
 }
 
@@ -261,44 +375,50 @@ model ServiceImage {
 }
 
 model Order {
-  id                  String                      @id @default(cuid())
-  orderNumber         String                      @unique
-  createdAt           DateTime                    @default(now())
-  updatedAt           DateTime                    @updatedAt
-  clientId            String
-  providerId          String
-  serviceId           String
-  planId              String?
-  planTitle           String
-  planPrice           Decimal                     @db.Decimal(10, 2)
-  planInclusions      String
-  subtotal            Decimal                     @db.Decimal(10, 2)
-  addOnsTotal         Decimal                     @default(0) @db.Decimal(10, 2)
-  couponCode          String?
-  couponDiscount      Decimal                     @default(0) @db.Decimal(10, 2)
-  total               Decimal                     @db.Decimal(10, 2)
-  currency            String                      @default("GHS")
-  status              OrderStatus                 @default(PENDING)
-  paymentStatus       OrderPaymentStatus          @default(UNPAID)
-  source              OrderSource                 @default(SERVICE_PLAN)
-  checkoutKey         String?                     @unique
-  quoteRequestId      String?                     @unique
-  paidAt              DateTime?
-  startedAt           DateTime?
-  completedAt         DateTime?
-  commissionRate      Decimal                     @default(10.00) @db.Decimal(5, 2)
-  dispute             Dispute?
-  settlement          OrderSettlement?
-  refunds             PaymentRefund[]
-  externalDisputes    ExternalPaymentDispute[]
-  balanceAdjustments  ProviderBalanceAdjustment[]
-  addOns              OrderAddOn[]
-  paymentTransactions PaymentTransaction[]
-  client              User                        @relation("ClientOrders", fields: [clientId], references: [id])
-  provider            User                        @relation("ProviderOrders", fields: [providerId], references: [id])
-  service             Service                     @relation(fields: [serviceId], references: [id])
-  quoteRequest        QuoteRequest?               @relation(fields: [quoteRequestId], references: [id])
-  review              Review?
+  id                    String                       @id @default(cuid())
+  orderNumber           String                       @unique
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  clientId              String
+  providerId            String
+  serviceId             String
+  marketId              String
+  paymentIntegrationId  String
+  planId                String?
+  planTitle             String
+  planPrice             Decimal                      @db.Decimal(10, 2)
+  planInclusions        String
+  subtotal              Decimal                      @db.Decimal(10, 2)
+  addOnsTotal           Decimal                      @default(0) @db.Decimal(10, 2)
+  couponCode            String?
+  couponDiscount        Decimal                      @default(0) @db.Decimal(10, 2)
+  total                 Decimal                      @db.Decimal(10, 2)
+  currency              String                       @default("GHS")
+  status                OrderStatus                  @default(PENDING)
+  paymentStatus         OrderPaymentStatus           @default(UNPAID)
+  source                OrderSource                  @default(SERVICE_PLAN)
+  checkoutKey           String?                      @unique
+  quoteRequestId        String?                      @unique
+  paidAt                DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  commissionRate        Decimal                      @default(10.00) @db.Decimal(5, 2)
+  pavodahShareRate      Decimal                      @default(50.00) @db.Decimal(5, 2)
+  dispute               Dispute?
+  settlement            OrderSettlement?
+  refunds               PaymentRefund[]
+  externalDisputes      ExternalPaymentDispute[]
+  balanceAdjustments    ProviderBalanceAdjustment[]
+  commissionAdjustments MarketCommissionAdjustment[]
+  addOns                OrderAddOn[]
+  paymentTransactions   PaymentTransaction[]
+  client                User                         @relation("ClientOrders", fields: [clientId], references: [id])
+  provider              User                         @relation("ProviderOrders", fields: [providerId], references: [id])
+  service               Service                      @relation(fields: [serviceId], references: [id])
+  market                Market                       @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration    PaymentIntegration           @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  quoteRequest          QuoteRequest?                @relation(fields: [quoteRequestId], references: [id])
+  review                Review?
 
   @@index([providerId, createdAt])
   @@index([providerId, paymentStatus, status, createdAt])
@@ -308,6 +428,8 @@ model Order {
   @@index([clientId, paymentStatus, status, createdAt])
   @@index([clientId, paidAt])
   @@index([clientId, completedAt])
+  @@index([marketId, createdAt])
+  @@index([marketId, paymentStatus, status, createdAt])
   @@index([paidAt])
   @@map("orders")
 }
@@ -318,6 +440,8 @@ model PaymentTransaction {
   updatedAt             DateTime                 @updatedAt
   orderId               String
   clientId              String
+  paymentIntegrationId  String
+  credentialVersionId   String
   reference             String                   @unique
   accessCode            String?
   authorizationUrl      String?                  @db.Text
@@ -342,10 +466,13 @@ model PaymentTransaction {
   externalDisputes      ExternalPaymentDispute[]
   client                User                     @relation(fields: [clientId], references: [id])
   order                 Order                    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  paymentIntegration    PaymentIntegration       @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  credentialVersion     PaymentCredentialVersion @relation(fields: [credentialVersionId], references: [id], onDelete: Restrict)
 
   @@index([orderId, createdAt])
   @@index([clientId, createdAt])
   @@index([status, createdAt])
+  @@index([paymentIntegrationId, status, createdAt])
   @@map("payment_transactions")
 }
 
@@ -423,6 +550,7 @@ model SupportConversation {
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
   initiatorId   String
+  marketId      String?
   initiatorType SupportSenderType
   adminId       String?
   status        SupportConversationStatus @default(BOT)
@@ -430,8 +558,10 @@ model SupportConversation {
   adminJoinedAt DateTime?
   admin         User?                     @relation("SupportAdmin", fields: [adminId], references: [id])
   initiator     User                      @relation("SupportInitiator", fields: [initiatorId], references: [id])
+  market        Market?                   @relation(fields: [marketId], references: [id], onDelete: SetNull)
   messages      SupportMessage[]
 
+  @@index([marketId, status, createdAt])
   @@map("support_conversations")
 }
 
@@ -500,6 +630,7 @@ model QuoteRequest {
   clientId      String
   providerId    String
   serviceId     String?
+  marketId      String
   projectTitle  String
   description   String
   deliveryTime  String
@@ -512,8 +643,10 @@ model QuoteRequest {
   client        User        @relation("ClientQuoteRequests", fields: [clientId], references: [id])
   provider      User        @relation("ProviderQuoteRequests", fields: [providerId], references: [id])
   service       Service?    @relation(fields: [serviceId], references: [id])
+  market        Market      @relation(fields: [marketId], references: [id], onDelete: Restrict)
   order         Order?
 
+  @@index([marketId, status, createdAt])
   @@map("quote_requests")
 }
 
@@ -542,99 +675,306 @@ model Dispute {
 }
 
 model PaymentSetting {
-  id             String   @id @default("default")
-  commissionRate Decimal  @default(10.00) @db.Decimal(5, 2)
-  updatedBy      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String   @id @default(cuid())
+  marketId         String   @unique
+  commissionRate   Decimal  @default(10.00) @db.Decimal(5, 2)
+  pavodahShareRate Decimal  @default(50.00) @db.Decimal(5, 2)
+  updatedBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  market           Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
 
   @@map("payment_settings")
 }
 
+model PaymentIntegration {
+  id                    String                       @id @default(cuid())
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  marketId              String
+  provider              PaymentProvider              @default(PAYSTACK)
+  webhookKey            String                       @unique @default(cuid())
+  status                PaymentIntegrationStatus     @default(ACTIVE)
+  market                Market                       @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  credentials           PaymentCredentialVersion[]
+  orders                Order[]
+  transactions          PaymentTransaction[]
+  payoutAccounts        ProviderPayoutAccount[]
+  payouts               ProviderPayout[]
+  partnerPayoutAccounts MarketPartnerPayoutAccount[]
+  partnerPayouts        MarketPartnerPayout[]
+
+  @@unique([marketId, provider])
+  @@index([status])
+  @@map("payment_integrations")
+}
+
+model PaymentCredentialVersion {
+  id                  String                  @id @default(cuid())
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  integrationId       String
+  version             Int
+  encryptedSecret     String                  @db.Text
+  encryptionIv        String
+  encryptionAuthTag   String
+  fingerprint         String
+  status              PaymentCredentialStatus @default(STAGED)
+  validatedAt         DateTime?
+  activatedAt         DateTime?
+  retiringAt          DateTime?
+  expiresAt           DateTime?
+  revokedAt           DateTime?
+  ownershipAttestedAt DateTime?
+  ownershipAttestedBy String?
+  createdById         String
+  integration         PaymentIntegration      @relation(fields: [integrationId], references: [id], onDelete: Restrict)
+  createdBy           User                    @relation("CredentialCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  transactions        PaymentTransaction[]
+  payouts             ProviderPayout[]
+  partnerPayouts      MarketPartnerPayout[]
+
+  @@unique([integrationId, version])
+  @@index([integrationId, status, createdAt])
+  @@map("payment_credential_versions")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  actorId    String
+  marketId   String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  actor      User     @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict)
+  market     Market?  @relation(fields: [marketId], references: [id], onDelete: SetNull)
+
+  @@index([marketId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("admin_audit_logs")
+}
+
 model OrderSettlement {
-  id                       String                @id @default(cuid())
-  createdAt                DateTime              @default(now())
-  updatedAt                DateTime              @updatedAt
-  orderId                  String                @unique
+  id                       String                       @id @default(cuid())
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  orderId                  String                       @unique
   providerId               String
-  grossAmount              Decimal               @db.Decimal(10, 2)
-  refundedAmount           Decimal               @default(0) @db.Decimal(10, 2)
-  retainedAmount           Decimal               @db.Decimal(10, 2)
-  commissionRate           Decimal               @db.Decimal(5, 2)
-  commissionAmount         Decimal               @db.Decimal(10, 2)
-  providerAmount           Decimal               @db.Decimal(10, 2)
-  status                   SettlementStatus      @default(HELD)
+  marketId                 String
+  grossAmount              Decimal                      @db.Decimal(10, 2)
+  refundedAmount           Decimal                      @default(0) @db.Decimal(10, 2)
+  retainedAmount           Decimal                      @db.Decimal(10, 2)
+  commissionRate           Decimal                      @db.Decimal(5, 2)
+  commissionAmount         Decimal                      @db.Decimal(10, 2)
+  pavodahShareRate         Decimal                      @default(50.00) @db.Decimal(5, 2)
+  pavodahAmount            Decimal                      @default(0) @db.Decimal(10, 2)
+  partnerAmount            Decimal                      @default(0) @db.Decimal(10, 2)
+  providerAmount           Decimal                      @db.Decimal(10, 2)
+  status                   SettlementStatus             @default(HELD)
+  partnerStatus            SettlementStatus             @default(HELD)
   acceptedAt               DateTime?
   acceptedBy               SettlementAcceptedBy?
-  releaseReviewStatus      ReleaseReviewStatus   @default(NONE)
+  releaseReviewStatus      ReleaseReviewStatus          @default(NONE)
   releaseReviewRequestedAt DateTime?
   releaseReviewNote        String?
-  order                    Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  provider                 User                  @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  order                    Order                        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider                 User                         @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  market                   Market                       @relation(fields: [marketId], references: [id], onDelete: Restrict)
   payoutItems              ProviderPayoutItem[]
+  partnerPayoutItems       MarketPartnerPayoutItem[]
+  commissionAdjustments    MarketCommissionAdjustment[]
 
   @@index([providerId, status, createdAt])
+  @@index([marketId, status, createdAt])
+  @@index([marketId, partnerStatus, createdAt])
   @@map("order_settlements")
 }
 
-model ProviderPayoutAccount {
-  id                 String                @id @default(cuid())
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  providerId         String                @unique
-  type               PayoutDestinationType
-  recipientCode      String                @unique
-  institutionCode    String
-  institutionName    String
-  accountName        String?
-  accountNumberLast4 String
-  currency           String                @default("GHS")
-  status             PayoutAccountStatus   @default(ACTIVE)
-  verifiedAt         DateTime              @default(now())
-  provider           User                  @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  payouts            ProviderPayout[]
+model MarketPartnerPayoutAccount {
+  id                   String                @id @default(cuid())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  marketId             String                @unique
+  paymentIntegrationId String
+  type                 PayoutDestinationType
+  recipientCode        String
+  institutionCode      String
+  institutionName      String
+  accountName          String?
+  accountNumberLast4   String
+  currency             String
+  status               PayoutAccountStatus   @default(ACTIVE)
+  verifiedAt           DateTime              @default(now())
+  market               Market                @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration   PaymentIntegration    @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  payouts              MarketPartnerPayout[]
 
+  @@unique([paymentIntegrationId, recipientCode])
+  @@map("market_partner_payout_accounts")
+}
+
+model MarketPartnerPayout {
+  id                    String                              @id @default(cuid())
+  createdAt             DateTime                            @default(now())
+  updatedAt             DateTime                            @updatedAt
+  marketId              String
+  paymentIntegrationId  String
+  credentialVersionId   String
+  payoutAccountId       String
+  reference             String                              @unique
+  amount                Decimal                             @db.Decimal(10, 2)
+  grossCommissionAmount Decimal                             @db.Decimal(10, 2)
+  adjustmentAmount      Decimal                             @default(0) @db.Decimal(10, 2)
+  amountMinor           Int
+  currency              String
+  status                ProviderPayoutStatus                @default(REQUESTED)
+  transferCode          String?
+  recipientCode         String
+  destinationType       PayoutDestinationType
+  institutionName       String
+  accountName           String?
+  accountNumberLast4    String
+  approvedAt            DateTime?
+  approvedBy            String?
+  processedAt           DateTime?
+  failureMessage        String?
+  providerFeeMinor      Int?
+  rawData               Json?
+  market                Market                              @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration    PaymentIntegration                  @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  credentialVersion     PaymentCredentialVersion            @relation(fields: [credentialVersionId], references: [id], onDelete: Restrict)
+  payoutAccount         MarketPartnerPayoutAccount          @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
+  approver              User?                               @relation("PartnerPayoutApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  items                 MarketPartnerPayoutItem[]
+  adjustmentItems       MarketPartnerPayoutAdjustmentItem[]
+
+  @@index([marketId, status, createdAt])
+  @@map("market_partner_payouts")
+}
+
+model MarketPartnerPayoutItem {
+  id           String              @id @default(cuid())
+  payoutId     String
+  settlementId String
+  amount       Decimal             @db.Decimal(10, 2)
+  payout       MarketPartnerPayout @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  settlement   OrderSettlement     @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, settlementId])
+  @@index([settlementId])
+  @@map("market_partner_payout_items")
+}
+
+model MarketCommissionAdjustment {
+  id                     String                              @id @default(cuid())
+  createdAt              DateTime                            @default(now())
+  updatedAt              DateTime                            @updatedAt
+  marketId               String
+  orderId                String
+  settlementId           String
+  refundId               String?                             @unique
+  externalDisputeId      String?                             @unique
+  partnerAmount          Decimal                             @default(0) @db.Decimal(10, 2)
+  pavodahAmount          Decimal                             @default(0) @db.Decimal(10, 2)
+  partnerRecoveredAmount Decimal                             @default(0) @db.Decimal(10, 2)
+  partnerStatus          BalanceAdjustmentStatus             @default(OPEN)
+  reason                 String
+  market                 Market                              @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  order                  Order                               @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  settlement             OrderSettlement                     @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+  payoutItems            MarketPartnerPayoutAdjustmentItem[]
+
+  @@index([marketId, partnerStatus, createdAt])
+  @@map("market_commission_adjustments")
+}
+
+model MarketPartnerPayoutAdjustmentItem {
+  id           String                     @id @default(cuid())
+  payoutId     String
+  adjustmentId String
+  amount       Decimal                    @db.Decimal(10, 2)
+  payout       MarketPartnerPayout        @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  adjustment   MarketCommissionAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, adjustmentId])
+  @@index([adjustmentId])
+  @@map("market_partner_payout_adjustment_items")
+}
+
+model ProviderPayoutAccount {
+  id                   String                @id @default(cuid())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  providerId           String
+  marketId             String
+  paymentIntegrationId String
+  type                 PayoutDestinationType
+  recipientCode        String
+  institutionCode      String
+  institutionName      String
+  accountName          String?
+  accountNumberLast4   String
+  currency             String                @default("GHS")
+  status               PayoutAccountStatus   @default(ACTIVE)
+  verifiedAt           DateTime              @default(now())
+  provider             User                  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  market               Market                @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration   PaymentIntegration    @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  payouts              ProviderPayout[]
+
+  @@unique([providerId, marketId])
+  @@unique([paymentIntegrationId, recipientCode])
+  @@index([marketId, status])
   @@map("provider_payout_accounts")
 }
 
 model ProviderPayout {
-  id                  String                         @id @default(cuid())
-  createdAt           DateTime                       @default(now())
-  updatedAt           DateTime                       @updatedAt
-  providerId          String
-  payoutAccountId     String
-  reference           String                         @unique
-  amount              Decimal                        @db.Decimal(10, 2)
-  grossEarningsAmount Decimal                        @db.Decimal(10, 2)
-  adjustmentAmount    Decimal                        @default(0) @db.Decimal(10, 2)
-  amountMinor         Int
-  currency            String                         @default("GHS")
-  status              ProviderPayoutStatus           @default(REQUESTED)
-  transferCode        String?
-  recipientCode       String
-  destinationType     PayoutDestinationType
-  institutionName     String
-  accountName         String?
-  accountNumberLast4  String
-  requestedAt         DateTime                       @default(now())
-  approvedAt          DateTime?
-  approvedBy          String?
-  rejectedAt          DateTime?
-  rejectedBy          String?
-  rejectionReason     String?
-  processedAt         DateTime?
-  failureMessage      String?
-  providerFeeMinor    Int?
-  rawData             Json?
-  provider            User                           @relation("ProviderPayouts", fields: [providerId], references: [id], onDelete: Restrict)
-  payoutAccount       ProviderPayoutAccount          @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
-  approver            User?                          @relation("PayoutApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
-  rejector            User?                          @relation("PayoutRejector", fields: [rejectedBy], references: [id], onDelete: SetNull)
-  items               ProviderPayoutItem[]
-  adjustmentItems     ProviderPayoutAdjustmentItem[]
+  id                   String                         @id @default(cuid())
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  providerId           String
+  marketId             String
+  paymentIntegrationId String
+  credentialVersionId  String?
+  payoutAccountId      String
+  reference            String                         @unique
+  amount               Decimal                        @db.Decimal(10, 2)
+  grossEarningsAmount  Decimal                        @db.Decimal(10, 2)
+  adjustmentAmount     Decimal                        @default(0) @db.Decimal(10, 2)
+  amountMinor          Int
+  currency             String                         @default("GHS")
+  status               ProviderPayoutStatus           @default(REQUESTED)
+  transferCode         String?
+  recipientCode        String
+  destinationType      PayoutDestinationType
+  institutionName      String
+  accountName          String?
+  accountNumberLast4   String
+  requestedAt          DateTime                       @default(now())
+  approvedAt           DateTime?
+  approvedBy           String?
+  rejectedAt           DateTime?
+  rejectedBy           String?
+  rejectionReason      String?
+  processedAt          DateTime?
+  failureMessage       String?
+  providerFeeMinor     Int?
+  rawData              Json?
+  provider             User                           @relation("ProviderPayouts", fields: [providerId], references: [id], onDelete: Restrict)
+  market               Market                         @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration   PaymentIntegration             @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  credentialVersion    PaymentCredentialVersion?      @relation(fields: [credentialVersionId], references: [id], onDelete: Restrict)
+  payoutAccount        ProviderPayoutAccount          @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
+  approver             User?                          @relation("PayoutApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  rejector             User?                          @relation("PayoutRejector", fields: [rejectedBy], references: [id], onDelete: SetNull)
+  items                ProviderPayoutItem[]
+  adjustmentItems      ProviderPayoutAdjustmentItem[]
 
   @@index([providerId, status, createdAt])
   @@index([status, createdAt])
+  @@index([marketId, status, createdAt])
   @@map("provider_payouts")
 }
 
@@ -656,19 +996,23 @@ model ProviderBalanceAdjustment {
   createdAt         DateTime                       @default(now())
   updatedAt         DateTime                       @updatedAt
   providerId        String
+  marketId          String
   orderId           String
   externalDisputeId String?                        @unique
+  refundId          String?                        @unique
   type              BalanceAdjustmentType
   amount            Decimal                        @db.Decimal(10, 2)
   recoveredAmount   Decimal                        @default(0) @db.Decimal(10, 2)
   status            BalanceAdjustmentStatus        @default(OPEN)
   reason            String
   provider          User                           @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  market            Market                         @relation(fields: [marketId], references: [id], onDelete: Restrict)
   order             Order                          @relation(fields: [orderId], references: [id], onDelete: Restrict)
   externalDispute   ExternalPaymentDispute?        @relation(fields: [externalDisputeId], references: [id], onDelete: SetNull)
   payoutItems       ProviderPayoutAdjustmentItem[]
 
   @@index([providerId, status, createdAt])
+  @@index([marketId, status, createdAt])
   @@map("provider_balance_adjustments")
 }
 
@@ -796,7 +1140,43 @@ enum UserStatus {
 enum Role {
   USER
   ADMIN
+  SUPER_ADMIN
   SERVICE_PROVIDER
+}
+
+enum MarketStatus {
+  ACTIVE
+  PAUSED
+  INACTIVE
+}
+
+enum ProviderMarketMembershipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+enum ServiceAvailability {
+  MARKET
+  GLOBAL
+}
+
+enum PaymentProvider {
+  PAYSTACK
+}
+
+enum PaymentIntegrationStatus {
+  ACTIVE
+  PAUSED
+  RETIRED
+}
+
+enum PaymentCredentialStatus {
+  STAGED
+  ACTIVE
+  RETIRING
+  REVOKED
 }
 
 enum SubscriptionStatus {
@@ -937,6 +1317,7 @@ enum ReleaseReviewStatus {
 enum PayoutDestinationType {
   GHIPSS
   MOBILE_MONEY
+  BASA
 }
 
 enum PayoutAccountStatus {

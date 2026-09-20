@@ -11,19 +11,35 @@ export class AdminSeeder {
 
   async seed() {
     try {
-      // Check if admin user already exists
-      const adminEmail = process.env.ADMIN_EMAIL;
+      const adminEmail =
+        process.env.SUPER_ADMIN_EMAIL ?? process.env.ADMIN_EMAIL;
+      const adminPassword =
+        process.env.SUPER_ADMIN_PASSWORD ?? process.env.ADMIN_PASSWORD;
+      if (!adminEmail || !adminPassword) {
+        this.logger.warn(
+          'Super admin seed skipped: credentials are not configured',
+        );
+        return;
+      }
       const existingAdmin = await this.prisma.user.findUnique({
         where: { email: adminEmail },
       });
 
       if (existingAdmin) {
-        this.logger.log(`Admin user already exists: ${adminEmail}`);
+        if (existingAdmin.role !== Role.SUPER_ADMIN) {
+          await this.prisma.user.update({
+            where: { id: existingAdmin.id },
+            data: { role: Role.SUPER_ADMIN, adminMarketId: null },
+          });
+          this.logger.log(
+            'Existing seed administrator upgraded to super admin',
+          );
+        } else {
+          this.logger.log(`Super admin user already exists: ${adminEmail}`);
+        }
         return;
       }
 
-      // Create admin user
-      const adminPassword = process.env.ADMIN_PASSWORD;
       const salt = await bcrypt.genSalt(12);
       const hashedPassword = await bcrypt.hash(adminPassword, salt);
 
@@ -33,16 +49,16 @@ export class AdminSeeder {
           password: hashedPassword,
           firstName: 'Admin',
           lastName: 'User',
-          role: Role.ADMIN,
+          role: Role.SUPER_ADMIN,
           status: UserStatus.ACTIVE,
           emailVerified: true,
           hasCompletedOnboarding: true,
-          avatar: 'https://i.pinimg.com/736x/09/31/b5/0931b5399d9f1a3afe4417ee83eff961.jpg',
+          avatar:
+            'https://i.pinimg.com/736x/09/31/b5/0931b5399d9f1a3afe4417ee83eff961.jpg',
         },
       });
 
-      this.logger.log(`Admin user created successfully: ${admin.email}`);
-      this.logger.log(`Admin credentials - Email: ${adminEmail}, Password: ${adminPassword}`);
+      this.logger.log(`Super admin user created successfully: ${admin.email}`);
     } catch (error) {
       this.logger.error('Failed to seed admin user:', error);
     }

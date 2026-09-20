@@ -9,7 +9,10 @@ import { OrdersService } from './orders.service';
 
 describe('OrdersService payment pricing', () => {
   const settlements = {
-    getCommissionRate: jest.fn().mockResolvedValue(new Prisma.Decimal(10)),
+    getPaymentPolicy: jest.fn().mockResolvedValue({
+      commissionRate: new Prisma.Decimal(10),
+      pavodahShareRate: new Prisma.Decimal(50),
+    }),
   };
   it('builds the payable total from database plan and add-on prices', async () => {
     const prisma = {
@@ -20,6 +23,8 @@ describe('OrdersService payment pricing', () => {
       service: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'service-1',
+          marketId: 'market-gh',
+          currency: 'GHS',
           providerId: 'provider-1',
           status: ServiceStatus.PUBLISHED,
           provider: {
@@ -63,8 +68,10 @@ describe('OrdersService payment pricing', () => {
           subtotal: new Prisma.Decimal('125.50'),
           total: new Prisma.Decimal('125.50'),
           couponDiscount: 0,
+          marketId: 'market-gh',
           currency: 'GHS',
           commissionRate: new Prisma.Decimal(10),
+          pavodahShareRate: new Prisma.Decimal(50),
         }),
       }),
     );

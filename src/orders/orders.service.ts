@@ -15,15 +15,28 @@ import {
   Role,
   ServiceStatus,
   UserStatus,
+  MarketStatus,
+  ProviderMarketMembershipStatus,
+  PaymentProvider,
+  PaymentIntegrationStatus,
 } from '../../generated/prisma';
 import { SettlementsService } from '../settlements/settlements.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import {
+  MarketAccessService,
+  MarketActor,
+} from '../markets/market-access.service';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settlements: SettlementsService,
+    private readonly marketAccess: MarketAccessService = {
+      assertResource: () => undefined,
+      marketForAdmin: (_actor: MarketActor, marketId?: string) => marketId,
+      isStaff: () => true,
+    } as unknown as MarketAccessService,
     private readonly notificationEvents?: NotificationEventsService,
   ) {}
 
@@ -72,6 +85,7 @@ export class OrdersService {
             isServiceProviderVerified: true,
           },
         },
+        market: true,
       },
     });
 
@@ -81,6 +95,27 @@ export class OrdersService {
 
     if (service.status !== ServiceStatus.PUBLISHED) {
       throw new BadRequestException('This service is not available to order');
+    }
+    if (
+      (service.market && service.market.status !== MarketStatus.ACTIVE) ||
+      service.market?.checkoutEnabled === false
+    ) {
+      throw new BadRequestException('Checkout is paused in this market');
+    }
+    if ((this.prisma as any).providerMarketMembership) {
+      const membership = await this.prisma.providerMarketMembership.findUnique({
+        where: {
+          providerId_marketId: {
+            providerId: service.providerId,
+            marketId: service.marketId,
+          },
+        },
+      });
+      if (membership?.status !== ProviderMarketMembershipStatus.ACTIVE) {
+        throw new BadRequestException(
+          'This provider is unavailable in the market',
+        );
+      }
     }
 
     if (
@@ -116,7 +151,10 @@ export class OrdersService {
     );
     const subtotal = plan.price.add(addOnsTotal);
     const orderNumber = await this.createUniqueOrderNumber();
-    const commissionRate = await this.settlements.getCommissionRate();
+    const paymentPolicy = await this.settlements.getPaymentPolicy(
+      service.marketId,
+    );
+    const paymentIntegration = await this.paymentIntegration(service.marketId);
 
     const order = await this.prisma.order.create({
       data: {
@@ -125,6 +163,8 @@ export class OrdersService {
         clientId,
         providerId: service.providerId,
         serviceId: createOrderDto.serviceId,
+        marketId: service.marketId,
+        paymentIntegrationId: paymentIntegration.id,
         planId: plan.id,
         planTitle: plan.title,
         planPrice: plan.price,
@@ -133,8 +173,9 @@ export class OrdersService {
         addOnsTotal,
         couponDiscount: 0,
         total: subtotal,
-        currency: 'GHS',
-        commissionRate,
+        currency: service.currency,
+        commissionRate: paymentPolicy.commissionRate,
+        pavodahShareRate: paymentPolicy.pavodahShareRate,
         paymentStatus: OrderPaymentStatus.UNPAID,
         source: OrderSource.SERVICE_PLAN,
         status: OrderStatus.PENDING,
@@ -168,6 +209,7 @@ export class OrdersService {
         service: {
           include: {
             category: true,
+            market: true,
             provider: {
               select: {
                 id: true,
@@ -213,30 +255,46 @@ export class OrdersService {
         'This quote must be linked to a service before payment',
       );
     }
-    if (quote.currency !== 'GHS') {
-      throw new BadRequestException('Only GHS quote payments are supported');
-    }
     if (quote.budget.lessThanOrEqualTo(0)) {
       throw new BadRequestException('Quote amount must be greater than zero');
     }
 
-    const provider = await this.prisma.user.findFirst({
+    const service = await this.prisma.service.findFirst({
       where: {
-        id: quote.providerId,
-        role: Role.SERVICE_PROVIDER,
-        status: UserStatus.ACTIVE,
-        isServiceProviderVerified: true,
+        id: quote.serviceId,
+        providerId: quote.providerId,
+        marketId: quote.marketId,
+        currency: quote.currency,
+        status: ServiceStatus.PUBLISHED,
+        market: {
+          status: MarketStatus.ACTIVE,
+          checkoutEnabled: true,
+        },
+        provider: {
+          role: Role.SERVICE_PROVIDER,
+          status: UserStatus.ACTIVE,
+          isServiceProviderVerified: true,
+          providerMarketMemberships: {
+            some: {
+              marketId: quote.marketId,
+              status: ProviderMarketMembershipStatus.ACTIVE,
+            },
+          },
+        },
       },
       select: { id: true },
     });
-    if (!provider) {
+    if (!service) {
       throw new BadRequestException(
-        'This provider is not available for orders',
+        'This service or provider is no longer available in the market',
       );
     }
 
     const orderNumber = await this.createUniqueOrderNumber();
-    const commissionRate = await this.settlements.getCommissionRate();
+    const paymentPolicy = await this.settlements.getPaymentPolicy(
+      quote.marketId,
+    );
+    const paymentIntegration = await this.paymentIntegration(quote.marketId);
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.quoteRequest.updateMany({
@@ -259,6 +317,8 @@ export class OrdersService {
           providerId: quote.providerId,
           serviceId: quote.serviceId,
           quoteRequestId: quote.id,
+          marketId: quote.marketId,
+          paymentIntegrationId: paymentIntegration.id,
           planTitle: quote.projectTitle,
           planPrice: quote.budget,
           planInclusions: quote.description,
@@ -267,7 +327,8 @@ export class OrdersService {
           couponDiscount: 0,
           total: quote.budget,
           currency: quote.currency,
-          commissionRate,
+          commissionRate: paymentPolicy.commissionRate,
+          pavodahShareRate: paymentPolicy.pavodahShareRate,
           status: OrderStatus.PENDING,
           paymentStatus: OrderPaymentStatus.UNPAID,
           source: OrderSource.QUOTE,
@@ -276,12 +337,37 @@ export class OrdersService {
     });
   }
 
+  private async paymentIntegration(marketId: string) {
+    if (!(this.prisma as any).paymentIntegration) {
+      return { id: 'legacy-integration' };
+    }
+    const integration = await this.prisma.paymentIntegration.findUnique({
+      where: {
+        marketId_provider: {
+          marketId,
+          provider: PaymentProvider.PAYSTACK,
+        },
+      },
+    });
+    if (
+      !integration ||
+      integration.status !== PaymentIntegrationStatus.ACTIVE
+    ) {
+      throw new BadRequestException('Payments are unavailable in this market');
+    }
+    return integration;
+  }
+
   async findClientOrders(
     clientId: string,
     options?: {
       status?: OrderStatus | OrderStatus[];
       page?: number;
       limit?: number;
+      marketId?: string;
+      paidOnly?: boolean;
+      spendingOnly?: boolean;
+      completedHistory?: boolean;
     },
   ) {
     const page = options?.page || 1;
@@ -289,6 +375,30 @@ export class OrdersService {
     const skip = (page - 1) * limit;
 
     const where: any = { clientId };
+    if (options?.marketId) where.marketId = options.marketId;
+    if (options?.paidOnly) {
+      where.OR = [
+        {
+          paymentStatus: {
+            in: [
+              OrderPaymentStatus.PAID,
+              OrderPaymentStatus.PARTIALLY_REFUNDED,
+            ],
+          },
+        },
+        {
+          status: OrderStatus.REFUNDED,
+          paymentStatus: OrderPaymentStatus.REFUNDED,
+        },
+      ];
+    }
+    if (options?.spendingOnly) {
+      where.paidAt = { not: null };
+      where.settlement = { isNot: null };
+    }
+    if (options?.completedHistory) {
+      where.completedAt = { not: null };
+    }
     if (options?.status) {
       if (Array.isArray(options.status)) {
         where.status = { in: options.status };
@@ -305,6 +415,8 @@ export class OrdersService {
         orderBy: { createdAt: 'desc' },
         include: {
           settlement: true,
+          review: { select: { id: true } },
+          dispute: { select: { id: true, status: true } },
           addOns: true,
           service: {
             include: {
@@ -342,15 +454,18 @@ export class OrdersService {
       status?: OrderStatus | OrderStatus[];
       page?: number;
       limit?: number;
+      marketId?: string;
+      completedHistory?: boolean;
+      createdMonth?: string;
     },
   ) {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      providerId,
-      OR: [
+    const where: any = { providerId };
+    if (!options?.completedHistory) {
+      where.OR = [
         {
           paymentStatus: {
             in: [
@@ -363,14 +478,29 @@ export class OrdersService {
           status: OrderStatus.REFUNDED,
           paymentStatus: OrderPaymentStatus.REFUNDED,
         },
-      ],
-    };
-    if (options?.status) {
+      ];
+    }
+    if (options?.marketId) where.marketId = options.marketId;
+    if (options?.completedHistory) {
+      where.completedAt = { not: null };
+    } else if (options?.status) {
       if (Array.isArray(options.status)) {
         where.status = { in: options.status };
       } else {
         where.status = options.status;
       }
+    }
+    if (options?.createdMonth) {
+      if (!/^(?:20\d{2}|2100)-(?:0[1-9]|1[0-2])$/.test(options.createdMonth)) {
+        throw new BadRequestException(
+          'createdMonth must be between 2000-01 and 2100-12',
+        );
+      }
+      const [year, month] = options.createdMonth.split('-').map(Number);
+      where.createdAt = {
+        gte: new Date(Date.UTC(year, month - 1, 1)),
+        lt: new Date(Date.UTC(year, month, 1)),
+      };
     }
 
     const [orders, total] = await Promise.all([
@@ -413,18 +543,41 @@ export class OrdersService {
   }
 
   async findAll(options?: {
-    status?: OrderStatus;
+    status?: OrderStatus | OrderStatus[];
     page?: number;
     limit?: number;
     search?: string;
+    marketId?: string;
+    actor?: MarketActor;
+    paidOnly?: boolean;
+    settledOnly?: boolean;
+    sortBy?: string;
+    orderBy?: 'asc' | 'desc';
   }) {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    if (options?.actor) {
+      const marketId = this.marketAccess.marketForAdmin(
+        options.actor,
+        options.marketId,
+      );
+      if (marketId) where.marketId = marketId;
+    }
     if (options?.status) {
-      where.status = options.status;
+      where.status = Array.isArray(options.status)
+        ? { in: options.status }
+        : options.status;
+    }
+    if (options?.paidOnly) {
+      where.paymentStatus = {
+        in: [OrderPaymentStatus.PAID, OrderPaymentStatus.PARTIALLY_REFUNDED],
+      };
+    }
+    if (options?.settledOnly) {
+      where.settlement = { isNot: null };
     }
 
     if (options?.search) {
@@ -443,33 +596,66 @@ export class OrdersService {
         },
         {
           service: {
-            provider: {
-              OR: [
-                {
-                  firstName: { contains: options.search, mode: 'insensitive' },
+            OR: [
+              { title: { contains: options.search, mode: 'insensitive' } },
+              {
+                provider: {
+                  OR: [
+                    {
+                      firstName: {
+                        contains: options.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                    {
+                      lastName: {
+                        contains: options.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                    {
+                      displayName: {
+                        contains: options.search,
+                        mode: 'insensitive',
+                      },
+                    },
+                  ],
                 },
-                { lastName: { contains: options.search, mode: 'insensitive' } },
-                {
-                  displayName: {
-                    contains: options.search,
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            },
+              },
+            ],
           },
         },
       ];
     }
+
+    const direction = options?.orderBy ?? 'desc';
+    const sortMap: Record<string, any> = {
+      orderNumber: { orderNumber: direction },
+      service: { service: { title: direction } },
+      category: { service: { category: { name: direction } } },
+      provider: { service: { provider: { displayName: direction } } },
+      total: { total: direction },
+      status: { status: direction },
+      grossAmount: { settlement: { grossAmount: direction } },
+      refundedAmount: { settlement: { refundedAmount: direction } },
+      commissionAmount: { settlement: { commissionAmount: direction } },
+      retainedAmount: { settlement: { retainedAmount: direction } },
+      createdAt: { createdAt: direction },
+    };
+    const orderBy = options?.sortBy
+      ? sortMap[options.sortBy]
+      : { createdAt: 'desc' };
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           settlement: true,
+          review: { select: { id: true } },
+          dispute: { select: { id: true, status: true } },
           addOns: true,
           service: {
             include: {
@@ -510,11 +696,13 @@ export class OrdersService {
     };
   }
 
-  async findOne(id: string, userId: string, isAdmin = false) {
+  async findOne(id: string, userId: string, adminActor?: MarketActor) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
         settlement: true,
+        review: { select: { id: true } },
+        dispute: { select: { id: true, status: true } },
         refunds: {
           orderBy: { createdAt: 'desc' },
           select: {
@@ -575,7 +763,9 @@ export class OrdersService {
     }
 
     // Check if user is client or provider
-    if (!isAdmin && order.clientId !== userId && order.providerId !== userId) {
+    if (adminActor) {
+      this.marketAccess.assertResource(adminActor, order.marketId);
+    } else if (order.clientId !== userId && order.providerId !== userId) {
       throw new ForbiddenException('You do not have access to this order');
     }
 
@@ -768,7 +958,7 @@ export class OrdersService {
     return this.settlements.requestReleaseReview(id, providerId, note);
   }
 
-  async delete(id: string, userId: string, isAdmin: boolean) {
+  async delete(id: string, userId: string, adminActor?: MarketActor) {
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
@@ -790,7 +980,8 @@ export class OrdersService {
     }
 
     // Admin can delete unpaid orders with no payment attempts.
-    if (isAdmin) {
+    if (adminActor) {
+      this.marketAccess.assertResource(adminActor, order.marketId);
       await this.prisma.order.delete({ where: { id } });
       return { message: 'Order deleted successfully' };
     }

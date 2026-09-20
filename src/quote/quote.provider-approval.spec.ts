@@ -31,4 +31,23 @@ describe('QuoteService provider approval enforcement', () => {
     expect(fileUpload.uploadFile).not.toHaveBeenCalled();
     expect(prisma.quoteRequest.create).not.toHaveBeenCalled();
   });
+
+  it('applies provider status and search filters in the database query', async () => {
+    const prisma = {
+      quoteRequest: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new QuoteService(prisma as never, {} as never, {} as never);
+
+    await service.findAllForProvider('provider-1', 'PENDING' as never, 'Acme');
+
+    expect(prisma.quoteRequest.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          providerId: 'provider-1',
+          status: 'PENDING',
+          OR: expect.any(Array),
+        }),
+      }),
+    );
+  });
 });

@@ -31,6 +31,10 @@ export class UpdateLocationDto {
 
   @IsOptional()
   @IsString()
+  countryIso2?: string;
+
+  @IsOptional()
+  @IsString()
   postalCode?: string;
 
   @IsOptional()

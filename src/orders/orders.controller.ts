@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -22,6 +23,7 @@ import {
   IsAdmin,
   IsServiceProvider,
 } from '../common/decorators/roles.decorator';
+import { MarketActor } from '../markets/market-access.service';
 
 @Controller('orders')
 export class OrdersController {
@@ -44,6 +46,10 @@ export class OrdersController {
     @Query('status') status?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('marketId') marketId?: string,
+    @Query('paidOnly') paidOnly?: string,
+    @Query('spendingOnly') spendingOnly?: string,
+    @Query('completedHistory') completedHistory?: string,
   ) {
     // Support comma-separated statuses e.g. PENDING,AWAITING
     const parsedStatus = status
@@ -56,6 +62,10 @@ export class OrdersController {
           : parsedStatus,
       page: page ? Number.parseInt(page, 10) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
+      marketId,
+      paidOnly: paidOnly === 'true',
+      spendingOnly: spendingOnly === 'true',
+      completedHistory: completedHistory === 'true',
     });
     return ResponseUtil.success(result, 'Orders retrieved successfully');
   }
@@ -68,6 +78,9 @@ export class OrdersController {
     @Query('status') status?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('marketId') marketId?: string,
+    @Query('completedHistory') completedHistory?: string,
+    @Query('createdMonth') createdMonth?: string,
   ) {
     // Support comma-separated statuses e.g. PENDING,AWAITING
     const parsedStatus = status
@@ -80,6 +93,9 @@ export class OrdersController {
           : parsedStatus,
       page: page ? Number.parseInt(page, 10) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
+      marketId,
+      completedHistory: completedHistory === 'true',
+      createdMonth,
     });
     return ResponseUtil.success(
       result,
@@ -91,16 +107,58 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @IsAdmin()
   async findAll(
-    @Query('status') status?: OrderStatus,
+    @CurrentUser() actor: MarketActor,
+    @Query('status') status?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('marketId') marketId?: string,
+    @Query('paidOnly') paidOnly?: string,
+    @Query('settledOnly') settledOnly?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('orderBy') orderBy?: string,
   ) {
+    const parsedStatus = status
+      ? (status.split(',') as OrderStatus[])
+      : undefined;
+    if (
+      parsedStatus?.some((value) => !Object.values(OrderStatus).includes(value))
+    ) {
+      throw new BadRequestException('Invalid order status filter');
+    }
+    const allowedSorts = new Set([
+      'orderNumber',
+      'service',
+      'category',
+      'provider',
+      'total',
+      'status',
+      'grossAmount',
+      'refundedAmount',
+      'commissionAmount',
+      'retainedAmount',
+      'createdAt',
+    ]);
+    if (sortBy && !allowedSorts.has(sortBy)) {
+      throw new BadRequestException('Invalid order sort field');
+    }
+    if (orderBy && orderBy !== 'asc' && orderBy !== 'desc') {
+      throw new BadRequestException('Invalid order sort direction');
+    }
     const result = await this.ordersService.findAll({
-      status,
+      status:
+        parsedStatus && parsedStatus.length === 1
+          ? parsedStatus[0]
+          : parsedStatus,
       page: page ? Number.parseInt(page, 10) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
       search,
+      actor,
+      marketId,
+      paidOnly: paidOnly === 'true',
+      settledOnly: settledOnly === 'true',
+      sortBy,
+      orderBy: orderBy as 'asc' | 'desc' | undefined,
     });
     return ResponseUtil.success(result, 'All orders retrieved successfully');
   }
@@ -111,11 +169,12 @@ export class OrdersController {
     @Param('id') id: string,
     @CurrentUser('userId') userId: string,
     @CurrentUser('role') role: string,
+    @CurrentUser() actor: MarketActor,
   ) {
     const order = await this.ordersService.findOne(
       id,
       userId,
-      role === 'ADMIN',
+      role === 'ADMIN' || role === 'SUPER_ADMIN' ? actor : undefined,
     );
     return ResponseUtil.success(order, 'Order retrieved successfully');
   }
@@ -170,9 +229,11 @@ export class OrdersController {
     @Param('id') id: string,
     @CurrentUser('userId') userId: string,
     @CurrentUser('role') role: string,
+    @CurrentUser() actor: MarketActor,
   ) {
-    const isAdmin = role === 'ADMIN';
-    const result = await this.ordersService.delete(id, userId, isAdmin);
+    const adminActor =
+      role === 'ADMIN' || role === 'SUPER_ADMIN' ? actor : undefined;
+    const result = await this.ordersService.delete(id, userId, adminActor);
     return ResponseUtil.success(result, 'Order deleted successfully');
   }
 }

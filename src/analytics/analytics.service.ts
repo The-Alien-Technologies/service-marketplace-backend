@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   OrderPaymentStatus,
@@ -8,7 +8,13 @@ import {
   ProviderPayoutStatus,
   Role,
   UserStatus,
+  ProviderMarketMembershipStatus,
+  MarketStatus,
 } from '../../generated/prisma';
+import {
+  MarketAccessService,
+  MarketActor,
+} from '../markets/market-access.service';
 
 const MONTH_NAMES = [
   'Jan',
@@ -110,13 +116,115 @@ function availableYearValues(
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly marketAccess: MarketAccessService = new MarketAccessService(),
+  ) {}
+
+  private readonly analyticsMarketSelect = {
+    id: true,
+    code: true,
+    name: true,
+    currency: true,
+  } as const;
+
+  private async resolveProviderMarket(
+    providerId: string,
+    requestedMarketId?: string,
+  ) {
+    if (requestedMarketId) {
+      const membership = await this.prisma.providerMarketMembership.findFirst({
+        where: {
+          providerId,
+          marketId: requestedMarketId,
+          status: ProviderMarketMembershipStatus.ACTIVE,
+          market: { status: { not: MarketStatus.INACTIVE } },
+        },
+        include: { market: { select: this.analyticsMarketSelect } },
+      });
+      if (!membership) {
+        throw new BadRequestException(
+          'You do not have an active provider membership in this market',
+        );
+      }
+      return membership.market;
+    }
+
+    const [provider, memberships] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: providerId },
+        select: { selectedMarketId: true, homeMarketId: true },
+      }),
+      this.prisma.providerMarketMembership.findMany({
+        where: {
+          providerId,
+          status: ProviderMarketMembershipStatus.ACTIVE,
+          market: { status: { not: MarketStatus.INACTIVE } },
+        },
+        include: { market: { select: this.analyticsMarketSelect } },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      }),
+    ]);
+    const preferredIds = [
+      provider?.selectedMarketId,
+      provider?.homeMarketId,
+    ].filter(Boolean);
+    const membership =
+      memberships.find((item) => preferredIds.includes(item.marketId)) ??
+      memberships[0];
+    if (!membership) {
+      throw new BadRequestException(
+        'An active provider market is required to view analytics',
+      );
+    }
+    return membership.market;
+  }
+
+  private async resolveUserMarket(userId: string, requestedMarketId?: string) {
+    if (requestedMarketId) {
+      const market = await this.prisma.market.findFirst({
+        where: {
+          id: requestedMarketId,
+          status: { not: MarketStatus.INACTIVE },
+        },
+        select: this.analyticsMarketSelect,
+      });
+      if (!market) throw new BadRequestException('Market is not available');
+      return market;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { selectedMarketId: true, homeMarketId: true },
+    });
+    for (const id of [user?.selectedMarketId, user?.homeMarketId]) {
+      if (!id) continue;
+      const market = await this.prisma.market.findFirst({
+        where: { id, status: { not: MarketStatus.INACTIVE } },
+        select: this.analyticsMarketSelect,
+      });
+      if (market) return market;
+    }
+
+    const fallback = await this.prisma.market.findFirst({
+      where: { status: { not: MarketStatus.INACTIVE } },
+      select: this.analyticsMarketSelect,
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    });
+    if (!fallback) throw new BadRequestException('No market is available');
+    return fallback;
+  }
 
   async getProviderDashboard(
     providerId: string,
     year?: number,
     orderMonth?: string,
+    requestedMarketId?: string,
   ) {
+    const market = await this.resolveProviderMarket(
+      providerId,
+      requestedMarketId,
+    );
     const now = new Date();
     const selectedYear = year ?? now.getUTCFullYear();
     const selectedOrderMonth =
@@ -143,6 +251,7 @@ export class AnalyticsService {
     );
     const providerOrderWhere: Prisma.OrderWhereInput = {
       providerId,
+      marketId: market.id,
       OR: [
         { paymentStatus: { in: ACTIVE_ORDER_PAYMENT_STATUSES } },
         {
@@ -187,7 +296,7 @@ export class AnalyticsService {
         _count: { _all: true },
       }),
       this.prisma.review.aggregate({
-        where: { providerId },
+        where: { providerId, order: { marketId: market.id } },
         _avg: { rating: true },
         _count: { id: true },
       }),
@@ -209,15 +318,16 @@ export class AnalyticsService {
         },
       }),
       this.prisma.order.count({
-        where: { providerId, completedAt: { not: null } },
+        where: { providerId, marketId: market.id, completedAt: { not: null } },
       }),
       this.prisma.orderSettlement.aggregate({
-        where: { providerId },
+        where: { providerId, marketId: market.id },
         _sum: { providerAmount: true },
       }),
       this.prisma.orderSettlement.aggregate({
         where: {
           providerId,
+          marketId: market.id,
           order: { paidAt: { gte: currentMonthStart, lt: nextMonthStart } },
         },
         _sum: { providerAmount: true },
@@ -225,6 +335,7 @@ export class AnalyticsService {
       this.prisma.orderSettlement.aggregate({
         where: {
           providerId,
+          marketId: market.id,
           order: {
             paidAt: { gte: previousMonthStart, lt: currentMonthStart },
           },
@@ -234,6 +345,7 @@ export class AnalyticsService {
       this.prisma.orderSettlement.findMany({
         where: {
           providerId,
+          marketId: market.id,
           order: {
             paidAt: { gte: previousYearStart, lt: selectedYearEnd },
           },
@@ -246,6 +358,7 @@ export class AnalyticsService {
       this.prisma.order.findFirst({
         where: {
           providerId,
+          marketId: market.id,
           paidAt: { not: null },
           settlement: { isNot: null },
         },
@@ -260,6 +373,7 @@ export class AnalyticsService {
       this.prisma.order.count({
         where: {
           providerId,
+          marketId: market.id,
           paidAt: { gte: currentMonthStart, lt: nextMonthStart },
           settlement: { isNot: null },
         },
@@ -267,6 +381,7 @@ export class AnalyticsService {
       this.prisma.order.count({
         where: {
           providerId,
+          marketId: market.id,
           paidAt: { gte: previousMonthStart, lt: currentMonthStart },
           settlement: { isNot: null },
         },
@@ -274,12 +389,14 @@ export class AnalyticsService {
       this.prisma.order.count({
         where: {
           providerId,
+          marketId: market.id,
           completedAt: { gte: currentMonthStart, lt: nextMonthStart },
         },
       }),
       this.prisma.order.count({
         where: {
           providerId,
+          marketId: market.id,
           completedAt: { gte: previousMonthStart, lt: currentMonthStart },
         },
       }),
@@ -370,7 +487,8 @@ export class AnalyticsService {
     );
 
     return {
-      currency: 'GHS',
+      market,
+      currency: market.currency,
       generatedAt: now.toISOString(),
       stats: {
         earnings: money(totalEarnings._sum.providerAmount),
@@ -429,7 +547,12 @@ export class AnalyticsService {
     };
   }
 
-  async getUserDashboard(userId: string, year?: number) {
+  async getUserDashboard(
+    userId: string,
+    year?: number,
+    requestedMarketId?: string,
+  ) {
+    const market = await this.resolveUserMarket(userId, requestedMarketId);
     const now = new Date();
     const selectedYear = year ?? now.getUTCFullYear();
     const previousYearStart = new Date(Date.UTC(selectedYear - 1, 0, 1));
@@ -502,20 +625,28 @@ export class AnalyticsService {
         },
       }),
       this.prisma.order.count({
-        where: { clientId: userId, completedAt: { not: null } },
+        where: {
+          clientId: userId,
+          completedAt: { not: null },
+        },
       }),
       this.prisma.orderSettlement.aggregate({
-        where: { order: { clientId: userId } },
+        where: { marketId: market.id, order: { clientId: userId } },
         _sum: { grossAmount: true },
       }),
       this.prisma.paymentRefund.aggregate({
-        where: { ...processedRefundWhere, order: { clientId: userId } },
+        where: {
+          ...processedRefundWhere,
+          order: { clientId: userId, marketId: market.id },
+        },
         _sum: { amount: true },
       }),
       this.prisma.orderSettlement.aggregate({
         where: {
+          marketId: market.id,
           order: {
             clientId: userId,
+            marketId: market.id,
             paidAt: { gte: currentMonthStart, lt: nextMonthStart },
           },
         },
@@ -526,6 +657,7 @@ export class AnalyticsService {
           ...processedRefundWhere,
           order: {
             clientId: userId,
+            marketId: market.id,
             paidAt: { gte: currentMonthStart, lt: nextMonthStart },
           },
         },
@@ -533,8 +665,10 @@ export class AnalyticsService {
       }),
       this.prisma.orderSettlement.aggregate({
         where: {
+          marketId: market.id,
           order: {
             clientId: userId,
+            marketId: market.id,
             paidAt: { gte: previousMonthStart, lt: currentMonthStart },
           },
         },
@@ -545,6 +679,7 @@ export class AnalyticsService {
           ...processedRefundWhere,
           order: {
             clientId: userId,
+            marketId: market.id,
             paidAt: { gte: previousMonthStart, lt: currentMonthStart },
           },
         },
@@ -552,8 +687,10 @@ export class AnalyticsService {
       }),
       this.prisma.orderSettlement.findMany({
         where: {
+          marketId: market.id,
           order: {
             clientId: userId,
+            marketId: market.id,
             paidAt: { gte: previousYearStart, lt: selectedYearEnd },
           },
         },
@@ -573,6 +710,7 @@ export class AnalyticsService {
       this.prisma.order.findFirst({
         where: {
           clientId: userId,
+          marketId: market.id,
           paidAt: { not: null },
           settlement: { isNot: null },
         },
@@ -678,7 +816,8 @@ export class AnalyticsService {
     );
 
     return {
-      currency: 'GHS',
+      market,
+      currency: market.currency,
       generatedAt: now.toISOString(),
       stats: {
         activeOrders,
@@ -728,7 +867,44 @@ export class AnalyticsService {
     };
   }
 
-  async getAdminDashboard(year?: number, categoryMonth?: string) {
+  async getAdminDashboard(
+    year?: number,
+    categoryMonth?: string,
+    actor: MarketActor = { id: 'legacy', role: Role.SUPER_ADMIN },
+    requestedMarketId?: string,
+  ) {
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    const scopedMarket = marketId
+      ? await this.prisma.market.findUnique({
+          where: { id: marketId },
+          select: { currency: true },
+        })
+      : null;
+    if (marketId && !scopedMarket) {
+      throw new BadRequestException('Market not found');
+    }
+    const orderMarketWhere: Prisma.OrderWhereInput = marketId
+      ? { marketId }
+      : {};
+    const settlementMarketWhere: Prisma.OrderSettlementWhereInput = marketId
+      ? { marketId }
+      : {};
+    const serviceMarketWhere: Prisma.ServiceWhereInput = marketId
+      ? { marketId }
+      : {};
+    const providerMarketWhere: Prisma.UserWhereInput = marketId
+      ? {
+          providerMarketMemberships: {
+            some: { marketId, status: ProviderMarketMembershipStatus.ACTIVE },
+          },
+        }
+      : {};
+    const userMarketWhere: Prisma.UserWhereInput = {
+      role: { notIn: [Role.ADMIN, Role.SUPER_ADMIN] },
+      ...(marketId
+        ? { OR: [{ homeMarketId: marketId }, providerMarketWhere] }
+        : {}),
+    };
     const now = new Date();
     const selectedYear = year ?? now.getUTCFullYear();
     const selectedCategoryMonth =
@@ -746,6 +922,15 @@ export class AnalyticsService {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
     );
     const categoryRange = monthRange(selectedCategoryMonth);
+    const comparisonMonthStart = new Date(
+      Date.UTC(selectedYear, now.getUTCMonth(), 1),
+    );
+    const comparisonNextMonthStart = new Date(
+      Date.UTC(selectedYear, now.getUTCMonth() + 1, 1),
+    );
+    const comparisonPreviousMonthStart = new Date(
+      Date.UTC(selectedYear, now.getUTCMonth() - 1, 1),
+    );
 
     const [
       totalUsers,
@@ -768,34 +953,39 @@ export class AnalyticsService {
       earliestService,
     ] = await Promise.all([
       this.prisma.user.count({
-        where: { status: { not: UserStatus.DELETED } },
+        where: { status: { not: UserStatus.DELETED }, ...userMarketWhere },
       }),
       this.prisma.user.count({
         where: {
           role: Role.SERVICE_PROVIDER,
           status: UserStatus.ACTIVE,
+          ...providerMarketWhere,
         },
       }),
       this.prisma.order.count({
-        where: ACTIVE_ORDER_WHERE,
+        where: { ...ACTIVE_ORDER_WHERE, ...orderMarketWhere },
       }),
       this.prisma.order.groupBy({
         by: ['status'],
+        where: orderMarketWhere,
         _count: { _all: true },
       }),
       this.prisma.orderSettlement.aggregate({
-        _sum: { retainedAmount: true },
+        where: settlementMarketWhere,
+        _sum: { pavodahAmount: true },
       }),
       this.prisma.user.count({
         where: {
           status: { not: UserStatus.DELETED },
           createdAt: { gte: currentMonthStart, lt: nextMonthStart },
+          ...userMarketWhere,
         },
       }),
       this.prisma.user.count({
         where: {
           status: { not: UserStatus.DELETED },
           createdAt: { gte: previousMonthStart, lt: currentMonthStart },
+          ...userMarketWhere,
         },
       }),
       this.prisma.user.count({
@@ -803,6 +993,7 @@ export class AnalyticsService {
           role: Role.SERVICE_PROVIDER,
           status: UserStatus.ACTIVE,
           createdAt: { gte: currentMonthStart, lt: nextMonthStart },
+          ...providerMarketWhere,
         },
       }),
       this.prisma.user.count({
@@ -810,46 +1001,54 @@ export class AnalyticsService {
           role: Role.SERVICE_PROVIDER,
           status: UserStatus.ACTIVE,
           createdAt: { gte: previousMonthStart, lt: currentMonthStart },
+          ...providerMarketWhere,
         },
       }),
       this.prisma.order.count({
         where: {
           ...ACTIVE_ORDER_WHERE,
+          ...orderMarketWhere,
           createdAt: { gte: currentMonthStart, lt: nextMonthStart },
         },
       }),
       this.prisma.order.count({
         where: {
           ...ACTIVE_ORDER_WHERE,
+          ...orderMarketWhere,
           createdAt: { gte: previousMonthStart, lt: currentMonthStart },
         },
       }),
       this.prisma.orderSettlement.aggregate({
         where: {
+          ...settlementMarketWhere,
           order: { paidAt: { gte: currentMonthStart, lt: nextMonthStart } },
         },
-        _sum: { retainedAmount: true },
+        _sum: { pavodahAmount: true },
       }),
       this.prisma.orderSettlement.aggregate({
         where: {
+          ...settlementMarketWhere,
           order: {
             paidAt: { gte: previousMonthStart, lt: currentMonthStart },
           },
         },
-        _sum: { retainedAmount: true },
+        _sum: { pavodahAmount: true },
       }),
       this.prisma.orderSettlement.findMany({
         where: {
+          ...settlementMarketWhere,
           order: { paidAt: { gte: selectedYearStart, lt: selectedYearEnd } },
         },
         select: {
           retainedAmount: true,
           commissionAmount: true,
+          pavodahAmount: true,
           order: { select: { paidAt: true } },
         },
       }),
       this.prisma.providerPayout.findMany({
         where: {
+          ...(marketId ? { marketId } : {}),
           status: ProviderPayoutStatus.SUCCESS,
           processedAt: { gte: selectedYearStart, lt: selectedYearEnd },
         },
@@ -858,6 +1057,7 @@ export class AnalyticsService {
       this.prisma.service.groupBy({
         by: ['categoryId'],
         where: {
+          ...serviceMarketWhere,
           createdAt: { gte: categoryRange.start, lt: categoryRange.end },
         },
         _count: { _all: true },
@@ -865,11 +1065,16 @@ export class AnalyticsService {
         take: 5,
       }),
       this.prisma.order.findFirst({
-        where: { paidAt: { not: null }, settlement: { isNot: null } },
+        where: {
+          ...orderMarketWhere,
+          paidAt: { not: null },
+          settlement: { isNot: null },
+        },
         orderBy: { paidAt: 'asc' },
         select: { paidAt: true },
       }),
       this.prisma.service.aggregate({
+        where: serviceMarketWhere,
         _min: { createdAt: true },
       }),
     ]);
@@ -905,15 +1110,17 @@ export class AnalyticsService {
 
     const revenueChart = MONTH_NAMES.map((name) => ({
       name,
-      revenue: 0,
+      grossVolume: 0,
       commission: 0,
+      netRevenue: 0,
       payout: 0,
     }));
     yearlySettlements.forEach((settlement) => {
       if (!settlement.order.paidAt) return;
       const bucket = revenueChart[settlement.order.paidAt.getUTCMonth()];
-      bucket.revenue += Number(settlement.retainedAmount);
+      bucket.grossVolume += Number(settlement.retainedAmount);
       bucket.commission += Number(settlement.commissionAmount);
+      bucket.netRevenue += Number(settlement.pavodahAmount);
     });
     yearlyPayouts.forEach((payout) => {
       if (!payout.processedAt) return;
@@ -922,14 +1129,15 @@ export class AnalyticsService {
       );
     });
     revenueChart.forEach((item) => {
-      item.revenue = money(item.revenue);
+      item.grossVolume = money(item.grossVolume);
       item.commission = money(item.commission);
+      item.netRevenue = money(item.netRevenue);
       item.payout = money(item.payout);
     });
 
     const bestMonth = revenueChart.reduce<(typeof revenueChart)[number] | null>(
       (best, item) =>
-        item.revenue > 0 && (!best || item.revenue > best.revenue)
+        item.netRevenue > 0 && (!best || item.netRevenue > best.netRevenue)
           ? item
           : best,
       null,
@@ -947,23 +1155,36 @@ export class AnalyticsService {
       ]),
     ).sort((a, b) => b - a);
 
-    const currentRevenueValue = money(currentRevenue._sum.retainedAmount);
-    const previousRevenueValue = money(previousRevenue._sum.retainedAmount);
+    const currentRevenueValue = money(currentRevenue._sum.pavodahAmount);
+    const previousRevenueValue = money(previousRevenue._sum.pavodahAmount);
+
+    const marketRevenueBreakdown = marketId
+      ? []
+      : await this.marketRevenueBreakdown(
+          selectedYearStart,
+          selectedYearEnd,
+          comparisonMonthStart,
+          comparisonNextMonthStart,
+          comparisonPreviousMonthStart,
+        );
 
     return {
-      currency: 'GHS',
+      currency: scopedMarket?.currency ?? 'MULTI',
+      marketRevenueBreakdown,
       generatedAt: now.toISOString(),
       stats: {
         totalUsers,
         activeProviders,
         activeOrders,
-        revenue: money(totalRevenue._sum.retainedAmount),
+        revenue: marketId ? money(totalRevenue._sum.pavodahAmount) : 0,
       },
       trends: {
         totalUsers: trend(currentUsers, previousUsers),
         activeProviders: trend(currentProviders, previousProviders),
         activeOrders: trend(currentActiveOrders, previousActiveOrders),
-        revenue: trend(currentRevenueValue, previousRevenueValue),
+        revenue: marketId
+          ? trend(currentRevenueValue, previousRevenueValue)
+          : trend(0, 0),
       },
       orderStatusBreakdown,
       totalOrders,
@@ -989,12 +1210,102 @@ export class AnalyticsService {
       selectedYear,
       availableYears,
       revenueSummary: {
-        total: money(revenueChart.reduce((sum, item) => sum + item.revenue, 0)),
-        bestMonth: bestMonth
-          ? { name: bestMonth.name, revenue: bestMonth.revenue }
-          : null,
+        total: marketId
+          ? money(revenueChart.reduce((sum, item) => sum + item.netRevenue, 0))
+          : 0,
+        bestMonth:
+          marketId && bestMonth
+            ? { name: bestMonth.name, revenue: bestMonth.netRevenue }
+            : null,
       },
-      revenueChart,
+      revenueChart: marketId ? revenueChart : [],
     };
+  }
+
+  private async marketRevenueBreakdown(
+    selectedYearStart: Date,
+    selectedYearEnd: Date,
+    currentMonthStart: Date,
+    nextMonthStart: Date,
+    previousMonthStart: Date,
+  ) {
+    const [yearly, currentMonth, previousMonth, yearlyPayouts, markets] =
+      await Promise.all([
+        this.prisma.orderSettlement.groupBy({
+          by: ['marketId'],
+          where: {
+            order: {
+              paidAt: { gte: selectedYearStart, lt: selectedYearEnd },
+            },
+          },
+          _sum: {
+            retainedAmount: true,
+            commissionAmount: true,
+            pavodahAmount: true,
+          },
+        }),
+        this.prisma.orderSettlement.groupBy({
+          by: ['marketId'],
+          where: {
+            order: { paidAt: { gte: currentMonthStart, lt: nextMonthStart } },
+          },
+          _sum: { pavodahAmount: true },
+        }),
+        this.prisma.orderSettlement.groupBy({
+          by: ['marketId'],
+          where: {
+            order: {
+              paidAt: { gte: previousMonthStart, lt: currentMonthStart },
+            },
+          },
+          _sum: { pavodahAmount: true },
+        }),
+        this.prisma.providerPayout.groupBy({
+          by: ['marketId'],
+          where: {
+            status: ProviderPayoutStatus.SUCCESS,
+            processedAt: { gte: selectedYearStart, lt: selectedYearEnd },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.market.findMany({
+          where: { status: { not: MarketStatus.INACTIVE } },
+          select: { id: true, code: true, name: true, currency: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        }),
+      ]);
+    const yearlyByMarket = new Map(
+      yearly.map((item) => [item.marketId, item._sum]),
+    );
+    const current = new Map(
+      currentMonth.map((item) => [
+        item.marketId,
+        money(item._sum.pavodahAmount),
+      ]),
+    );
+    const previous = new Map(
+      previousMonth.map((item) => [
+        item.marketId,
+        money(item._sum.pavodahAmount),
+      ]),
+    );
+    const payouts = new Map(
+      yearlyPayouts.map((item) => [item.marketId, money(item._sum.amount)]),
+    );
+    return markets.map((market) => ({
+      ...market,
+      grossVolume: money(yearlyByMarket.get(market.id)?.retainedAmount),
+      commission: money(yearlyByMarket.get(market.id)?.commissionAmount),
+      netRevenue: money(yearlyByMarket.get(market.id)?.pavodahAmount),
+      payout: payouts.get(market.id) ?? 0,
+      currentMonthNetRevenue: current.get(market.id) ?? 0,
+      previousMonthNetRevenue: previous.get(market.id) ?? 0,
+      growthPercent: percentageChange(
+        current.get(market.id) ?? 0,
+        previous.get(market.id) ?? 0,
+      ),
+      comparisonMonth: `${currentMonthStart.getUTCFullYear()}-${String(currentMonthStart.getUTCMonth() + 1).padStart(2, '0')}`,
+      previousComparisonMonth: `${previousMonthStart.getUTCFullYear()}-${String(previousMonthStart.getUTCMonth() + 1).padStart(2, '0')}`,
+    }));
   }
 }

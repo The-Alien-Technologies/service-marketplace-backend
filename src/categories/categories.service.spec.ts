@@ -50,6 +50,25 @@ describe('CategoriesService', () => {
     expect(service).toBeDefined();
   });
 
+  it('filters category tables in the database query', async () => {
+    mockPrismaService.category.findMany.mockResolvedValue([]);
+
+    await service.findAll({
+      includeInactive: true,
+      search: 'photo',
+      featured: true,
+    });
+
+    expect(mockPrismaService.category.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          featured: true,
+          OR: expect.any(Array),
+        }),
+      }),
+    );
+  });
+
   describe('findServicesByCategory', () => {
     const categoryId = 'cat-1';
     const mockCategory = {
@@ -182,6 +201,56 @@ describe('CategoriesService', () => {
       expect(result.services[0].id).toBe('srv-2');
       expect(result.services[1].id).toBe('srv-1');
       expect(result.services[2].id).toBe('srv-3');
+    });
+
+    it('should filter services by their real average rating', async () => {
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.service.findMany.mockResolvedValue([
+        {
+          ...mockServices[0],
+          reviews: [{ rating: 5 }, { rating: 4 }],
+          _count: { orders: 5, reviews: 2 },
+        },
+        {
+          ...mockServices[1],
+          reviews: [{ rating: 3 }],
+          _count: { orders: 10, reviews: 1 },
+        },
+      ]);
+
+      const result = await service.findServicesByCategory(categoryId, {
+        minRating: 4,
+      });
+
+      expect(result.services).toHaveLength(1);
+      expect(result.services[0]).toEqual(
+        expect.objectContaining({ id: 'srv-1', averageRating: 4.5 }),
+      );
+    });
+
+    it('should rank by rating instead of order count', async () => {
+      mockPrismaService.category.findUnique.mockResolvedValue(mockCategory);
+      mockPrismaService.service.findMany.mockResolvedValue([
+        {
+          ...mockServices[0],
+          reviews: [{ rating: 5 }],
+          _count: { orders: 1, reviews: 1 },
+        },
+        {
+          ...mockServices[1],
+          reviews: [{ rating: 4 }, { rating: 4 }],
+          _count: { orders: 100, reviews: 2 },
+        },
+      ]);
+
+      const result = await service.findServicesByCategory(categoryId, {
+        sortBy: 'rating',
+      });
+
+      expect(result.services.map((item) => item.id)).toEqual([
+        'srv-1',
+        'srv-2',
+      ]);
     });
   });
 });

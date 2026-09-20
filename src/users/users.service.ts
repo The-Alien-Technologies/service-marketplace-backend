@@ -11,6 +11,7 @@ import { SocialAuthDto, SocialProvider } from '../auth/dto/social-auth.dto';
 import { UpdateProfileDto } from '../auth/dto/update-profile.dto';
 import {
   DocumentStatus,
+  ProviderMarketMembershipStatus,
   Role,
   User,
   UserInterestType,
@@ -18,6 +19,10 @@ import {
 } from '../../generated/prisma';
 import { NotificationEventsService } from '../notifications/notification-events.service';
 import { ProviderApplicationDecision } from './dto/review-provider-application.dto';
+import {
+  MarketAccessService,
+  MarketActor,
+} from '../markets/market-access.service';
 
 @Injectable()
 export class UsersService {
@@ -25,6 +30,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     @Optional()
     private readonly notificationEvents?: NotificationEventsService,
+    private readonly marketAccess?: MarketAccessService,
   ) {}
 
   async create(
@@ -162,6 +168,11 @@ export class UsersService {
     search?: string;
     role?: string;
     status?: string;
+    actor?: MarketActor;
+    marketId?: string;
+    marketplaceOnly?: boolean;
+    sortBy?: string;
+    orderBy?: 'asc' | 'desc';
   }): Promise<{
     users: User[];
     total: number;
@@ -173,6 +184,30 @@ export class UsersService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+    const scopedMarketId = options.actor
+      ? this.marketAccess?.marketForAdmin(options.actor, options.marketId)
+      : undefined;
+    if (options.marketplaceOnly || scopedMarketId) {
+      where.role = { notIn: [Role.ADMIN, Role.SUPER_ADMIN] };
+    }
+    if (scopedMarketId) {
+      where.AND = [
+        {
+          OR: [
+            { homeMarketId: scopedMarketId },
+            {
+              providerMarketMemberships: {
+                some: {
+                  marketId: scopedMarketId,
+                  status: ProviderMarketMembershipStatus.ACTIVE,
+                },
+              },
+            },
+          ],
+        },
+      ];
+    }
+    where.status = status || { not: UserStatus.DELETED };
 
     // Search filter
     if (search) {
@@ -186,20 +221,38 @@ export class UsersService {
 
     // Role filter
     if (role) {
+      if (
+        (options.marketplaceOnly || scopedMarketId) &&
+        (role === Role.ADMIN || role === Role.SUPER_ADMIN)
+      ) {
+        throw new BadRequestException(
+          'Staff roles are not available in marketplace user results',
+        );
+      }
       where.role = role;
     }
 
     // Status filter
-    if (status) {
-      where.status = status;
-    }
+    if (status) where.status = status;
+
+    const direction = options.orderBy ?? 'desc';
+    const orderBy: any =
+      options.sortBy === 'name'
+        ? [
+            { displayName: direction },
+            { firstName: direction },
+            { lastName: direction },
+          ]
+        : options.sortBy
+          ? { [options.sortBy]: direction }
+          : { createdAt: 'desc' };
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         select: {
           id: true,
           email: true,
@@ -236,6 +289,8 @@ export class UsersService {
     limit: number;
     search?: string;
     status?: UserStatus;
+    actor?: MarketActor;
+    marketId?: string;
   }) {
     const { page, limit, search } = options;
     const status = options.status ?? UserStatus.PENDING;
@@ -252,10 +307,20 @@ export class UsersService {
       });
     }
 
+    const scopedMarketId = options.actor
+      ? this.marketAccess?.marketForAdmin(options.actor, options.marketId)
+      : undefined;
     const where = {
       role: Role.SERVICE_PROVIDER,
       status,
       providerApplicationSubmittedAt: { not: null },
+      ...(scopedMarketId
+        ? {
+            providerMarketMemberships: {
+              some: { marketId: scopedMarketId },
+            },
+          }
+        : {}),
       ...(search
         ? {
             OR: [
@@ -385,6 +450,7 @@ export class UsersService {
         phoneNumber: true,
         emailVerified: true,
         phoneVerified: true,
+        homeMarketId: true,
         serviceProviderExperienceLevel: true,
         _count: {
           select: {
@@ -428,6 +494,7 @@ export class UsersService {
         !application.firstName && 'first name',
         !application.lastName && 'last name',
         !application.phoneNumber && 'phone number',
+        !application.homeMarketId && 'market',
         !application.emailVerified && 'email verification',
         !application.phoneVerified && 'phone verification',
         !application.serviceProviderExperienceLevel && 'experience level',
@@ -473,6 +540,45 @@ export class UsersService {
           reviewedBy: reviewerId,
         },
       });
+
+      if (application.homeMarketId) {
+        await transaction.providerMarketMembership.updateMany({
+          where: {
+            providerId: userId,
+            isPrimary: true,
+            marketId: { not: application.homeMarketId },
+          },
+          data: { isPrimary: false },
+        });
+        await transaction.providerMarketMembership.upsert({
+          where: {
+            providerId_marketId: {
+              providerId: userId,
+              marketId: application.homeMarketId,
+            },
+          },
+          create: {
+            providerId: userId,
+            marketId: application.homeMarketId,
+            status: approved
+              ? ProviderMarketMembershipStatus.ACTIVE
+              : ProviderMarketMembershipStatus.REJECTED,
+            isPrimary: true,
+            reviewedAt,
+            reviewedBy: reviewerId,
+            rejectionReason: approved ? null : rejectionReason,
+          },
+          update: {
+            status: approved
+              ? ProviderMarketMembershipStatus.ACTIVE
+              : ProviderMarketMembershipStatus.REJECTED,
+            isPrimary: true,
+            reviewedAt,
+            reviewedBy: reviewerId,
+            rejectionReason: approved ? null : rejectionReason,
+          },
+        });
+      }
 
       return transaction.user.findUnique({
         where: { id: userId },
@@ -650,18 +756,59 @@ export class UsersService {
     });
   }
 
-  async getStats(): Promise<{
+  async assertAdminCanAccessUser(actor: MarketActor, userId: string) {
+    const marketId = this.marketAccess?.marketForAdmin(actor);
+    if (!marketId) return;
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        role: { notIn: [Role.ADMIN, Role.SUPER_ADMIN] },
+        OR: [
+          { homeMarketId: marketId },
+          { adminMarketId: marketId },
+          { providerMarketMemberships: { some: { marketId } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException({ message: 'User not found' });
+  }
+
+  async getStats(
+    actor?: MarketActor,
+    requestedMarketId?: string,
+  ): Promise<{
     totalUsers: number;
     activeUsers: number;
     premiumUsers: number;
     onboardedUsers: number;
   }> {
+    const marketId = actor
+      ? this.marketAccess?.marketForAdmin(actor, requestedMarketId)
+      : undefined;
+    const marketWhere = marketId
+      ? {
+          AND: [
+            { role: { notIn: [Role.ADMIN, Role.SUPER_ADMIN] } },
+            {
+              OR: [
+                { homeMarketId: marketId },
+                { providerMarketMemberships: { some: { marketId } } },
+              ],
+            },
+          ],
+        }
+      : {};
     const [totalUsers, activeUsers, premiumUsers, onboardedUsers] =
       await Promise.all([
-        this.prisma.user.count(),
-        this.prisma.user.count({ where: { status: UserStatus.ACTIVE } }),
-        this.prisma.user.count({ where: { isPremium: true } }),
-        this.prisma.user.count({ where: { hasCompletedOnboarding: true } }),
+        this.prisma.user.count({ where: marketWhere }),
+        this.prisma.user.count({
+          where: { ...marketWhere, status: UserStatus.ACTIVE },
+        }),
+        this.prisma.user.count({ where: { ...marketWhere, isPremium: true } }),
+        this.prisma.user.count({
+          where: { ...marketWhere, hasCompletedOnboarding: true },
+        }),
       ]);
 
     return {

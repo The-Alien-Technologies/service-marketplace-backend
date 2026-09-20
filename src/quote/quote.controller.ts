@@ -55,18 +55,31 @@ export class QuoteController {
 
   /** Provider: list incoming quote requests */
   @Get('provider')
-  async getProviderQuotes(@Req() req: any, @Query('status') status?: string) {
+  async getProviderQuotes(
+    @Req() req: any,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
     const quotes = await this.quoteService.findAllForProvider(
       req.currentUser.id,
       status as QuoteStatus | undefined,
+      search,
     );
     return ResponseUtil.success({ quotes }, 'Quote requests retrieved');
   }
 
   /** Client: list my submitted quote requests */
   @Get('client')
-  async getClientQuotes(@Req() req: any) {
-    const quotes = await this.quoteService.findAllForClient(req.currentUser.id);
+  async getClientQuotes(
+    @Req() req: any,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+  ) {
+    const quotes = await this.quoteService.findAllForClient(
+      req.currentUser.id,
+      status as QuoteStatus | undefined,
+      search,
+    );
     return ResponseUtil.success({ quotes }, 'Quote requests retrieved');
   }
 

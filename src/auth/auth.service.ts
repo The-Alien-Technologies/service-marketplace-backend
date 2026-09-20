@@ -35,8 +35,9 @@ import {
   UserStatus,
 } from '../../generated/prisma';
 import { normalizePhoneNumber } from '../common/utils/phone.util';
-import { randomInt } from 'crypto';
+import { createHash, randomInt, randomUUID } from 'crypto';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 const PHONE_OTP_EXPIRY_MS = 10 * 60 * 1000;
 const PHONE_OTP_COOLDOWN_MS = 60 * 1000;
@@ -47,12 +48,17 @@ export interface AuthResponse {
   user: Partial<User>;
   token: string;
   refreshToken: string;
+  emailVerificationSent?: boolean;
 }
 
 export interface UserPayload {
   id: string;
   email: string;
   role: string;
+  tokenVersion: number;
+  tokenType: 'access' | 'refresh';
+  sessionId: string;
+  jti: string;
 }
 
 @Injectable()
@@ -68,6 +74,7 @@ export class AuthService {
     private onboardingStatusService: OnboardingStatusService,
     private googleAuthService: GoogleAuthService,
     private prisma: PrismaService,
+    private fileUploadService: FileUploadService,
     @Optional()
     private notificationEvents?: NotificationEventsService,
   ) {}
@@ -97,23 +104,16 @@ export class AuthService {
       lastName: '',
     });
 
-    // Generate tokens
-    const token = this.generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
-    const refreshToken = this.generateRefreshToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const { token, refreshToken } = await this.issueSessionTokens(user);
 
     // Update last login
     await this.usersService.updateLastActivity(user.id);
 
     // Generate and send email verification OTP
-    await this.sendEmailVerificationOtp(user.id, user.email);
+    const emailVerificationSent = await this.sendEmailVerificationOtp(
+      user.id,
+      user.email,
+    );
 
     // Send welcome email (async, don't wait for it to complete)
     this.sendWelcomeEmailAsync(user.email, 'User');
@@ -122,6 +122,7 @@ export class AuthService {
       user: this.sanitizeUser(user),
       token,
       refreshToken,
+      emailVerificationSent,
     };
   }
 
@@ -153,17 +154,7 @@ export class AuthService {
       throw new UnauthorizedException({ message: 'Invalid credentials' });
     }
 
-    // Generate tokens
-    const token = this.generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
-    const refreshToken = this.generateRefreshToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const { token, refreshToken } = await this.issueSessionTokens(user);
 
     // Update last login
     await this.usersService.updateLastActivity(user.id);
@@ -242,17 +233,7 @@ export class AuthService {
         this.sendWelcomeEmailAsync(user.email, userName);
       }
 
-      // Generate tokens
-      const token = this.generateToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      });
-      const refreshToken = this.generateRefreshToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      });
+      const { token, refreshToken } = await this.issueSessionTokens(user);
 
       return {
         user: this.sanitizeUser(user),
@@ -345,6 +326,7 @@ export class AuthService {
       passwordResetOtp: null,
       passwordResetExpires: null,
       passwordResetAttempts: 0,
+      tokenVersion: { increment: 1 },
     } as any);
     await this.notificationEvents?.securityAlert({
       userId: user.id,
@@ -408,16 +390,7 @@ export class AuthService {
       throw new UnauthorizedException({ message: 'Account is not active' });
     }
 
-    const token = this.generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
-    const refreshToken = this.generateRefreshToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const { token, refreshToken } = await this.issueSessionTokens(user);
 
     // Update last activity
     await this.usersService.updateLastActivity(user.id);
@@ -425,7 +398,10 @@ export class AuthService {
     return { token, refreshToken };
   }
 
-  async sendEmailVerificationOtp(userId: string, email: string): Promise<void> {
+  async sendEmailVerificationOtp(
+    userId: string,
+    email: string,
+  ): Promise<boolean> {
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -444,12 +420,25 @@ export class AuthService {
     try {
       await this.emailService.sendEmailVerificationOtp(email, otpCode);
       this.logger.log(`Email verification OTP sent to ${email}`);
+      return true;
     } catch (error) {
       this.logger.error(
         `Failed to send email verification OTP to ${email}:`,
         error,
       );
-      // Don't throw error - user can request resend
+      await this.usersService
+        .updateProfile(userId, {
+          emailVerificationOtp: null,
+          emailVerificationExpires: null,
+          emailVerificationAttempts: 0,
+        } as any)
+        .catch((cleanupError) =>
+          this.logger.error(
+            `Failed to clear undelivered verification OTP for ${email}:`,
+            cleanupError,
+          ),
+        );
+      return false;
     }
   }
 
@@ -533,13 +522,22 @@ export class AuthService {
     }
 
     // Send new OTP
-    await this.sendEmailVerificationOtp(user.id, user.email);
+    const sent = await this.sendEmailVerificationOtp(user.id, user.email);
+    if (!sent) {
+      throw new BadGatewayException({
+        message: 'We could not send the verification code. Please try again.',
+      });
+    }
   }
 
   async sendPhoneVerificationOtp(
     userId: string,
     phoneNumber: string,
-  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+  ): Promise<{
+    phoneNumber: string;
+    expiresAt?: Date;
+    alreadyVerified?: boolean;
+  }> {
     const normalized = normalizePhoneNumber(phoneNumber);
     if (!normalized) {
       throw new BadRequestException({
@@ -551,9 +549,10 @@ export class AuthService {
       where: { phoneNumber: normalized.phoneNumber },
     });
     if (existingClaim?.userId === userId) {
-      throw new ConflictException({
-        message: 'This phone number is already verified for your account.',
-      });
+      return {
+        phoneNumber: normalized.phoneNumber,
+        alreadyVerified: true,
+      };
     }
     if (existingClaim) {
       throw new ConflictException({
@@ -745,7 +744,11 @@ export class AuthService {
   async resendPhoneVerificationOtp(
     userId: string,
     phoneNumber: string,
-  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+  ): Promise<{
+    phoneNumber: string;
+    expiresAt?: Date;
+    alreadyVerified?: boolean;
+  }> {
     return this.sendPhoneVerificationOtp(userId, phoneNumber);
   }
 
@@ -891,6 +894,9 @@ export class AuthService {
     try {
       // Verify the refresh token
       const payload = this.jwtService.verify(refreshToken) as UserPayload;
+      if (payload.tokenType !== 'refresh' || !payload.sessionId) {
+        throw new UnauthorizedException({ message: 'Invalid refresh token' });
+      }
 
       // Find user
       const user = await this.usersService.findById(payload.id);
@@ -898,21 +904,15 @@ export class AuthService {
         throw new UnauthorizedException({ message: 'User not found' });
       }
 
-      if (!this.canAuthenticate(user)) {
+      if (
+        !this.canAuthenticate(user) ||
+        user.tokenVersion !== payload.tokenVersion
+      ) {
         throw new UnauthorizedException({ message: 'Account is not active' });
       }
 
-      // Generate new tokens
-      const newToken = this.generateToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      });
-      const newRefreshToken = this.generateRefreshToken({
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      });
+      const { token: newToken, refreshToken: newRefreshToken } =
+        await this.rotateSessionTokens(user, payload.sessionId, refreshToken);
 
       // Update last activity
       await this.usersService.updateLastActivity(user.id);
@@ -938,6 +938,37 @@ export class AuthService {
   ): Promise<Partial<User>> {
     const user = await this.usersService.updateProfile(userId, updateData);
     return this.sanitizeUser(user);
+  }
+
+  async updateAvatar(
+    userId: string,
+    avatarFile: Express.Multer.File,
+  ): Promise<Partial<User>> {
+    if (!avatarFile) throw new BadRequestException('Choose an image to upload');
+    const current = await this.usersService.findById(userId);
+    if (!current)
+      throw new UnauthorizedException({ message: 'User not found' });
+
+    const uploaded = await this.fileUploadService.uploadAvatar(
+      avatarFile,
+      userId,
+    );
+    try {
+      const user = await this.usersService.updateProfile(userId, {
+        avatar: uploaded.url,
+      });
+      if (current.avatar && current.avatar !== uploaded.url) {
+        await this.fileUploadService
+          .deleteFile(current.avatar)
+          .catch(() => undefined);
+      }
+      return this.sanitizeUser(user);
+    } catch (error) {
+      await this.fileUploadService
+        .deleteFile(uploaded.url)
+        .catch(() => undefined);
+      throw error;
+    }
   }
 
   async changePassword(
@@ -987,6 +1018,100 @@ export class AuthService {
     await this.usersService.delete(userId);
   }
 
+  async logout(userId: string, sessionId: string): Promise<void> {
+    await this.prisma.authSession.updateMany({
+      where: { id: sessionId, userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
+  private async issueSessionTokens(
+    user: Pick<User, 'id' | 'email' | 'role' | 'tokenVersion'>,
+  ): Promise<{ token: string; refreshToken: string }> {
+    const sessionId = randomUUID();
+    const tokens = this.createSessionTokens(user, sessionId);
+
+    await this.prisma.authSession.create({
+      data: {
+        id: sessionId,
+        userId: user.id,
+        refreshTokenHash: this.hashToken(tokens.refreshToken),
+        expiresAt: this.getTokenExpiry(tokens.refreshToken),
+      },
+    });
+
+    return tokens;
+  }
+
+  private async rotateSessionTokens(
+    user: Pick<User, 'id' | 'email' | 'role' | 'tokenVersion'>,
+    sessionId: string,
+    currentRefreshToken: string,
+  ): Promise<{ token: string; refreshToken: string }> {
+    const tokens = this.createSessionTokens(user, sessionId);
+    const updated = await this.prisma.authSession.updateMany({
+      where: {
+        id: sessionId,
+        userId: user.id,
+        refreshTokenHash: this.hashToken(currentRefreshToken),
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      data: {
+        refreshTokenHash: this.hashToken(tokens.refreshToken),
+        expiresAt: this.getTokenExpiry(tokens.refreshToken),
+      },
+    });
+
+    if (updated.count !== 1) {
+      throw new UnauthorizedException({ message: 'Invalid refresh token' });
+    }
+
+    return tokens;
+  }
+
+  private createSessionTokens(
+    user: Pick<User, 'id' | 'email' | 'role' | 'tokenVersion'>,
+    sessionId: string,
+  ): { token: string; refreshToken: string } {
+    return {
+      token: this.generateToken(
+        this.createTokenPayload(user, 'access', sessionId),
+      ),
+      refreshToken: this.generateRefreshToken(
+        this.createTokenPayload(user, 'refresh', sessionId),
+      ),
+    };
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private getTokenExpiry(token: string): Date {
+    const decoded = this.jwtService.decode(token) as { exp?: number } | null;
+    if (!decoded?.exp) {
+      throw new Error('Refresh token is missing an expiration time');
+    }
+    return new Date(decoded.exp * 1000);
+  }
+
+  private createTokenPayload(
+    user: Pick<User, 'id' | 'email' | 'role' | 'tokenVersion'>,
+    tokenType: UserPayload['tokenType'],
+    sessionId: string,
+  ): UserPayload {
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tokenVersion: user.tokenVersion,
+      tokenType,
+      sessionId,
+      jti: randomUUID(),
+    };
+  }
+
   private generateToken(payload: UserPayload): string {
     return this.jwtService.sign(payload);
   }
@@ -1010,14 +1135,59 @@ export class AuthService {
 
   // Utility method for JWT strategy
   async validateUser(payload: UserPayload): Promise<User | null> {
-    const user = await this.usersService.findById(payload.id);
+    if (payload.tokenType !== 'access' || !payload.sessionId) return null;
 
-    if (!user || !this.canAuthenticate(user)) {
+    const [user, session] = await Promise.all([
+      this.usersService.findById(payload.id),
+      this.prisma.authSession.findFirst({
+        where: {
+          id: payload.sessionId,
+          userId: payload.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (
+      !user ||
+      !session ||
+      !this.canAuthenticate(user) ||
+      user.tokenVersion !== payload.tokenVersion
+    ) {
       return null;
     }
 
     // Update last activity
     await this.usersService.updateLastActivity(payload.id);
+
+    return user;
+  }
+
+  async validateRefreshUser(payload: UserPayload): Promise<User | null> {
+    if (payload.tokenType !== 'refresh' || !payload.sessionId) return null;
+
+    const [user, session] = await Promise.all([
+      this.usersService.findById(payload.id),
+      this.prisma.authSession.findFirst({
+        where: {
+          id: payload.sessionId,
+          userId: payload.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (
+      !user ||
+      !session ||
+      !this.canAuthenticate(user) ||
+      user.tokenVersion !== payload.tokenVersion
+    ) {
+      return null;
+    }
 
     return user;
   }

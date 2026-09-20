@@ -3,7 +3,12 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { DocumentStatus, Role, UserStatus } from '../../generated/prisma';
+import {
+  DocumentStatus,
+  ProviderMarketMembershipStatus,
+  Role,
+  UserStatus,
+} from '../../generated/prisma';
 import { ProviderApplicationDecision } from './dto/review-provider-application.dto';
 import { UsersService } from './users.service';
 import { SocialProvider } from '../auth/dto/social-auth.dto';
@@ -18,6 +23,10 @@ describe('UsersService provider approval flow', () => {
     },
     verificationDocument: {
       updateMany: jest.fn(),
+    },
+    providerMarketMembership: {
+      updateMany: jest.fn(),
+      upsert: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -162,6 +171,7 @@ describe('UsersService provider approval flow', () => {
         firstName: 'Ama',
         lastName: 'Mensah',
         phoneNumber: '+233200000000',
+        homeMarketId: 'market-gh',
         emailVerified: true,
         phoneVerified: true,
         serviceProviderExperienceLevel: 'EXPERT',
@@ -197,6 +207,24 @@ describe('UsersService provider approval flow', () => {
       where: { userId: 'provider-1' },
       data: expect.objectContaining({ status: DocumentStatus.APPROVED }),
     });
+    expect(prisma.providerMarketMembership.upsert).toHaveBeenCalledWith({
+      where: {
+        providerId_marketId: {
+          providerId: 'provider-1',
+          marketId: 'market-gh',
+        },
+      },
+      create: expect.objectContaining({
+        providerId: 'provider-1',
+        marketId: 'market-gh',
+        status: ProviderMarketMembershipStatus.ACTIVE,
+        isPrimary: true,
+      }),
+      update: expect.objectContaining({
+        status: ProviderMarketMembershipStatus.ACTIVE,
+        isPrimary: true,
+      }),
+    });
     expect(prisma.user.findUnique).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
@@ -225,6 +253,7 @@ describe('UsersService provider approval flow', () => {
       firstName: 'Ama',
       lastName: 'Mensah',
       phoneNumber: '+233200000000',
+      homeMarketId: 'market-gh',
       emailVerified: true,
       phoneVerified: false,
       serviceProviderExperienceLevel: 'EXPERT',
@@ -243,5 +272,30 @@ describe('UsersService provider approval flow', () => {
       ),
     ).rejects.toThrow(ConflictException);
     expect(prisma.user.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('keeps privileged accounts outside country-admin user management', async () => {
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const scoped = new UsersService(
+      { user: { findFirst } } as never,
+      undefined,
+      {
+        marketForAdmin: jest.fn().mockReturnValue('market-gh'),
+      } as never,
+    );
+
+    await expect(
+      scoped.assertAdminCanAccessUser(
+        { id: 'admin-1', role: Role.ADMIN, adminMarketId: 'market-gh' },
+        'super-1',
+      ),
+    ).rejects.toThrow(NotFoundException);
+    expect(findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: 'super-1',
+        role: { notIn: [Role.ADMIN, Role.SUPER_ADMIN] },
+      }),
+      select: { id: true },
+    });
   });
 });

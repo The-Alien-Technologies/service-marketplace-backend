@@ -72,6 +72,28 @@ describe('DisputeService participant privacy', () => {
     expect(result[0].provider.email).toBeNull();
   });
 
+  it('applies participant table filters in the database query', async () => {
+    const { service, prisma } = setup();
+
+    await service.findByParticipant('client-1', {
+      status: 'OPEN',
+      priority: 'HIGH',
+      issueType: 'QUALITY_ISSUE',
+      search: 'ORD-42',
+    });
+
+    expect(prisma.dispute.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'OPEN',
+          priority: 'HIGH',
+          issueType: 'QUALITY_ISSUE',
+          AND: expect.any(Array),
+        }),
+      }),
+    );
+  });
+
   it('keeps the full record for admins and rejects unrelated users', async () => {
     const { service } = setup();
 

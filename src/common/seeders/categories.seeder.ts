@@ -9,13 +9,6 @@ export class CategoriesSeeder {
   constructor(private prisma: PrismaService) {}
 
   async seed() {
-    // Check if categories already exist
-    const existingCategories = await this.prisma.category.count();
-    if (existingCategories > 0) {
-      console.log('Categories already exist, skipping seeding');
-      return;
-    }
-
     console.log('Seeding categories...');
     const categories = [
       {
@@ -92,11 +85,30 @@ export class CategoriesSeeder {
     ];
 
     for (const category of categories) {
-      await this.prisma.category.upsert({
+      const savedCategory = await this.prisma.category.upsert({
         where: { name: category.name },
         update: category,
         create: category,
       });
+      const markets = await this.prisma.market.findMany({
+        select: { id: true },
+      });
+      for (const market of markets) {
+        await this.prisma.marketCategory.upsert({
+          where: {
+            marketId_categoryId: {
+              marketId: market.id,
+              categoryId: savedCategory.id,
+            },
+          },
+          create: {
+            marketId: market.id,
+            categoryId: savedCategory.id,
+            featured: category.featured,
+          },
+          update: {},
+        });
+      }
     }
 
     console.log('Categories seeded successfully');

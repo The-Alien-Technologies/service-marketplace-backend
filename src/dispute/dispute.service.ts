@@ -21,9 +21,14 @@ import {
   Prisma,
   SettlementAcceptedBy,
   SettlementStatus,
+  Role,
 } from '../../generated/prisma';
 import { PaymentsService } from '../payments/payments.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import {
+  MarketAccessService,
+  MarketActor,
+} from '../markets/market-access.service';
 
 const PRIORITY_MAP: Record<DisputeIssueType, DisputePriority> = {
   PAYMENT_DISPUTE: DisputePriority.HIGH,
@@ -50,6 +55,7 @@ export class DisputeService {
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
     private readonly notificationEvents?: NotificationEventsService,
+    private readonly marketAccess: MarketAccessService = new MarketAccessService(),
   ) {}
 
   async create(clientId: string, dto: CreateDisputeDto) {
@@ -110,6 +116,8 @@ export class DisputeService {
             orderNumber: true,
             planTitle: true,
             total: true,
+            currency: true,
+            marketId: true,
             service: { select: { title: true } },
           },
         },
@@ -119,9 +127,96 @@ export class DisputeService {
     return this.forParticipant(dispute);
   }
 
-  async findAll(query?: { status?: string }) {
+  async findAll(
+    query?: {
+      status?: string;
+      priority?: string;
+      issueType?: string;
+      search?: string;
+    },
+    actor: MarketActor = { id: 'legacy', role: Role.SUPER_ADMIN },
+  ) {
+    const marketId = this.marketAccess.marketForAdmin(actor);
     return this.prisma.dispute.findMany({
-      where: query?.status ? { status: query.status as any } : undefined,
+      where: {
+        ...(query?.status ? { status: query.status as any } : {}),
+        ...(query?.priority ? { priority: query.priority as any } : {}),
+        ...(query?.issueType ? { issueType: query.issueType as any } : {}),
+        ...(query?.search?.trim()
+          ? {
+              OR: [
+                { id: { contains: query.search.trim(), mode: 'insensitive' } },
+                {
+                  order: {
+                    orderNumber: {
+                      contains: query.search.trim(),
+                      mode: 'insensitive',
+                    },
+                  },
+                },
+                {
+                  order: {
+                    service: {
+                      title: {
+                        contains: query.search.trim(),
+                        mode: 'insensitive',
+                      },
+                    },
+                  },
+                },
+                {
+                  client: {
+                    OR: [
+                      {
+                        firstName: {
+                          contains: query.search.trim(),
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        lastName: {
+                          contains: query.search.trim(),
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        email: {
+                          contains: query.search.trim(),
+                          mode: 'insensitive',
+                        },
+                      },
+                    ],
+                  },
+                },
+                {
+                  provider: {
+                    OR: [
+                      {
+                        firstName: {
+                          contains: query.search.trim(),
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        lastName: {
+                          contains: query.search.trim(),
+                          mode: 'insensitive',
+                        },
+                      },
+                      {
+                        email: {
+                          contains: query.search.trim(),
+                          mode: 'insensitive',
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            }
+          : {}),
+        ...(marketId ? { order: { marketId } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         client: { select: USER_SELECT },
@@ -138,9 +233,52 @@ export class DisputeService {
     });
   }
 
-  async findByParticipant(userId: string) {
+  async findByParticipant(
+    userId: string,
+    query?: {
+      status?: string;
+      priority?: string;
+      issueType?: string;
+      search?: string;
+    },
+  ) {
+    const search = query?.search?.trim();
     const disputes = await this.prisma.dispute.findMany({
-      where: { OR: [{ clientId: userId }, { providerId: userId }] },
+      where: {
+        AND: [
+          { OR: [{ clientId: userId }, { providerId: userId }] },
+          ...(search
+            ? [
+                {
+                  OR: [
+                    { id: { contains: search, mode: 'insensitive' as const } },
+                    {
+                      order: {
+                        orderNumber: {
+                          contains: search,
+                          mode: 'insensitive' as const,
+                        },
+                      },
+                    },
+                    {
+                      order: {
+                        service: {
+                          title: {
+                            contains: search,
+                            mode: 'insensitive' as const,
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              ]
+            : []),
+        ],
+        ...(query?.status ? { status: query.status as any } : {}),
+        ...(query?.priority ? { priority: query.priority as any } : {}),
+        ...(query?.issueType ? { issueType: query.issueType as any } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         client: { select: USER_SELECT },
@@ -149,6 +287,8 @@ export class DisputeService {
           select: {
             orderNumber: true,
             planTitle: true,
+            currency: true,
+            marketId: true,
             service: { select: { title: true } },
           },
         },
@@ -157,7 +297,12 @@ export class DisputeService {
     return disputes.map((dispute) => this.forParticipant(dispute));
   }
 
-  async findOne(id: string, requesterId: string, isAdmin: boolean) {
+  async findOne(
+    id: string,
+    requesterId: string,
+    isAdmin: boolean,
+    actor?: MarketActor,
+  ) {
     const dispute = await this.prisma.dispute.findUnique({
       where: { id },
       include: {
@@ -169,6 +314,8 @@ export class DisputeService {
             planTitle: true,
             planPrice: true,
             total: true,
+            currency: true,
+            marketId: true,
             commissionRate: true,
             createdAt: true,
             refunds: {
@@ -185,6 +332,10 @@ export class DisputeService {
     });
 
     if (!dispute) throw new NotFoundException('Dispute not found');
+    if (isAdmin && actor) {
+      const marketId = await this.disputeMarketId(dispute.orderId);
+      this.marketAccess.assertResource(actor, marketId);
+    }
     if (
       !isAdmin &&
       dispute.clientId !== requesterId &&
@@ -229,9 +380,17 @@ export class DisputeService {
     };
   }
 
-  async updateStatus(id: string, dto: UpdateDisputeStatusDto) {
+  async updateStatus(
+    id: string,
+    dto: UpdateDisputeStatusDto,
+    actor?: MarketActor,
+  ) {
     const dispute = await this.prisma.dispute.findUnique({ where: { id } });
     if (!dispute) throw new NotFoundException('Dispute not found');
+    if (actor) {
+      const marketId = await this.disputeMarketId(dispute.orderId);
+      this.marketAccess.assertResource(actor, marketId);
+    }
 
     if (dispute.resolutionType || dispute.resolutionRequestedAt) {
       throw new ConflictException(
@@ -276,7 +435,7 @@ export class DisputeService {
     return updated;
   }
 
-  async resolve(id: string, dto: ResolveDisputeDto) {
+  async resolve(id: string, dto: ResolveDisputeDto, actor?: MarketActor) {
     const dispute = await this.prisma.dispute.findUnique({
       where: { id },
       include: {
@@ -303,6 +462,7 @@ export class DisputeService {
       },
     });
     if (!dispute) throw new NotFoundException('Dispute not found');
+    if (actor) this.marketAccess.assertResource(actor, dispute.order.marketId);
     if (
       dispute.status === DisputeStatus.RESOLVED ||
       dispute.status === DisputeStatus.CLOSED
@@ -533,6 +693,15 @@ export class DisputeService {
       }
       throw error;
     }
+  }
+
+  private async disputeMarketId(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { marketId: true },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    return order.marketId;
   }
 
   private releaseFailedResolutionClaim(id: string, requestedAt: Date) {

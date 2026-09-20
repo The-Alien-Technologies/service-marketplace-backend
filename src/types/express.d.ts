@@ -9,6 +9,10 @@ declare global {
         username?: string;
         role: string;
         status: string;
+        homeMarketId?: string | null;
+        selectedMarketId?: string | null;
+        adminMarketId?: string | null;
+        sessionId: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;

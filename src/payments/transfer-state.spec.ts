@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { ProviderPayoutStatus } from '../../generated/prisma';
+import { ProviderPayoutStatus, SettlementStatus } from '../../generated/prisma';
 import { applyPaystackTransferState } from './transfer-state';
 
 describe('applyPaystackTransferState', () => {
@@ -95,5 +95,55 @@ describe('applyPaystackTransferState', () => {
 
     expect(result).toBeNull();
     expect(tx.providerPayout.update).not.toHaveBeenCalled();
+  });
+
+  it('reconciles a partner transfer without changing provider payout state', async () => {
+    const partnerPayout = {
+      ...payout,
+      id: 'partner-payout-1',
+      reference: 'PARTNER-1',
+      items: [{ settlementId: 'settlement-1' }],
+    };
+    const tx = {
+      $queryRaw: jest
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: partnerPayout.id }]),
+      providerPayout: { findUnique: jest.fn(), update: jest.fn() },
+      marketPartnerPayout: {
+        findUnique: jest.fn().mockResolvedValue(partnerPayout),
+        update: jest.fn().mockResolvedValue(partnerPayout),
+      },
+      orderSettlement: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      marketCommissionAdjustment: { updateMany: jest.fn() },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (transaction: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    };
+
+    await applyPaystackTransferState(
+      prisma as never,
+      'transfer.success',
+      {
+        reference: partnerPayout.reference,
+        status: 'success',
+        amount: partnerPayout.amountMinor,
+        currency: partnerPayout.currency,
+      },
+      { strict: true },
+    );
+
+    expect(tx.providerPayout.update).not.toHaveBeenCalled();
+    expect(tx.orderSettlement.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: { in: ['settlement-1'] },
+        partnerStatus: SettlementStatus.RESERVED,
+      },
+      data: { partnerStatus: SettlementStatus.PAID },
+    });
   });
 });

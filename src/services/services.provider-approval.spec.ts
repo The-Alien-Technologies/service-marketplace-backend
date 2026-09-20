@@ -1,4 +1,8 @@
-import { ServiceStatus, UserStatus } from '../../generated/prisma';
+import {
+  MarketStatus,
+  ServiceStatus,
+  UserStatus,
+} from '../../generated/prisma';
 import { ServicesService } from './services.service';
 
 describe('ServicesService provider approval visibility', () => {
@@ -42,6 +46,7 @@ describe('ServicesService provider approval visibility', () => {
         where: {
           id: 'service-1',
           status: ServiceStatus.PUBLISHED,
+          market: { status: { not: MarketStatus.INACTIVE } },
           provider: {
             status: UserStatus.ACTIVE,
             isServiceProviderVerified: true,

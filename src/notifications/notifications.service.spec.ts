@@ -3,6 +3,7 @@ import {
   NotificationDeliveryStatus,
   NotificationPriority,
   NotificationType,
+  Role,
 } from '../../generated/prisma';
 import { NotificationsService } from './notifications.service';
 
@@ -60,7 +61,7 @@ describe('NotificationsService', () => {
       emitRead: jest.fn(),
       emitAllRead: jest.fn(),
     };
-    const email = { sendEmail: jest.fn() };
+    const email = { sendTransactionalNotification: jest.fn() };
     const sms = { sendSms: jest.fn() };
     const service = new NotificationsService(
       prisma,
@@ -107,6 +108,38 @@ describe('NotificationsService', () => {
       ],
     });
     expect(gateway.emitCreated).toHaveBeenCalledWith(user.id, notification);
+  });
+
+  it('targets super admins plus admins assigned to the event market', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findMany.mockResolvedValue([
+      { id: 'super-admin' },
+      { id: 'ghana-admin' },
+    ]);
+    const createForUsers = jest
+      .spyOn(service, 'createForUsers')
+      .mockResolvedValue([]);
+
+    await service.createForAdmins('ghana-market', {
+      type: NotificationType.SYSTEM_ALERT,
+      title: 'Market event',
+      message: 'A Ghana operation needs review.',
+    });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith({
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          { role: Role.SUPER_ADMIN },
+          { role: Role.ADMIN, adminMarketId: 'ghana-market' },
+        ],
+      },
+      select: { id: true },
+    });
+    expect(createForUsers).toHaveBeenCalledWith(
+      ['super-admin', 'ghana-admin'],
+      expect.objectContaining({ title: 'Market event' }),
+    );
   });
 
   it('delays and collapses message email delivery by conversation', async () => {
@@ -351,11 +384,11 @@ describe('NotificationsService', () => {
 
     await service.processPendingDeliveries();
 
-    expect(email.sendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: [user.email],
-        subject: `Pavodah: ${notification.title}`,
-      }),
+    expect(email.sendTransactionalNotification).toHaveBeenCalledWith(
+      user.email,
+      notification.title,
+      notification.message,
+      'http://localhost:3001/dashboard/orders/order-1',
     );
     expect(prisma.notificationDelivery.update).toHaveBeenCalledWith({
       where: { id: delivery.id },
@@ -388,7 +421,7 @@ describe('NotificationsService', () => {
 
     await service.processPendingDeliveries();
 
-    expect(email.sendEmail).not.toHaveBeenCalled();
+    expect(email.sendTransactionalNotification).not.toHaveBeenCalled();
     expect(prisma.notificationDelivery.updateMany).toHaveBeenLastCalledWith({
       where: {
         id: delivery.id,

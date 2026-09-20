@@ -5,16 +5,18 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { PaymentCredentialsService } from './payment-credentials.service';
 
 @Injectable()
 export class PaystackWebhookGuard implements CanActivate {
   private readonly logger = new Logger(PaystackWebhookGuard.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly credentials: PaymentCredentialsService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const signature = request.headers['x-paystack-signature'];
 
@@ -30,7 +32,40 @@ export class PaystackWebhookGuard implements CanActivate {
       throw new UnauthorizedException('Webhook body is unavailable');
     }
 
-    const secret = this.config.getOrThrow<string>('PAYSTACK_SECRET_KEY');
+    const integrationKey = request.params?.integrationKey;
+    if (!integrationKey) {
+      throw new UnauthorizedException('Missing payment integration key');
+    }
+    return this.verifyForIntegration(
+      request,
+      integrationKey,
+      signature,
+      rawBody,
+    );
+  }
+
+  private async verifyForIntegration(
+    request: any,
+    integrationKey: string,
+    signature: string,
+    rawBody: Buffer,
+  ) {
+    const resolved = await this.credentials.webhookCandidates(integrationKey);
+    const match = resolved.credentials.find((candidate) => {
+      try {
+        this.assertSignature(signature, rawBody, candidate.secretKey);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    if (!match) throw new UnauthorizedException('Invalid Paystack signature');
+    request.paymentIntegration = resolved.integration;
+    request.paymentCredentialVersionId = match.id;
+    return true;
+  }
+
+  private assertSignature(signature: string, rawBody: Buffer, secret: string) {
     const expected = crypto
       .createHmac('sha512', secret)
       .update(rawBody)
@@ -44,7 +79,5 @@ export class PaystackWebhookGuard implements CanActivate {
     ) {
       throw new UnauthorizedException('Invalid Paystack signature');
     }
-
-    return true;
   }
 }

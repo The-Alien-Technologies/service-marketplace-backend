@@ -5,7 +5,6 @@ import {
   OrderStatus,
   PaymentRefundStatus,
   ProviderPayoutStatus,
-  Role,
 } from '../../generated/prisma';
 import { NotificationsService } from './notifications.service';
 
@@ -201,6 +200,7 @@ export class NotificationEventsService {
     orderId: string;
     providerId: string;
     clientId: string;
+    order: { marketId: string };
   }) {
     const providerNotification = this.notifications.create({
       userId: dispute.providerId,
@@ -214,17 +214,20 @@ export class NotificationEventsService {
       dedupeKey: `dispute-opened:${dispute.id}:${dispute.providerId}`,
       smsEligible: true,
     });
-    const adminNotifications = this.notifications.createForRole(Role.ADMIN, {
-      type: NotificationType.DISPUTE_OPENED,
-      priority: NotificationPriority.CRITICAL,
-      title: 'New dispute requires review',
-      message: 'A client opened a dispute on a completed order.',
-      actionUrl: `/dashboard/disputes/${dispute.id}`,
-      entityType: 'dispute',
-      entityId: dispute.id,
-      dedupeKey: (userId) => `dispute-opened:${dispute.id}:${userId}`,
-      smsEligible: true,
-    });
+    const adminNotifications = this.notifications.createForAdmins(
+      dispute.order.marketId,
+      {
+        type: NotificationType.DISPUTE_OPENED,
+        priority: NotificationPriority.CRITICAL,
+        title: 'New dispute requires review',
+        message: 'A client opened a dispute on a completed order.',
+        actionUrl: `/dashboard/disputes/${dispute.id}`,
+        entityType: 'dispute',
+        entityId: dispute.id,
+        dedupeKey: (userId) => `dispute-opened:${dispute.id}:${userId}`,
+        smsEligible: true,
+      },
+    );
     await this.safeCreate([providerNotification, adminNotifications]);
   }
 
@@ -285,9 +288,10 @@ export class NotificationEventsService {
     reference: string;
     amount: string;
     currency: string;
+    marketId: string;
   }) {
     await this.safeCreate([
-      this.notifications.createForRole(Role.ADMIN, {
+      this.notifications.createForAdmins(payout.marketId, {
         type: NotificationType.PAYOUT_REQUESTED,
         priority: NotificationPriority.IMPORTANT,
         title: 'New payout request',
@@ -348,9 +352,9 @@ export class NotificationEventsService {
     ]);
   }
 
-  async supportEscalated(conversationId: string) {
+  async supportEscalated(conversationId: string, marketId?: string | null) {
     await this.safeCreate([
-      this.notifications.createForRole(Role.ADMIN, {
+      this.notifications.createForAdmins(marketId, {
         type: NotificationType.SUPPORT_ESCALATED,
         priority: NotificationPriority.IMPORTANT,
         title: 'Support conversation escalated',
@@ -393,9 +397,10 @@ export class NotificationEventsService {
     entityType: string;
     entityId: string;
     critical?: boolean;
+    marketId?: string | null;
   }) {
     await this.safeCreate([
-      this.notifications.createForRole(Role.ADMIN, {
+      this.notifications.createForAdmins(input.marketId, {
         type: NotificationType.SYSTEM_ALERT,
         priority: input.critical
           ? NotificationPriority.CRITICAL
@@ -415,9 +420,10 @@ export class NotificationEventsService {
     providerId: string;
     providerName: string;
     submittedAt: Date;
+    marketId?: string | null;
   }) {
     await this.safeCreate([
-      this.notifications.createForRole(Role.ADMIN, {
+      this.notifications.createForAdmins(input.marketId, {
         type: NotificationType.SYSTEM_ALERT,
         priority: NotificationPriority.IMPORTANT,
         title: 'Provider application ready for review',

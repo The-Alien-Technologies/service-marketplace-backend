@@ -251,6 +251,28 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+  async createForAdmins(
+    marketId: string | null | undefined,
+    input: Omit<CreateNotificationInput, 'userId' | 'dedupeKey'> & {
+      dedupeKey?: (userId: string) => string | undefined;
+    },
+  ) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          { role: Role.SUPER_ADMIN },
+          ...(marketId ? [{ role: Role.ADMIN, adminMarketId: marketId }] : []),
+        ],
+      },
+      select: { id: true },
+    });
+    return this.createForUsers(
+      users.map((user) => user.id),
+      input,
+    );
+  }
+
   async list(userId: string, query: ListNotificationsDto) {
     const take = Math.min(50, Math.max(1, query.limit || 20));
     const where: Prisma.NotificationWhereInput = {
@@ -462,16 +484,14 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     const { notification } = delivery;
     if (delivery.channel === NotificationChannel.EMAIL) {
       if (!notification.user.email) throw new Error('Recipient has no email');
-      await this.email.sendEmail({
-        to: [notification.user.email],
-        subject: `Pavodah: ${notification.title}`,
-        html: this.emailHtml(notification),
-        text: `${notification.title}\n\n${notification.message}${
-          notification.actionUrl
-            ? `\n\nOpen: ${this.absoluteUrl(notification.actionUrl)}`
-            : ''
-        }`,
-      });
+      await this.email.sendTransactionalNotification(
+        notification.user.email,
+        notification.title,
+        notification.message,
+        notification.actionUrl
+          ? this.absoluteUrl(notification.actionUrl)
+          : undefined,
+      );
       return;
     }
 
@@ -487,37 +507,12 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private emailHtml(notification: Notification) {
-    const title = this.escapeHtml(notification.title);
-    const message = this.escapeHtml(notification.message);
-    const action = notification.actionUrl
-      ? `<p style="margin:24px 0 0"><a href="${this.escapeHtml(
-          this.absoluteUrl(notification.actionUrl),
-        )}" style="display:inline-block;padding:12px 18px;background:#15803d;color:#fff;text-decoration:none;border-radius:8px">View in Pavodah</a></p>`
-      : '';
-
-    return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1f2937"><h1 style="font-size:20px">${title}</h1><p style="font-size:15px;line-height:1.6">${message}</p>${action}<p style="margin-top:32px;color:#6b7280;font-size:12px">This is a transactional notification from Pavodah.</p></div>`;
-  }
-
   private absoluteUrl(actionUrl: string) {
     const base = this.config.get<string>(
       'WEBSITE_URL',
       this.config.get<string>('APP_URL', 'http://localhost:3001'),
     );
     return new URL(actionUrl, base).toString();
-  }
-
-  private escapeHtml(value: string) {
-    return value.replace(/[&<>'"]/g, (character) => {
-      const replacements: Record<string, string> = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;',
-      };
-      return replacements[character];
-    });
   }
 
   private scheduleDelivery() {

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Patch,
@@ -20,7 +21,9 @@ import {
   ProviderApplicationDecision,
   ReviewProviderApplicationDto,
 } from './dto/review-provider-application.dto';
-import { UserStatus } from '../../generated/prisma';
+import { Role, UserStatus } from '../../generated/prisma';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MarketActor } from '../markets/market-access.service';
 
 function positiveInteger(
   value: string | undefined,
@@ -40,12 +43,37 @@ export class UsersController {
 
   @Get()
   async getAllUsers(
+    @CurrentUser() actor: MarketActor,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('role') role?: string,
     @Query('status') status?: string,
+    @Query('marketId') marketId?: string,
+    @Query('marketplaceOnly') marketplaceOnly?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('orderBy') orderBy?: string,
   ) {
+    if (role && !Object.values(Role).includes(role as Role)) {
+      throw new BadRequestException('Invalid user role filter');
+    }
+    if (status && !Object.values(UserStatus).includes(status as UserStatus)) {
+      throw new BadRequestException('Invalid user status filter');
+    }
+    const allowedSorts = new Set([
+      'name',
+      'email',
+      'role',
+      'status',
+      'emailVerified',
+      'createdAt',
+    ]);
+    if (sortBy && !allowedSorts.has(sortBy)) {
+      throw new BadRequestException('Invalid user sort field');
+    }
+    if (orderBy && orderBy !== 'asc' && orderBy !== 'desc') {
+      throw new BadRequestException('Invalid user sort direction');
+    }
     const pageNum = Number.parseInt(page || '1', 10);
     const limitNum = Number.parseInt(limit || '10', 10);
 
@@ -55,29 +83,41 @@ export class UsersController {
       search,
       role,
       status,
+      actor,
+      marketId,
+      marketplaceOnly: marketplaceOnly === 'true',
+      sortBy,
+      orderBy: orderBy as 'asc' | 'desc' | undefined,
     });
 
     return ResponseUtil.success(result, 'Users retrieved successfully');
   }
 
   @Get('stats')
-  async getUserStats() {
-    const stats = await this.usersService.getStats();
+  async getUserStats(
+    @CurrentUser() actor: MarketActor,
+    @Query('marketId') marketId?: string,
+  ) {
+    const stats = await this.usersService.getStats(actor, marketId);
     return ResponseUtil.success(stats, 'User stats retrieved successfully');
   }
 
   @Get('provider-applications')
   async getProviderApplications(
+    @CurrentUser() actor: MarketActor,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('status') status?: UserStatus,
+    @Query('marketId') marketId?: string,
   ) {
     const result = await this.usersService.findProviderApplications({
       page: positiveInteger(page, 1, 1_000_000),
       limit: positiveInteger(limit, 10, 100),
       search,
       status,
+      actor,
+      marketId,
     });
     return ResponseUtil.success(
       result,
@@ -86,7 +126,11 @@ export class UsersController {
   }
 
   @Get('provider-applications/:id')
-  async getProviderApplication(@Param('id') id: string) {
+  async getProviderApplication(
+    @CurrentUser() actor: MarketActor,
+    @Param('id') id: string,
+  ) {
+    await this.usersService.assertAdminCanAccessUser(actor, id);
     const application = await this.usersService.findProviderApplicationById(id);
     return ResponseUtil.success(
       application,
@@ -100,6 +144,10 @@ export class UsersController {
     @Param('id') id: string,
     @Body() reviewDto: ReviewProviderApplicationDto,
   ) {
+    await this.usersService.assertAdminCanAccessUser(
+      req.currentUser! as MarketActor,
+      id,
+    );
     const application = await this.usersService.reviewProviderApplication(
       id,
       req.currentUser!.id,
@@ -115,16 +163,22 @@ export class UsersController {
   }
 
   @Get(':id')
-  async getUserById(@Param('id') id: string) {
+  async getUserById(
+    @CurrentUser() actor: MarketActor,
+    @Param('id') id: string,
+  ) {
+    await this.usersService.assertAdminCanAccessUser(actor, id);
     const user = await this.usersService.findById(id);
     return ResponseUtil.success(user, 'User retrieved successfully');
   }
 
   @Patch(':id/status')
   async updateUserStatus(
+    @CurrentUser() actor: MarketActor,
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateUserStatusDto,
   ) {
+    await this.usersService.assertAdminCanAccessUser(actor, id);
     const user = await this.usersService.updateStatus(
       id,
       updateStatusDto.status,
@@ -133,7 +187,8 @@ export class UsersController {
   }
 
   @Delete(':id')
-  async deleteUser(@Param('id') id: string) {
+  async deleteUser(@CurrentUser() actor: MarketActor, @Param('id') id: string) {
+    await this.usersService.assertAdminCanAccessUser(actor, id);
     await this.usersService.delete(id);
     return ResponseUtil.success(null, 'User deleted successfully');
   }

@@ -63,10 +63,9 @@ export class FileUploadService {
     ) {
       this.provider = configuredProvider as FileUploadProvider;
     } else {
-      this.logger.warn(
-        `Invalid FILE_UPLOAD_PROVIDER: ${configuredProvider}, falling back to LOCAL`,
+      throw new Error(
+        `Invalid FILE_UPLOAD_PROVIDER: ${configuredProvider}. Expected SUPABASE, AWS_S3, CLOUDINARY, or LOCAL.`,
       );
-      this.provider = FileUploadProvider.LOCAL;
     }
 
     // Initialize the appropriate client based on provider
@@ -90,23 +89,21 @@ export class FileUploadService {
         this.logger.log('Using LOCAL file upload provider');
         break;
       default:
-        this.logger.error(`Unknown provider: ${this.provider}`);
-        this.provider = FileUploadProvider.LOCAL;
-        this.logger.log('Falling back to LOCAL provider');
+        throw new Error(`Unknown file upload provider: ${this.provider}`);
     }
   }
 
   private initializeSupabase(): void {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
     const supabaseKey = this.configService.get<string>('SUPABASE_KEY');
+    const supabaseBucket = this.configService.get<string>(
+      'SUPABASE_BUCKET_NAME',
+    );
 
-    if (!supabaseUrl || !supabaseKey) {
-      this.logger.error(
-        'Supabase provider selected but SUPABASE_URL or SUPABASE_KEY not configured',
+    if (!supabaseUrl || !supabaseKey || !supabaseBucket) {
+      throw new Error(
+        'Supabase provider selected but SUPABASE_URL, SUPABASE_KEY, or SUPABASE_BUCKET_NAME not configured',
       );
-      this.provider = FileUploadProvider.LOCAL;
-      this.logger.warn('Falling back to LOCAL provider');
-      return;
     }
 
     this.supabaseClient = createClient(supabaseUrl, supabaseKey);
@@ -119,12 +116,9 @@ export class FileUploadService {
     const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRETE');
 
     if (!cloudName || !apiKey || !apiSecret) {
-      this.logger.error(
+      throw new Error(
         'Cloudinary provider selected but CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRETE not configured',
       );
-      this.provider = FileUploadProvider.LOCAL;
-      this.logger.warn('Falling back to LOCAL provider');
-      return;
     }
 
     cloudinary.config({
@@ -143,14 +137,12 @@ export class FileUploadService {
     const awsSecretAccessKey = this.configService.get<string>(
       'AWS_SECRET_ACCESS_KEY',
     );
+    const bucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME');
 
-    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey) {
-      this.logger.error(
-        'AWS S3 provider selected but AWS credentials not configured',
+    if (!awsRegion || !awsAccessKeyId || !awsSecretAccessKey || !bucketName) {
+      throw new Error(
+        'AWS S3 provider selected but AWS credentials or AWS_S3_BUCKET_NAME not configured',
       );
-      this.provider = FileUploadProvider.LOCAL;
-      this.logger.warn('Falling back to LOCAL provider');
-      return;
     }
 
     this.s3Client = new S3Client({
@@ -484,7 +476,14 @@ export class FileUploadService {
         path.join(process.cwd(), 'uploads'),
         filePath,
       );
-      const publicUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+      const relativeUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
+      const backendUrl = this.configService
+        .get<string>(
+          'BACKEND_URL',
+          `http://localhost:${this.configService.get('PORT', 3000)}`,
+        )
+        .replace(/\/$/, '');
+      const publicUrl = `${backendUrl}${relativeUrl}`;
 
       return {
         url: publicUrl,
@@ -494,9 +493,7 @@ export class FileUploadService {
       };
     } catch (error) {
       this.logger.error('Local upload error:', error);
-      throw new BadRequestException(
-        `Failed to upload file locally: ${error}`,
-      );
+      throw new BadRequestException(`Failed to upload file locally: ${error}`);
     }
   }
 
@@ -506,8 +503,20 @@ export class FileUploadService {
 
     try {
       // Convert URL back to file path
-      const relativePath = fileUrl.replace('/uploads/', '');
-      const filePath = path.join(process.cwd(), 'uploads', relativePath);
+      const pathname = fileUrl.startsWith('http')
+        ? new URL(fileUrl).pathname
+        : fileUrl;
+      if (!pathname.startsWith('/uploads/')) {
+        throw new BadRequestException('Invalid local upload URL');
+      }
+      const uploadsDir = path.resolve(process.cwd(), 'uploads');
+      const relativePath = decodeURIComponent(
+        pathname.replace(/^\/uploads\//, ''),
+      );
+      const filePath = path.resolve(uploadsDir, relativePath);
+      if (!filePath.startsWith(`${uploadsDir}${path.sep}`)) {
+        throw new BadRequestException('Invalid local upload path');
+      }
 
       // Check if file exists and delete it
       try {

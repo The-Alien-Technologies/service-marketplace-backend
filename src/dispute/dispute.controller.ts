@@ -18,6 +18,8 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { IsAdmin } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { MarketActor } from '../markets/market-access.service';
 
 @Controller('disputes')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,37 +32,65 @@ export class DisputeController {
     return this.disputeService.create(req.user.id, dto);
   }
 
-  /** ADMIN: list all disputes, optional ?status= filter */
+  /** ADMIN: list disputes with server-side filters. */
   @Get()
   @IsAdmin()
-  findAll(@Query('status') status?: string) {
-    return this.disputeService.findAll({ status });
+  findAll(
+    @CurrentUser() actor: MarketActor,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('issueType') issueType?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.disputeService.findAll(
+      { status, priority, issueType, search },
+      actor,
+    );
   }
 
   /** CLIENT/PROVIDER: list disputes they are a party to */
   @Get('my')
-  findMine(@Request() req) {
-    return this.disputeService.findByParticipant(req.user.id);
+  findMine(
+    @Request() req,
+    @Query('status') status?: string,
+    @Query('priority') priority?: string,
+    @Query('issueType') issueType?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.disputeService.findByParticipant(req.user.id, {
+      status,
+      priority,
+      issueType,
+      search,
+    });
   }
 
   /** ADMIN or owner: get single dispute */
   @Get(':id')
   findOne(@Request() req, @Param('id') id: string) {
-    const isAdmin = req.user.role === 'ADMIN';
-    return this.disputeService.findOne(id, req.user.id, isAdmin);
+    const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.user.role);
+    return this.disputeService.findOne(id, req.user.id, isAdmin, req.user);
   }
 
   /** ADMIN: update dispute status + optional admin note */
   @Patch(':id/status')
   @IsAdmin()
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateDisputeStatusDto) {
-    return this.disputeService.updateStatus(id, dto);
+  updateStatus(
+    @CurrentUser() actor: MarketActor,
+    @Param('id') id: string,
+    @Body() dto: UpdateDisputeStatusDto,
+  ) {
+    return this.disputeService.updateStatus(id, dto, actor);
   }
 
   /** ADMIN: resolve the financial outcome of a service dispute */
   @Post(':id/resolve')
   @IsAdmin()
-  resolve(@Param('id') id: string, @Body() dto: ResolveDisputeDto) {
-    return this.disputeService.resolve(id, dto);
+  resolve(
+    @CurrentUser() actor: MarketActor,
+    @Param('id') id: string,
+    @Body() dto: ResolveDisputeDto,
+  ) {
+    return this.disputeService.resolve(id, dto, actor);
   }
 }

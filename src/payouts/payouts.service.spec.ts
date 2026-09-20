@@ -4,11 +4,126 @@ import {
   PayoutDestinationType,
   Prisma,
   ProviderPayoutStatus,
+  Role,
   SettlementStatus,
 } from '../../generated/prisma';
 import { PayoutsService } from './payouts.service';
 
 describe('PayoutsService', () => {
+  type ServiceArguments = ConstructorParameters<typeof PayoutsService>;
+  const defaultCredentials = {
+    resolveForMarket: jest.fn().mockResolvedValue({
+      integrationId: 'integration-gh',
+      credentialVersionId: 'credential-gh',
+      secretKey: 'paystack-country-secret',
+    }),
+    resolveByCredentialId: jest
+      .fn()
+      .mockResolvedValue('paystack-country-secret'),
+  };
+  const makeService = (
+    prisma: ServiceArguments[0],
+    paystack: ServiceArguments[1],
+    auth: ServiceArguments[2],
+    settlements: ServiceArguments[3],
+    config: ServiceArguments[4],
+    credentials: ServiceArguments[5] = defaultCredentials as never,
+    marketAccess?: ServiceArguments[6],
+    notificationEvents?: ServiceArguments[7],
+  ) =>
+    new PayoutsService(
+      prisma,
+      paystack,
+      auth,
+      settlements,
+      config,
+      credentials,
+      marketAccess,
+      notificationEvents,
+    );
+
+  it('allows only super admins to change the Pavodah commission share', async () => {
+    const upsert = jest.fn();
+    const marketAccess = {
+      marketForAdmin: jest.fn().mockReturnValue('market-gh'),
+    };
+    const service = makeService(
+      { paymentSetting: { upsert } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      marketAccess as never,
+    );
+
+    await expect(
+      service.updateSettings(
+        { id: 'admin-1', role: Role.ADMIN, adminMarketId: 'market-gh' },
+        undefined,
+        { commissionRate: 10, pavodahShareRate: 50 },
+      ),
+    ).rejects.toThrow('Only a super administrator');
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('persists the super-admin Pavodah commission share per market', async () => {
+    const upsert = jest.fn().mockResolvedValue({
+      id: 'setting-1',
+      commissionRate: new Prisma.Decimal(10),
+      pavodahShareRate: new Prisma.Decimal(60),
+      market: { id: 'market-gh' },
+    });
+    const tx = {
+      paymentSetting: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert,
+      },
+      adminAuditLog: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const marketAccess = {
+      marketForAdmin: jest.fn().mockReturnValue('market-gh'),
+    };
+    const service = makeService(
+      {
+        $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+          callback(tx),
+        ),
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      marketAccess as never,
+    );
+
+    await service.updateSettings(
+      { id: 'super-1', role: Role.SUPER_ADMIN },
+      'market-gh',
+      { commissionRate: 10, pavodahShareRate: 60 },
+    );
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { marketId: 'market-gh' },
+        update: expect.objectContaining({
+          commissionRate: 10,
+          pavodahShareRate: 60,
+          updatedBy: 'super-1',
+        }),
+      }),
+    );
+    expect(tx.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'PAYMENT_SETTINGS_UPDATED',
+          actorId: 'super-1',
+        }),
+      }),
+    );
+  });
+
   it('atomically reserves the full eligible balance less open adjustments', async () => {
     const settlements = [
       {
@@ -62,7 +177,7 @@ describe('PayoutsService', () => {
         callback(tx),
       ),
     };
-    const service = new PayoutsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -70,7 +185,7 @@ describe('PayoutsService', () => {
       { get: jest.fn().mockReturnValue('true') } as never,
     );
 
-    const payout = await service.requestPayout('provider-1');
+    const payout = await service.requestPayout('provider-1', 'market-gh');
 
     expect(Number(payout.amount)).toBe(135);
     expect(payout.amountMinor).toBe(13500);
@@ -101,7 +216,7 @@ describe('PayoutsService', () => {
   });
 
   it('does not allow a withdrawal when payouts are disabled', async () => {
-    const service = new PayoutsService(
+    const service = makeService(
       {} as never,
       {} as never,
       {} as never,
@@ -109,15 +224,16 @@ describe('PayoutsService', () => {
       { get: jest.fn().mockReturnValue('false') } as never,
     );
 
-    await expect(service.requestPayout('provider-1')).rejects.toThrow(
-      'Provider payouts are not enabled yet',
-    );
+    await expect(
+      service.requestPayout('provider-1', 'market-gh'),
+    ).rejects.toThrow('Provider payouts are not enabled yet');
   });
 
   it('refuses approval when a reserved settlement is no longer eligible', async () => {
     const payout = {
       id: 'payout-1',
       providerId: 'provider-1',
+      credentialVersionId: 'credential-1',
       status: ProviderPayoutStatus.REQUESTED,
       amountMinor: 10000,
       recipientCode: 'RCP_test',
@@ -131,7 +247,7 @@ describe('PayoutsService', () => {
       },
     };
     const paystack = { initiateTransfer: jest.fn() };
-    const service = new PayoutsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -152,11 +268,76 @@ describe('PayoutsService', () => {
     );
   });
 
+  it('does not claim a payout that has no pinned payment credential', async () => {
+    const updateMany = jest.fn();
+    const prisma = {
+      providerPayout: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'legacy-payout',
+          marketId: 'market-gh',
+          status: ProviderPayoutStatus.REQUESTED,
+          credentialVersionId: null,
+          provider: { displayName: 'Provider', firstName: 'Test' },
+        }),
+        updateMany,
+      },
+    };
+    const service = makeService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { get: jest.fn().mockReturnValue('true') } as never,
+    );
+
+    await expect(service.approve('legacy-payout', 'admin-1')).rejects.toThrow(
+      'Payout payment credential is missing',
+    );
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('does not claim a payout when its pinned credential is unavailable', async () => {
+    const updateMany = jest.fn();
+    const credentials = {
+      resolveByCredentialId: jest
+        .fn()
+        .mockRejectedValue(new Error('Credential has been revoked')),
+    };
+    const prisma = {
+      providerPayout: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'payout-1',
+          marketId: 'market-gh',
+          status: ProviderPayoutStatus.REQUESTED,
+          credentialVersionId: 'credential-1',
+          provider: { displayName: 'Provider', firstName: 'Test' },
+        }),
+        updateMany,
+      },
+    };
+    const paystack = { initiateTransfer: jest.fn() };
+    const service = makeService(
+      prisma as never,
+      paystack as never,
+      {} as never,
+      {} as never,
+      { get: jest.fn().mockReturnValue('true') } as never,
+      credentials as never,
+    );
+
+    await expect(service.approve('payout-1', 'admin-1')).rejects.toThrow(
+      'Credential has been revoked',
+    );
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(paystack.initiateTransfer).not.toHaveBeenCalled();
+  });
+
   it('treats a blocked Paystack transfer as failed and releases its reservations', async () => {
     const payout = {
       id: 'payout-1',
       status: ProviderPayoutStatus.OTP_REQUIRED,
       transferCode: 'TRF_test',
+      credentialVersionId: 'credential-gh',
       reference: 'pavodah-payout-1',
       amountMinor: 10000,
       currency: 'GHS',
@@ -207,7 +388,7 @@ describe('PayoutsService', () => {
         failure_reason: 'Recipient is unavailable',
       }),
     };
-    const service = new PayoutsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -231,6 +412,7 @@ describe('PayoutsService', () => {
       id: 'payout-1',
       status: ProviderPayoutStatus.OTP_REQUIRED,
       transferCode: 'TRF_test',
+      credentialVersionId: 'credential-gh',
     };
     const prisma = {
       providerPayout: {
@@ -239,7 +421,7 @@ describe('PayoutsService', () => {
       },
     };
     const paystack = { finalizeTransfer: jest.fn() };
-    const service = new PayoutsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -253,11 +435,49 @@ describe('PayoutsService', () => {
     expect(paystack.finalizeTransfer).not.toHaveBeenCalled();
   });
 
+  it('does not claim an OTP payout when its pinned credential is unavailable', async () => {
+    const updateMany = jest.fn();
+    const credentials = {
+      resolveByCredentialId: jest
+        .fn()
+        .mockRejectedValue(new Error('Credential has been revoked')),
+    };
+    const payout = {
+      id: 'payout-1',
+      marketId: 'market-gh',
+      status: ProviderPayoutStatus.OTP_REQUIRED,
+      transferCode: 'TRF_test',
+      credentialVersionId: 'credential-1',
+    };
+    const prisma = {
+      providerPayout: {
+        findUnique: jest.fn().mockResolvedValue(payout),
+        updateMany,
+      },
+    };
+    const paystack = { finalizeTransfer: jest.fn() };
+    const service = makeService(
+      prisma as never,
+      paystack as never,
+      {} as never,
+      {} as never,
+      { get: jest.fn().mockReturnValue('true') } as never,
+      credentials as never,
+    );
+
+    await expect(service.finalize(payout.id, '123456')).rejects.toThrow(
+      'Credential has been revoked',
+    );
+    expect(updateMany).not.toHaveBeenCalled();
+    expect(paystack.finalizeTransfer).not.toHaveBeenCalled();
+  });
+
   it('does not overwrite a webhook-successful payout with an older OTP response', async () => {
     const payout = {
       id: 'payout-1',
       status: ProviderPayoutStatus.OTP_REQUIRED,
       transferCode: 'TRF_test',
+      credentialVersionId: 'credential-gh',
       reference: 'pavodah-payout-1',
       amountMinor: 10000,
       currency: 'GHS',
@@ -293,7 +513,7 @@ describe('PayoutsService', () => {
         transfer_code: payout.transferCode,
       }),
     };
-    const service = new PayoutsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,

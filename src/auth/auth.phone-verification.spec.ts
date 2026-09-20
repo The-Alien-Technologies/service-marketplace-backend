@@ -45,6 +45,7 @@ const makeService = () => {
     {} as never,
     {} as never,
     prisma as never,
+    {} as never,
   );
 
   return { prisma, smsService, transaction, service };
@@ -70,6 +71,37 @@ describe('AuthService phone verification', () => {
       PHONE,
       TEST_OTP_CODE,
     );
+  });
+
+  it('accepts a number that is already verified by the same user', async () => {
+    const { service, prisma, smsService } = makeService();
+    prisma.verifiedPhone.findUnique.mockResolvedValue({
+      phoneNumber: PHONE,
+      userId: USER_ID,
+    });
+
+    await expect(
+      service.sendPhoneVerificationOtp(USER_ID, PHONE),
+    ).resolves.toEqual({
+      phoneNumber: PHONE,
+      alreadyVerified: true,
+    });
+    expect(prisma.phoneVerification.create).not.toHaveBeenCalled();
+    expect(smsService.sendVerificationCode).not.toHaveBeenCalled();
+  });
+
+  it('rejects a number that is verified by another user', async () => {
+    const { service, prisma, smsService } = makeService();
+    prisma.verifiedPhone.findUnique.mockResolvedValue({
+      phoneNumber: PHONE,
+      userId: 'user-2',
+    });
+
+    await expect(
+      service.sendPhoneVerificationOtp(USER_ID, PHONE),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.phoneVerification.create).not.toHaveBeenCalled();
+    expect(smsService.sendVerificationCode).not.toHaveBeenCalled();
   });
 
   it('deletes the attempt when the SMS provider fails', async () => {

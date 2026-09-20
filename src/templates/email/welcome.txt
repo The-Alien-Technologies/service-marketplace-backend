@@ -1,33 +1,22 @@
-Welcome to {{appName}}, {{userName}}! 🎉
+Welcome to {{appName}}, {{userName}}
 
-Hi {{userName}},
+Your account for {{userEmail}} is ready. You can now discover trusted services or start sharing your own expertise.
 
-Welcome to {{appName}}! We're thrilled to have you join our community of service providers and customers.
+Complete your profile so recommendations, conversations, and bookings stay relevant to you.
 
-You've just taken the first step towards connecting with amazing services or offering your own expertise to others. Whether you're looking to find trusted service providers or want to grow your business by offering services, we're here to support you every step of the way.
+Open {{appName}}: {{appUrl}}
 
-What you can do with {{appName}}:
-✓ Browse and book services from verified providers
-✓ Offer your own services and grow your business
-✓ Connect with customers and service providers
-✓ Manage your bookings and appointments
-✓ Build your reputation with reviews and ratings
-✓ Access a wide range of service categories
+A simple way to get started:
 
-Ready to get started? Open the app and complete your profile to get the best experience tailored just for you.
+1. Shape your profile
+Add the details that help people know what you need or what you offer.
 
-Get Started: {{appUrl}}
+2. Find the right match
+Browse services and connect with providers from one place.
 
-If you have any questions or need help getting started, don't hesitate to reach out to our support team at {{supportEmail}}. We're here to help!
+3. Keep work moving
+Manage conversations and orders from your {{appName}} account.
 
-Here's to connecting great services with amazing customers! 💪
+Need help? Email {{supportEmail}}.
 
-Best regards,
-The {{appName}} Team
-
----
-
-© {{currentYear}} {{appName}}. All rights reserved.
-You received this email because you signed up for {{appName}}.
-
-If you no longer wish to receive emails from us, you can unsubscribe by contacting {{supportEmail}}. 
+© {{currentYear}} {{appName}}

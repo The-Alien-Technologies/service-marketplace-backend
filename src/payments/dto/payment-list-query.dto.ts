@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
+  IsIn,
   IsOptional,
   IsString,
   Max,
@@ -11,6 +12,10 @@ import {
 import { PaymentRefundStatus } from '../../../generated/prisma';
 
 export class PaymentPaginationQueryDto {
+  @IsOptional()
+  @IsString()
+  marketId?: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -30,6 +35,22 @@ export class PaymentListQueryDto extends PaymentPaginationQueryDto {
   @IsString()
   @MaxLength(120)
   search?: string;
+
+  @IsOptional()
+  @IsIn([
+    'reference',
+    'client',
+    'service',
+    'amount',
+    'channel',
+    'status',
+    'createdAt',
+  ])
+  sortBy?: string;
+
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  orderBy?: 'asc' | 'desc';
 }
 
 export class RefundListQueryDto extends PaymentPaginationQueryDto {
