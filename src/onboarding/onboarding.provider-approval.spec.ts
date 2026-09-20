@@ -26,6 +26,7 @@ describe('OnboardingService provider application submission', () => {
     verificationDocuments: [{ id: 'document-1' }],
     providerApplicationSubmittedAt: null,
     onboardingCompletedAt: null,
+    homeMarketId: 'market-gh',
   };
   const prisma = {
     user: {
@@ -36,6 +37,10 @@ describe('OnboardingService provider application submission', () => {
     verificationDocument: {
       create: jest.fn(),
       updateMany: jest.fn(),
+    },
+    providerMarketMembership: {
+      updateMany: jest.fn(),
+      upsert: jest.fn(),
     },
     $queryRaw: jest.fn(),
     $transaction: jest.fn(),
@@ -90,6 +95,22 @@ describe('OnboardingService provider application submission', () => {
       }),
     });
     expect(result.status).toBe(UserStatus.PENDING);
+    expect(prisma.providerMarketMembership.upsert).toHaveBeenCalledWith({
+      where: {
+        providerId_marketId: {
+          providerId: 'provider-1',
+          marketId: 'market-gh',
+        },
+      },
+      create: expect.objectContaining({
+        status: 'PENDING',
+        isPrimary: true,
+      }),
+      update: expect.objectContaining({
+        status: 'PENDING',
+        isPrimary: true,
+      }),
+    });
     expect(
       notificationEvents.providerApplicationSubmitted,
     ).toHaveBeenCalledWith(

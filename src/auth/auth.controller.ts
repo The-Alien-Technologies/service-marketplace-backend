@@ -9,7 +9,10 @@ import {
   HttpCode,
   UseGuards,
   BadRequestException,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -24,7 +27,7 @@ import { SendPhoneVerificationDto } from './dto/send-phone-verification.dto';
 import { VerifyPhoneDto } from './dto/verify-phone.dto';
 import { Request } from 'express';
 import { Public } from 'src/common/decorators/is-public.decorator';
-import { IsAdmin } from 'src/common/decorators/roles.decorator';
+import { IsSuperAdmin } from 'src/common/decorators/roles.decorator';
 import { RolesGuard } from './guards/roles.guard';
 import { ResponseUtil } from 'src/common/utils/response.util';
 import { AllowUnapprovedProvider } from 'src/common/decorators/allow-unapproved-provider.decorator';
@@ -255,6 +258,23 @@ export class AuthController {
     return ResponseUtil.success({ user }, 'Profile updated successfully');
   }
 
+  @Patch('avatar')
+  @AllowUnapprovedProvider()
+  @UseInterceptors(FileInterceptor('avatar'))
+  async updateAvatar(
+    @Req() req: Request,
+    @UploadedFile() avatarFile: Express.Multer.File,
+  ) {
+    const user = await this.authService.updateAvatar(
+      req.currentUser.id,
+      avatarFile,
+    );
+    return ResponseUtil.success(
+      { user },
+      'Profile picture updated successfully',
+    );
+  }
+
   @Patch('password')
   @AllowUnapprovedProvider()
   async changePassword(
@@ -280,7 +300,7 @@ export class AuthController {
     return ResponseUtil.success(null, 'Account deleted successfully');
   }
 
-  @IsAdmin()
+  @IsSuperAdmin()
   @Get('stats')
   async getUserStats() {
     const stats = await this.authService.getUserStats();

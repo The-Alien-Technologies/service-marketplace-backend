@@ -78,40 +78,43 @@ export class OnboardingStatusService {
    * Define all onboarding steps for a user based on their role
    */
   private getAllSteps(user: UserWithRelations): OnboardingStep[] {
-    const baseSteps: OnboardingStep[] = [
-      {
-        step: 'email_verification',
-        required: true,
-        completed: this.isEmailVerificationComplete(user),
-        label: 'Email Verification',
-        description: 'Verify your email address',
-      },
-      {
-        step: 'location',
-        required: true,
-        completed: this.isLocationComplete(user),
-        label: 'Location',
-        description: 'Add your location details',
-      },
-      {
-        step: 'basic_profile',
-        required: true,
-        completed: this.isBasicProfileComplete(user),
-        label: 'Basic Profile',
-        description: 'Complete your basic profile information',
-      },
-      {
-        step: 'interests',
-        required: true,
-        completed: this.isInterestsComplete(user),
-        label: 'Interests',
-        description: 'Select your interests and services',
-      },
-    ];
+    const emailVerification: OnboardingStep = {
+      step: 'email_verification',
+      required: true,
+      completed: this.isEmailVerificationComplete(user),
+      label: 'Email Verification',
+      description: 'Verify your email address',
+    };
+    const basicProfile: OnboardingStep = {
+      step: 'basic_profile',
+      required: true,
+      completed: this.isBasicProfileComplete(user),
+      label: 'Basic Profile',
+      description: 'Complete your basic profile information',
+    };
+    const location: OnboardingStep = {
+      step: 'location',
+      required: true,
+      completed: this.isLocationComplete(user),
+      label: 'Location',
+      description: 'Add your location details',
+    };
+    const interests: OnboardingStep = {
+      step: 'interests',
+      required: true,
+      completed: this.isInterestsComplete(user),
+      label: 'Interests',
+      description: 'Select your interests and services',
+    };
 
-    // Add service provider specific steps
+    // The order is also the resume order returned to the client. Keep it in
+    // sync with each role's onboarding flow so a refresh cannot skip earlier
+    // required steps.
     if (user.role === Role.SERVICE_PROVIDER) {
-      baseSteps.push(
+      return [
+        emailVerification,
+        basicProfile,
+        interests,
         {
           step: 'experience',
           required: true,
@@ -119,6 +122,7 @@ export class OnboardingStatusService {
           label: 'Experience Level',
           description: 'Set your experience level',
         },
+        location,
         {
           step: 'verification_documents',
           required: true,
@@ -126,10 +130,10 @@ export class OnboardingStatusService {
           label: 'Verification Documents',
           description: 'Upload verification documents',
         },
-      );
+      ];
     }
 
-    return baseSteps;
+    return [emailVerification, location, basicProfile, interests];
   }
 
   /**

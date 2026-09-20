@@ -13,6 +13,7 @@ import { OnboardingModule } from '../onboarding/onboarding.module';
 import { EmailService } from '../common/services/email.service';
 import { SmsService } from '../common/services/sms.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 @Module({
   imports: [
@@ -30,7 +31,16 @@ import { PrismaModule } from '../prisma/prisma.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GoogleAuthService, JwtStrategy, RefreshJwtStrategy, RolesGuard, EmailService, SmsService],
+  providers: [
+    AuthService,
+    GoogleAuthService,
+    JwtStrategy,
+    RefreshJwtStrategy,
+    RolesGuard,
+    EmailService,
+    SmsService,
+    FileUploadService,
+  ],
   exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}

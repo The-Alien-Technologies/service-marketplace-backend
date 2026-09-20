@@ -31,6 +31,30 @@ describe('OnboardingStatusService', () => {
     expect(service.getOnboardingStatus(provider).isComplete).toBe(true);
   });
 
+  it('returns incomplete provider steps in the same order as the provider flow', () => {
+    const status = service.getOnboardingStatus({
+      ...provider,
+      firstName: null,
+      lastName: null,
+      phoneNumber: null,
+      phoneVerified: false,
+      addresses: [],
+      interests: [],
+      serviceProviderExperienceLevel: null,
+      verificationDocuments: [],
+    });
+
+    expect(status.requiredSteps).toEqual([
+      'email_verification',
+      'basic_profile',
+      'interests',
+      'experience',
+      'location',
+      'verification_documents',
+    ]);
+    expect(status.nextRequiredStep).toBe('basic_profile');
+  });
+
   it('does not count a client interest as a provider service category', () => {
     const status = service.getOnboardingStatus({
       ...provider,

@@ -15,7 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { IsAdmin } from '../common/decorators/roles.decorator';
+import { IsSuperAdmin } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/is-public.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -34,11 +34,16 @@ export class CategoriesController {
   async getAllCategories(
     @Query('includeInactive', new ParseBoolPipe({ optional: true }))
     includeInactive?: boolean,
+    @Query('search') search?: string,
+    @Query('featured', new ParseBoolPipe({ optional: true }))
+    featured?: boolean,
   ) {
     try {
-      const categories = await this.categoriesService.findAll(
-        includeInactive || false,
-      );
+      const categories = await this.categoriesService.findAll({
+        includeInactive: includeInactive || false,
+        search,
+        featured,
+      });
       return ResponseUtil.success(
         categories,
         'Categories retrieved successfully',
@@ -109,7 +114,7 @@ export class CategoriesController {
 
   // Admin-only endpoints
   @Post()
-  @IsAdmin()
+  @IsSuperAdmin()
   @UseInterceptors(FileInterceptor('image'))
   async createCategory(
     @Body() createCategoryDto: CreateCategoryDto,
@@ -127,7 +132,7 @@ export class CategoriesController {
   }
 
   @Put(':id')
-  @IsAdmin()
+  @IsSuperAdmin()
   @UseInterceptors(FileInterceptor('image'))
   async updateCategory(
     @Param('id') id: string,
@@ -147,7 +152,7 @@ export class CategoriesController {
   }
 
   @Delete(':id')
-  @IsAdmin()
+  @IsSuperAdmin()
   async deleteCategory(@Param('id') id: string) {
     try {
       const category = await this.categoriesService.remove(id);

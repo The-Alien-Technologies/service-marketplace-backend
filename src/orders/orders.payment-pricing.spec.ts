@@ -20,6 +20,8 @@ describe('OrdersService payment pricing', () => {
       service: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'service-1',
+          marketId: 'market-gh',
+          currency: 'GHS',
           providerId: 'provider-1',
           status: ServiceStatus.PUBLISHED,
           provider: {
@@ -63,6 +65,7 @@ describe('OrdersService payment pricing', () => {
           subtotal: new Prisma.Decimal('125.50'),
           total: new Prisma.Decimal('125.50'),
           couponDiscount: 0,
+          marketId: 'market-gh',
           currency: 'GHS',
           commissionRate: new Prisma.Decimal(10),
         }),

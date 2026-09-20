@@ -41,4 +41,8 @@ export class FilterServicesDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @IsOptional()
+  @IsString()
+  market?: string;
 }

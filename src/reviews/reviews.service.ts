@@ -140,13 +140,22 @@ export class ReviewsService {
   // ─── Get reviews received by a provider (their dashboard) ────────────────────
   async findByProvider(
     providerId: string,
-    options?: { rating?: number; sort?: string; page?: number; limit?: number },
+    options?: {
+      rating?: number;
+      sort?: string;
+      page?: number;
+      limit?: number;
+      marketId?: string;
+    },
   ) {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = { providerId };
+    const where: any = {
+      providerId,
+      ...(options?.marketId ? { order: { marketId: options.marketId } } : {}),
+    };
     if (options?.rating) where.rating = options.rating;
 
     let orderBy: any = { createdAt: 'desc' };
@@ -166,7 +175,7 @@ export class ReviewsService {
 
     const breakdown = await this.prisma.review.groupBy({
       by: ['rating'],
-      where: { providerId },
+      where,
       _count: { rating: true },
     });
 
@@ -180,14 +189,18 @@ export class ReviewsService {
     for (const b of breakdown) ratingCounts[b.rating] = b._count.rating;
 
     const avgResult = await this.prisma.review.aggregate({
-      where: { providerId },
+      where,
       _avg: { rating: true },
       _count: { id: true },
     });
 
     // Count completed orders for the provider
     const completedOrders = await this.prisma.order.count({
-      where: { providerId, status: OrderStatus.COMPLETED },
+      where: {
+        providerId,
+        ...(options?.marketId ? { marketId: options.marketId } : {}),
+        completedAt: { not: null },
+      },
     });
 
     return {

@@ -1,4 +1,4 @@
-import { Type, Transform } from 'class-transformer';
+import { plainToInstance, Transform } from 'class-transformer';
 import {
   IsString,
   IsArray,
@@ -11,7 +11,9 @@ import {
   Min,
   ArrayMinSize,
   ArrayMaxSize,
+  IsEnum,
 } from 'class-validator';
+import { ServiceAvailability } from '../../../generated/prisma';
 
 export class CreateServicePlanDto {
   @IsString()
@@ -52,6 +54,14 @@ export class CreateServiceAddonDto {
 export class CreateServiceDto {
   @IsString()
   @IsNotEmpty()
+  marketId: string;
+
+  @IsOptional()
+  @IsEnum(ServiceAvailability)
+  availability?: ServiceAvailability;
+
+  @IsString()
+  @IsNotEmpty()
   title: string;
 
   @IsString()
@@ -68,9 +78,10 @@ export class CreateServiceDto {
   @Transform(({ value }) => {
     if (typeof value === 'string') {
       try {
-        return JSON.parse(value);
+        const parsed: unknown = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [parsed];
       } catch {
-        return value;
+        return [value];
       }
     }
     return value;
@@ -81,24 +92,36 @@ export class CreateServiceDto {
   @ArrayMinSize(1, { message: 'At least one pricing plan is required' })
   @ArrayMaxSize(5, { message: 'Maximum 5 pricing plans allowed' })
   @ValidateNested({ each: true })
-  @Type(() => CreateServicePlanDto)
   @Transform(({ value }) => {
+    let parsed = value;
     if (typeof value === 'string') {
-      return JSON.parse(value);
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        return value;
+      }
     }
-    return value;
+    return Array.isArray(parsed)
+      ? plainToInstance(CreateServicePlanDto, parsed)
+      : parsed;
   })
   plans: CreateServicePlanDto[];
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CreateServiceAddonDto)
   @Transform(({ value }) => {
+    let parsed = value;
     if (typeof value === 'string') {
-      return JSON.parse(value);
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        return value;
+      }
     }
-    return value;
+    return Array.isArray(parsed)
+      ? plainToInstance(CreateServiceAddonDto, parsed)
+      : parsed;
   })
   addons?: CreateServiceAddonDto[];
 }

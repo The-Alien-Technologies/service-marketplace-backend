@@ -8,6 +8,10 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateQuoteDto {
+  @IsOptional()
+  @IsString()
+  marketId?: string;
+
   @IsString()
   @IsNotEmpty()
   providerId: string;
@@ -32,10 +36,6 @@ export class CreateQuoteDto {
   @IsNumber()
   @Min(0)
   budget: number;
-
-  @IsOptional()
-  @IsString()
-  currency?: string;
 }
 
 export class UpdateQuoteStatusDto {

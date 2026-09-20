@@ -131,69 +131,87 @@ export class PaystackService {
 
   constructor(private readonly config: ConfigService) {}
 
-  initialize(input: {
-    email: string;
-    amountMinor: number;
-    currency: string;
-    reference: string;
-    callbackUrl: string;
-    metadata: Record<string, unknown>;
-  }) {
-    return this.request<PaystackInitializeData>('/transaction/initialize', {
-      method: 'POST',
-      body: JSON.stringify({
-        email: input.email,
-        amount: String(input.amountMinor),
-        currency: input.currency,
-        reference: input.reference,
-        callback_url: input.callbackUrl,
-        metadata: input.metadata,
-      }),
-    });
+  initialize(
+    input: {
+      email: string;
+      amountMinor: number;
+      currency: string;
+      reference: string;
+      callbackUrl: string;
+      metadata: Record<string, unknown>;
+    },
+    secretKey: string,
+  ) {
+    return this.request<PaystackInitializeData>(
+      '/transaction/initialize',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          email: input.email,
+          amount: String(input.amountMinor),
+          currency: input.currency,
+          reference: input.reference,
+          callback_url: input.callbackUrl,
+          metadata: input.metadata,
+        }),
+      },
+      secretKey,
+    );
   }
 
-  verify(reference: string) {
+  verify(reference: string, secretKey: string) {
     return this.request<PaystackTransactionData>(
       `/transaction/verify/${encodeURIComponent(reference)}`,
       { method: 'GET' },
+      secretKey,
     );
   }
 
-  refund(input: {
-    reference: string;
-    amountMinor: number;
-    currency: string;
-    reason?: string;
-  }) {
-    return this.request<PaystackRefundData>('/refund', {
-      method: 'POST',
-      body: JSON.stringify({
-        transaction: input.reference,
-        amount: input.amountMinor,
-        currency: input.currency,
-        customer_note: input.reason || 'Service order refund',
-        merchant_note: input.reason || 'Pavodah service order refund',
-      }),
-    });
+  refund(
+    input: {
+      reference: string;
+      amountMinor: number;
+      currency: string;
+      reason?: string;
+    },
+    secretKey: string,
+  ) {
+    return this.request<PaystackRefundData>(
+      '/refund',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          transaction: input.reference,
+          amount: input.amountMinor,
+          currency: input.currency,
+          customer_note: input.reason || 'Service order refund',
+          merchant_note: input.reason || 'Pavodah service order refund',
+        }),
+      },
+      secretKey,
+    );
   }
 
-  fetchRefund(refundId: string) {
+  fetchRefund(refundId: string, secretKey: string) {
     return this.request<PaystackRefundData>(
       `/refund/${encodeURIComponent(refundId)}`,
       { method: 'GET' },
+      secretKey,
     );
   }
 
-  listRefunds(transactionId: string) {
+  listRefunds(transactionId: string, secretKey: string) {
     return this.request<PaystackRefundData[]>(
       `/refund?transaction=${encodeURIComponent(transactionId)}&perPage=100`,
       { method: 'GET' },
+      secretKey,
     );
   }
 
   retryRefund(
     refundId: string,
     details: { currency: string; accountNumber: string; bankId: string },
+    secretKey: string,
   ) {
     return this.request<PaystackRefundData>(
       `/refund/retry_with_customer_details/${encodeURIComponent(refundId)}`,
@@ -207,85 +225,116 @@ export class PaystackService {
           },
         }),
       },
+      secretKey,
     );
   }
 
-  listInstitutions(type: 'ghipss' | 'mobile_money') {
+  listInstitutions(
+    type: 'ghipss' | 'mobile_money' | 'basa',
+    options: { country: string; currency: string; secretKey: string },
+  ) {
     return this.request<PaystackInstitution[]>(
-      `/bank?country=ghana&currency=GHS&type=${encodeURIComponent(type)}`,
+      `/bank?country=${encodeURIComponent(options.country)}&currency=${encodeURIComponent(options.currency)}&type=${encodeURIComponent(type)}`,
       { method: 'GET' },
+      options.secretKey,
     );
   }
 
-  resolveAccount(accountNumber: string, bankCode: string) {
+  resolveAccount(accountNumber: string, bankCode: string, secretKey: string) {
     return this.request<PaystackResolvedAccount>(
       `/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`,
       { method: 'GET' },
+      secretKey,
     );
   }
 
-  createTransferRecipient(input: {
-    type: 'ghipss' | 'mobile_money';
-    name: string;
-    accountNumber: string;
-    institutionCode: string;
-    metadata: Record<string, unknown>;
-  }) {
-    return this.request<PaystackTransferRecipientData>('/transferrecipient', {
-      method: 'POST',
-      body: JSON.stringify({
-        type: input.type,
-        name: input.name,
-        account_number: input.accountNumber,
-        bank_code: input.institutionCode,
-        currency: 'GHS',
-        metadata: input.metadata,
-      }),
-    });
+  createTransferRecipient(
+    input: {
+      type: 'ghipss' | 'mobile_money' | 'basa';
+      name: string;
+      accountNumber: string;
+      institutionCode: string;
+      currency: string;
+      metadata: Record<string, unknown>;
+    },
+    secretKey: string,
+  ) {
+    return this.request<PaystackTransferRecipientData>(
+      '/transferrecipient',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          type: input.type,
+          name: input.name,
+          account_number: input.accountNumber,
+          bank_code: input.institutionCode,
+          currency: input.currency,
+          metadata: input.metadata,
+        }),
+      },
+      secretKey,
+    );
   }
 
-  deactivateTransferRecipient(recipientCode: string) {
+  deactivateTransferRecipient(recipientCode: string, secretKey: string) {
     return this.request<Record<string, never>>(
       `/transferrecipient/${encodeURIComponent(recipientCode)}`,
       { method: 'DELETE' },
+      secretKey,
     );
   }
 
-  initiateTransfer(input: {
-    amountMinor: number;
-    recipientCode: string;
-    reference: string;
-    reason: string;
-  }) {
-    return this.request<PaystackTransferData>('/transfer', {
-      method: 'POST',
-      body: JSON.stringify({
-        source: 'balance',
-        amount: input.amountMinor,
-        recipient: input.recipientCode,
-        reference: input.reference,
-        reason: input.reason,
-        currency: 'GHS',
-      }),
-    });
+  initiateTransfer(
+    input: {
+      amountMinor: number;
+      recipientCode: string;
+      reference: string;
+      reason: string;
+      currency: string;
+    },
+    secretKey: string,
+  ) {
+    return this.request<PaystackTransferData>(
+      '/transfer',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          source: 'balance',
+          amount: input.amountMinor,
+          recipient: input.recipientCode,
+          reference: input.reference,
+          reason: input.reason,
+          currency: input.currency,
+        }),
+      },
+      secretKey,
+    );
   }
 
-  finalizeTransfer(transferCode: string, otp: string) {
-    return this.request<PaystackTransferData>('/transfer/finalize_transfer', {
-      method: 'POST',
-      body: JSON.stringify({ transfer_code: transferCode, otp }),
-    });
+  finalizeTransfer(transferCode: string, otp: string, secretKey: string) {
+    return this.request<PaystackTransferData>(
+      '/transfer/finalize_transfer',
+      {
+        method: 'POST',
+        body: JSON.stringify({ transfer_code: transferCode, otp }),
+      },
+      secretKey,
+    );
   }
 
-  verifyTransfer(reference: string) {
+  verifyTransfer(reference: string, secretKey: string) {
     return this.request<PaystackTransferData>(
       `/transfer/verify/${encodeURIComponent(reference)}`,
       { method: 'GET' },
+      secretKey,
     );
   }
 
-  private async request<T>(path: string, init: RequestInit): Promise<T> {
-    const secret = this.config.getOrThrow<string>('PAYSTACK_SECRET_KEY');
+  private async request<T>(
+    path: string,
+    init: RequestInit,
+    secretKey: string,
+  ): Promise<T> {
     const baseUrl = this.config.get<string>(
       'PAYSTACK_BASE_URL',
       'https://api.paystack.co',
@@ -298,7 +347,7 @@ export class PaystackService {
         ...init,
         signal: controller.signal,
         headers: {
-          Authorization: `Bearer ${secret}`,
+          Authorization: `Bearer ${secretKey}`,
           'Content-Type': 'application/json',
           ...init.headers,
         },

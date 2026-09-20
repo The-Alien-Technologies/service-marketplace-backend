@@ -15,6 +15,7 @@ export interface EmailOptions {
 
 export interface PasswordResetEmailData {
   appName: string;
+  logoUrl: string;
   userName: string;
   otpCode: string;
   expiryMinutes: number;
@@ -24,10 +25,30 @@ export interface PasswordResetEmailData {
 
 export interface WelcomeEmailData {
   appName: string;
+  logoUrl: string;
   userName: string;
   userEmail: string;
   supportEmail: string;
   appUrl: string;
+  currentYear: number;
+}
+
+export interface EmailVerificationData {
+  appName: string;
+  logoUrl: string;
+  otpCode: string;
+  expiresInMinutes: number;
+  supportEmail: string;
+  currentYear: number;
+}
+
+export interface TransactionalNotificationEmailData {
+  appName: string;
+  logoUrl: string;
+  title: string;
+  message: string;
+  actionUrl?: string;
+  supportEmail: string;
   currentYear: number;
 }
 
@@ -79,8 +100,10 @@ export class EmailService {
   }
 
   async sendPasswordResetOtp(email: string, otpCode: string, userName?: string): Promise<void> {
+    const appUrl = this.getAppUrl();
     const templateData: PasswordResetEmailData = {
       appName: this.configService.get<string>('APP_NAME', 'Pavodah'),
+      logoUrl: this.getEmailLogoUrl(appUrl),
       userName: userName || 'User',
       otpCode: otpCode,
       expiryMinutes: 15, // 15 minutes for OTP expiry
@@ -112,6 +135,17 @@ export class EmailService {
     }
   }
 
+  private getAppUrl(): string {
+    return this.configService.get<string>('APP_URL', 'https://www.pavodah.com');
+  }
+
+  private getEmailLogoUrl(appUrl: string): string {
+    return this.configService.get<string>(
+      'EMAIL_LOGO_URL',
+      `${appUrl.replace(/\/$/, '')}/assets/logo/logo.svg`,
+    );
+  }
+
   /**
    * Generates a 6-digit OTP code
    */
@@ -128,12 +162,14 @@ export class EmailService {
 
   // Additional email templates can be added here
   async sendWelcomeEmail(email: string, userName: string): Promise<void> {
+    const appUrl = this.getAppUrl();
     const templateData: WelcomeEmailData = {
       appName: this.configService.get<string>('APP_NAME', 'Pavodah'),
+      logoUrl: this.getEmailLogoUrl(appUrl),
       userName: userName,
       userEmail: email,
       supportEmail: this.configService.get<string>('SUPPORT_EMAIL', 'support@pavodah.com'),
-      appUrl: this.configService.get<string>('APP_URL', 'www.pavodah.com'),
+      appUrl,
       currentYear: new Date().getFullYear(),
     };
 
@@ -149,10 +185,15 @@ export class EmailService {
     });
   }
 
-  async sendEmailVerificationOtp(email: string, otpCode: string, userName?: string): Promise<void> {
-    const templateData = {
+  async sendEmailVerificationOtp(email: string, otpCode: string, _userName?: string): Promise<void> {
+    const appUrl = this.getAppUrl();
+    const templateData: EmailVerificationData = {
+      appName: this.configService.get<string>('APP_NAME', 'Pavodah'),
+      logoUrl: this.getEmailLogoUrl(appUrl),
       otpCode: otpCode,
       expiresInMinutes: 10,
+      supportEmail: this.configService.get<string>('SUPPORT_EMAIL', 'support@pavodah.com'),
+      currentYear: new Date().getFullYear(),
     };
 
     const html = await this.renderTemplate('email-verification.hbs', templateData);
@@ -160,7 +201,44 @@ export class EmailService {
 
     await this.sendEmail({
       to: [email],
-      subject: 'Verify Your Email Address - Pavodah',
+      subject: `Confirm your ${templateData.appName} email`,
+      html,
+      text,
+    });
+  }
+
+  async sendTransactionalNotification(
+    email: string,
+    title: string,
+    message: string,
+    actionUrl?: string,
+  ): Promise<void> {
+    const appUrl = this.getAppUrl();
+    const templateData: TransactionalNotificationEmailData = {
+      appName: this.configService.get<string>('APP_NAME', 'Pavodah'),
+      logoUrl: this.getEmailLogoUrl(appUrl),
+      title,
+      message,
+      actionUrl,
+      supportEmail: this.configService.get<string>(
+        'SUPPORT_EMAIL',
+        'support@pavodah.com',
+      ),
+      currentYear: new Date().getFullYear(),
+    };
+
+    const html = await this.renderTemplate(
+      'transactional-notification.hbs',
+      templateData,
+    );
+    const text = await this.renderTemplate(
+      'transactional-notification.txt',
+      templateData,
+    );
+
+    await this.sendEmail({
+      to: [email],
+      subject: `${templateData.appName}: ${title}`,
       html,
       text,
     });

@@ -12,6 +12,10 @@ import { PaymentRefundStatus } from '../../../generated/prisma';
 
 export class PaymentPaginationQueryDto {
   @IsOptional()
+  @IsString()
+  marketId?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

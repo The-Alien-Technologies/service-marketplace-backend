@@ -15,15 +15,27 @@ import {
   Prisma,
   Service,
   ServiceStatus,
+  ServiceAvailability,
+  MarketStatus,
+  ProviderMarketMembershipStatus,
   UserStatus,
 } from '../../generated/prisma';
 import slugify from 'slugify';
+import {
+  MarketAccessService,
+  MarketActor,
+} from '../markets/market-access.service';
 
 @Injectable()
 export class ServicesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileUploadService: FileUploadService,
+    private readonly marketAccess: MarketAccessService = {
+      assertResource: () => undefined,
+      marketForAdmin: (_actor: MarketActor, marketId?: string) => marketId,
+      isStaff: () => true,
+    } as unknown as MarketAccessService,
   ) {}
 
   async create(
@@ -31,6 +43,45 @@ export class ServicesService {
     createServiceDto: CreateServiceDto,
     coverImage?: Express.Multer.File,
   ): Promise<Service> {
+    const membership = await this.prisma.providerMarketMembership.findUnique({
+      where: {
+        providerId_marketId: {
+          providerId: userId,
+          marketId: createServiceDto.marketId,
+        },
+      },
+      include: { market: true },
+    });
+    if (
+      !membership ||
+      membership.status !== ProviderMarketMembershipStatus.ACTIVE
+    ) {
+      throw new ForbiddenException(
+        'You need an active provider membership in this market',
+      );
+    }
+    if (
+      membership.market.status !== MarketStatus.ACTIVE ||
+      !membership.market.servicePublishingEnabled
+    ) {
+      throw new BadRequestException(
+        'Service publishing is paused in this market',
+      );
+    }
+    const categoryEnabled = await this.prisma.marketCategory.findUnique({
+      where: {
+        marketId_categoryId: {
+          marketId: createServiceDto.marketId,
+          categoryId: createServiceDto.categoryId,
+        },
+      },
+    });
+    if (!categoryEnabled?.isActive) {
+      throw new BadRequestException(
+        'This category is unavailable in the market',
+      );
+    }
+
     // Generate unique slug
     const slug = await this.generateUniqueSlug(createServiceDto.title);
 
@@ -55,6 +106,10 @@ export class ServicesService {
         status: ServiceStatus.DRAFT,
         providerId: userId,
         categoryId: createServiceDto.categoryId,
+        marketId: createServiceDto.marketId,
+        currency: membership.market.currency,
+        availability:
+          createServiceDto.availability ?? ServiceAvailability.MARKET,
         plans: {
           create: createServiceDto.plans.map((plan, index) => ({
             title: plan.title,
@@ -79,6 +134,7 @@ export class ServicesService {
         addons: true,
         images: true,
         category: true,
+        market: true,
         provider: {
           select: {
             id: true,
@@ -101,6 +157,11 @@ export class ServicesService {
     page?: number;
     limit?: number;
     includeAll?: boolean;
+    marketCode?: string;
+    marketId?: string;
+    actor?: MarketActor;
+    search?: string;
+    sortBy?: 'recent' | 'popular';
   }): Promise<{
     services: Service[];
     total: number;
@@ -113,6 +174,28 @@ export class ServicesService {
     const skip = (page - 1) * limit;
 
     const where: any = {};
+
+    if (options?.includeAll && options.actor) {
+      const scopedMarketId = this.marketAccess.marketForAdmin(
+        options.actor,
+        options.marketId,
+      );
+      if (scopedMarketId) where.marketId = scopedMarketId;
+    } else if (options?.marketId) {
+      where.marketId = options.marketId;
+    }
+
+    if (options?.marketCode?.toUpperCase() === 'GLOBAL') {
+      where.availability = ServiceAvailability.GLOBAL;
+      where.market = { status: { not: MarketStatus.INACTIVE } };
+    } else if (options?.marketCode) {
+      where.market = {
+        code: options.marketCode.toUpperCase(),
+        status: { not: MarketStatus.INACTIVE },
+      };
+    } else if (!options?.includeAll && !options?.providerId) {
+      where.market = { status: { not: MarketStatus.INACTIVE } };
+    }
 
     // Logic for filtering services
     if (options?.includeAll) {
@@ -138,12 +221,38 @@ export class ServicesService {
       where.categoryId = options.categoryId;
     }
 
+    if (options?.search?.trim()) {
+      const search = options.search.trim();
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { overview: { contains: search, mode: 'insensitive' } },
+        { tags: { hasSome: [search] } },
+        {
+          provider: {
+            OR: [
+              { displayName: { contains: search, mode: 'insensitive' } },
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+            ],
+          },
+        },
+      ];
+    }
+
+    const orderBy =
+      options?.sortBy === 'popular'
+        ? [
+            { orders: { _count: 'desc' as const } },
+            { createdAt: 'desc' as const },
+          ]
+        : { createdAt: 'desc' as const };
+
     const [services, total] = await Promise.all([
       this.prisma.service.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           plans: {
             orderBy: { sortOrder: 'asc' },
@@ -153,6 +262,7 @@ export class ServicesService {
             orderBy: { sortOrder: 'asc' },
           },
           category: true,
+          market: true,
           provider: {
             select: {
               id: true,
@@ -162,13 +272,40 @@ export class ServicesService {
               avatar: true,
             },
           },
+          _count: {
+            select: { orders: true, reviews: true },
+          },
         },
       }),
       this.prisma.service.count({ where }),
     ]);
 
+    const serviceIds = services.map((service) => service.id);
+    const ratingGroups = serviceIds.length
+      ? await this.prisma.review.groupBy({
+          by: ['serviceId'],
+          where: { serviceId: { in: serviceIds } },
+          _avg: { rating: true },
+        })
+      : [];
+    const averageRatings = new Map(
+      ratingGroups.map((group) => [
+        group.serviceId,
+        Number((group._avg.rating ?? 0).toFixed(1)),
+      ]),
+    );
+    const enrichedServices = services.map((service) => {
+      const { _count, ...serviceData } = service;
+      return {
+        ...serviceData,
+        averageRating: averageRatings.get(service.id) ?? 0,
+        reviewCount: _count.reviews,
+        orderCount: _count.orders,
+      };
+    });
+
     return {
-      services: services as unknown as Service[],
+      services: enrichedServices as unknown as Service[],
       total,
       page,
       limit,
@@ -180,6 +317,7 @@ export class ServicesService {
     return this.findOneWhere({
       id,
       status: ServiceStatus.PUBLISHED,
+      market: { status: { not: MarketStatus.INACTIVE } },
       provider: {
         status: UserStatus.ACTIVE,
         isServiceProviderVerified: true,
@@ -205,6 +343,7 @@ export class ServicesService {
           orderBy: { sortOrder: 'asc' },
         },
         category: true,
+        market: true,
         provider: {
           select: {
             id: true,
@@ -234,6 +373,7 @@ export class ServicesService {
     // Check ownership
     const service = await this.prisma.service.findUnique({
       where: { id },
+      include: { plans: true },
     });
 
     if (!service) {
@@ -242,6 +382,35 @@ export class ServicesService {
 
     if (service.providerId !== userId) {
       throw new ForbiddenException('You can only update your own services');
+    }
+    if (
+      updateServiceDto.marketId &&
+      updateServiceDto.marketId !== service.marketId
+    ) {
+      throw new BadRequestException(
+        'A service cannot be moved to another market',
+      );
+    }
+    if (updateServiceDto.categoryId) {
+      const categoryEnabled = await this.prisma.marketCategory.findUnique({
+        where: {
+          marketId_categoryId: {
+            marketId: service.marketId,
+            categoryId: updateServiceDto.categoryId,
+          },
+        },
+      });
+      if (!categoryEnabled?.isActive) {
+        throw new BadRequestException(
+          'This category is unavailable in the market',
+        );
+      }
+    }
+    if (updateServiceDto.status === ServiceStatus.PUBLISHED) {
+      await this.assertCanPublish(
+        id,
+        updateServiceDto.plans?.length ?? service.plans.length,
+      );
     }
 
     // Upload new cover image if provided
@@ -271,10 +440,11 @@ export class ServicesService {
         categoryId: updateServiceDto.categoryId,
         tags: updateServiceDto.tags,
         status: updateServiceDto.status,
+        availability: updateServiceDto.availability,
         coverImage: coverImageUrl || service.coverImage,
         // Delete all existing plans and create new ones
         plans:
-          updateServiceDto.plans && updateServiceDto.plans.length > 0
+          updateServiceDto.plans !== undefined
             ? {
                 deleteMany: {},
                 create: updateServiceDto.plans
@@ -293,7 +463,7 @@ export class ServicesService {
             : undefined,
         // Delete all existing addons and create new ones
         addons:
-          updateServiceDto.addons && updateServiceDto.addons.length > 0
+          updateServiceDto.addons !== undefined
             ? {
                 deleteMany: {},
                 create: updateServiceDto.addons
@@ -311,6 +481,7 @@ export class ServicesService {
         addons: true,
         images: true,
         category: true,
+        market: true,
         provider: {
           select: {
             id: true,
@@ -345,22 +516,42 @@ export class ServicesService {
 
     // Validate service is ready to publish
     if (status === ServiceStatus.PUBLISHED) {
-      const serviceWithPlans = await this.prisma.service.findUnique({
-        where: { id },
-        include: { plans: true },
-      });
-
-      if (!serviceWithPlans?.plans || serviceWithPlans.plans.length === 0) {
-        throw new BadRequestException(
-          'Cannot publish service without at least one plan',
-        );
-      }
+      await this.assertCanPublish(id);
     }
 
     return this.prisma.service.update({
       where: { id },
       data: { status },
     }) as unknown as Service;
+  }
+
+  private async assertCanPublish(id: string, planCount?: number) {
+    const service = await this.prisma.service.findUnique({
+      where: { id },
+      include: {
+        plans: true,
+        market: true,
+        provider: { include: { providerMarketMemberships: true } },
+      },
+    });
+    if (!service) throw new NotFoundException('Service not found');
+    if ((planCount ?? service.plans.length) === 0) {
+      throw new BadRequestException(
+        'Cannot publish service without at least one plan',
+      );
+    }
+    const membership = service.provider.providerMarketMemberships.find(
+      (item) => item.marketId === service.marketId,
+    );
+    if (
+      service.market.status !== MarketStatus.ACTIVE ||
+      !service.market.servicePublishingEnabled ||
+      membership?.status !== ProviderMarketMembershipStatus.ACTIVE
+    ) {
+      throw new BadRequestException(
+        'This service cannot be published in its current market',
+      );
+    }
   }
 
   async remove(id: string, userId: string): Promise<void> {

@@ -9,7 +9,7 @@ describe('validateEnvironment', () => {
 
   it('requires payment configuration in production', () => {
     expect(() => validateEnvironment({ NODE_ENV: 'production' })).toThrow(
-      'PAYSTACK_SECRET_KEY is required',
+      'PAYMENT_CREDENTIAL_ENCRYPTION_KEY is required',
     );
   });
 
@@ -17,7 +17,7 @@ describe('validateEnvironment', () => {
     expect(() =>
       validateEnvironment({
         NODE_ENV: 'production',
-        PAYSTACK_SECRET_KEY: 'sk_live_valid',
+        PAYMENT_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
         PAYSTACK_CALLBACK_URL: 'http://api.example.com/callback',
         WEBSITE_URL: 'https://example.com',
       }),
@@ -27,7 +27,7 @@ describe('validateEnvironment', () => {
   it('accepts complete production payment configuration', () => {
     const config = {
       NODE_ENV: 'production',
-      PAYSTACK_SECRET_KEY: 'sk_live_valid',
+      PAYMENT_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(32).toString('base64'),
       PAYSTACK_CALLBACK_URL: 'https://example.com/checkout/callback',
       PAYSTACK_BASE_URL: 'https://api.paystack.co',
       WEBSITE_URL: 'https://example.com',

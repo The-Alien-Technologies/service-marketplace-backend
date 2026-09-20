@@ -1,0 +1,10 @@
+{{title}}
+
+{{message}}
+{{#if actionUrl}}
+View in {{appName}}: {{actionUrl}}
+{{/if}}
+
+Need help? Email {{supportEmail}}.
+
+© {{currentYear}} {{appName}}

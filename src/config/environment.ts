@@ -1,5 +1,5 @@
 const REQUIRED_PRODUCTION_VALUES = [
-  'PAYSTACK_SECRET_KEY',
+  'PAYMENT_CREDENTIAL_ENCRYPTION_KEY',
   'PAYSTACK_CALLBACK_URL',
   'WEBSITE_URL',
 ] as const;
@@ -35,8 +35,11 @@ export function validateEnvironment(config: Record<string, unknown>) {
       throw new Error(`${key} is required in production`);
     }
   }
-  if (!String(config.PAYSTACK_SECRET_KEY).startsWith('sk_')) {
-    throw new Error('PAYSTACK_SECRET_KEY must be a Paystack secret key');
+  const encryptionKey = String(config.PAYMENT_CREDENTIAL_ENCRYPTION_KEY ?? '');
+  if (Buffer.from(encryptionKey, 'base64').length !== 32) {
+    throw new Error(
+      'PAYMENT_CREDENTIAL_ENCRYPTION_KEY must decode to 32 bytes',
+    );
   }
   requireHttpsUrl(config, 'PAYSTACK_CALLBACK_URL');
   requireHttpsUrl(config, 'WEBSITE_URL');

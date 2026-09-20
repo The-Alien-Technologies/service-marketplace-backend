@@ -23,10 +23,10 @@ type DbClient = PrismaService | Prisma.TransactionClient;
 export class SettlementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getCommissionRate(db: DbClient = this.prisma) {
+  async getCommissionRate(marketId: string, db: DbClient = this.prisma) {
     const setting = await db.paymentSetting.upsert({
-      where: { id: 'default' },
-      create: { id: 'default', commissionRate: new Prisma.Decimal(10) },
+      where: { marketId },
+      create: { marketId, commissionRate: new Prisma.Decimal(10) },
       update: {},
     });
     return setting.commissionRate;
@@ -57,6 +57,7 @@ export class SettlementsService {
     order: {
       id: string;
       providerId: string;
+      marketId: string;
       total: Prisma.Decimal;
       commissionRate: Prisma.Decimal;
     },
@@ -71,6 +72,7 @@ export class SettlementsService {
       create: {
         orderId: order.id,
         providerId: order.providerId,
+        marketId: order.marketId,
         grossAmount: order.total,
         refundedAmount: 0,
         commissionRate: order.commissionRate,
@@ -482,6 +484,7 @@ export class SettlementsService {
         await db.providerBalanceAdjustment.create({
           data: {
             providerId: settlement.providerId,
+            marketId: order.marketId,
             orderId,
             type: BalanceAdjustmentType.ADMIN,
             amount: providerLoss,

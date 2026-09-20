@@ -61,12 +61,14 @@ export class ReviewsController {
     @Query('sort') sort?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('marketId') marketId?: string,
   ) {
     const result = await this.reviewsService.findByProvider(userId, {
       rating: rating ? Number(rating) : undefined,
       sort,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
+      marketId,
     });
     return ResponseUtil.success(result, 'Reviews retrieved successfully');
   }

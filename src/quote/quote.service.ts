@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -18,6 +19,8 @@ import {
   Role,
   ServiceStatus,
   UserStatus,
+  MarketStatus,
+  ProviderMarketMembershipStatus,
 } from '../../generated/prisma';
 import { OrdersService } from '../orders/orders.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
@@ -57,6 +60,8 @@ export class QuoteService {
     dto: CreateQuoteDto,
     files: Express.Multer.File[] = [],
   ) {
+    let marketId = dto.marketId;
+    let currency: string | undefined;
     const provider = await this.prisma.user.findFirst({
       where: {
         id: dto.providerId,
@@ -77,11 +82,40 @@ export class QuoteService {
           providerId: dto.providerId,
           status: ServiceStatus.PUBLISHED,
         },
-        select: { id: true },
+        include: { market: true },
       });
       if (!service) {
         throw new NotFoundException('Service is not available for quotes');
       }
+      if (service.market.status !== MarketStatus.ACTIVE) {
+        throw new BadRequestException('This market is unavailable');
+      }
+      marketId = service.marketId;
+      currency = service.currency;
+    }
+
+    if (!marketId) {
+      throw new BadRequestException('Choose a market for this quote');
+    }
+    const market = currency
+      ? null
+      : await this.prisma.market.findUnique({ where: { id: marketId } });
+    if (market) currency = market.currency;
+    if (
+      (!market && !currency) ||
+      (market && market.status !== MarketStatus.ACTIVE)
+    ) {
+      throw new BadRequestException('This market is unavailable');
+    }
+    const membership = await this.prisma.providerMarketMembership.findUnique({
+      where: {
+        providerId_marketId: { providerId: dto.providerId, marketId },
+      },
+    });
+    if (membership?.status !== ProviderMarketMembershipStatus.ACTIVE) {
+      throw new BadRequestException(
+        'This provider is unavailable in the market',
+      );
     }
 
     // Upload attachments
@@ -100,11 +134,12 @@ export class QuoteService {
         clientId,
         providerId: dto.providerId,
         serviceId: dto.serviceId ?? null,
+        marketId,
         projectTitle: dto.projectTitle,
         description: dto.description,
         deliveryTime: dto.deliveryTime,
         budget: dto.budget,
-        currency: dto.currency ?? 'GHS',
+        currency: currency!,
         attachments: attachmentUrls,
       },
       include: QUOTE_INCLUDE,
@@ -113,20 +148,79 @@ export class QuoteService {
     return quote;
   }
 
-  async findAllForProvider(providerId: string, status?: QuoteStatus) {
+  async findAllForProvider(
+    providerId: string,
+    status?: QuoteStatus,
+    search?: string,
+  ) {
+    const query = search?.trim();
     return this.prisma.quoteRequest.findMany({
       where: {
         providerId,
         ...(status ? { status } : {}),
+        ...(query
+          ? {
+              OR: [
+                { projectTitle: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } },
+                {
+                  client: {
+                    firstName: { contains: query, mode: 'insensitive' },
+                  },
+                },
+                {
+                  client: {
+                    lastName: { contains: query, mode: 'insensitive' },
+                  },
+                },
+                { client: { email: { contains: query, mode: 'insensitive' } } },
+                {
+                  service: { title: { contains: query, mode: 'insensitive' } },
+                },
+              ],
+            }
+          : {}),
       },
       include: QUOTE_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findAllForClient(clientId: string) {
+  async findAllForClient(
+    clientId: string,
+    status?: QuoteStatus,
+    search?: string,
+  ) {
+    const query = search?.trim();
     return this.prisma.quoteRequest.findMany({
-      where: { clientId },
+      where: {
+        clientId,
+        ...(status ? { status } : {}),
+        ...(query
+          ? {
+              OR: [
+                { projectTitle: { contains: query, mode: 'insensitive' } },
+                { description: { contains: query, mode: 'insensitive' } },
+                {
+                  provider: {
+                    firstName: { contains: query, mode: 'insensitive' },
+                  },
+                },
+                {
+                  provider: {
+                    lastName: { contains: query, mode: 'insensitive' },
+                  },
+                },
+                {
+                  provider: { email: { contains: query, mode: 'insensitive' } },
+                },
+                {
+                  service: { title: { contains: query, mode: 'insensitive' } },
+                },
+              ],
+            }
+          : {}),
+      },
       include: QUOTE_INCLUDE,
       orderBy: { createdAt: 'desc' },
     });

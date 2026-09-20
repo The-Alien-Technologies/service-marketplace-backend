@@ -12,6 +12,7 @@ import {
   UseInterceptors,
   UploadedFile,
   UploadedFiles,
+  ParseEnumPipe,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -27,6 +28,7 @@ import { ResponseUtil } from '../common/utils/response.util';
 import { ServiceStatus } from '../../generated/prisma';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/is-public.decorator';
+import { MarketActor } from '../markets/market-access.service';
 
 @Controller('services')
 export class ServicesController {
@@ -38,21 +40,9 @@ export class ServicesController {
   @UseInterceptors(FileInterceptor('coverImage'))
   async create(
     @CurrentUser('userId') userId: string,
-    @Body() body: any, // Use 'any' to get raw body first
+    @Body() createServiceDto: CreateServiceDto,
     @UploadedFile() coverImage?: Express.Multer.File,
   ) {
-    // Parse JSON strings from FormData
-    const createServiceDto: CreateServiceDto = {
-      ...body,
-      plans:
-        typeof body.plans === 'string' ? JSON.parse(body.plans) : body.plans,
-      addons:
-        body.addons && typeof body.addons === 'string'
-          ? JSON.parse(body.addons)
-          : body.addons,
-      tags: Array.isArray(body.tags) ? body.tags : body.tags ? [body.tags] : [],
-    };
-
     const service = await this.servicesService.create(
       userId,
       createServiceDto,
@@ -68,12 +58,18 @@ export class ServicesController {
     @Query('categoryId') categoryId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('market') marketCode?: string,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy?: 'recent' | 'popular',
   ) {
     const result = await this.servicesService.findAll({
       status,
       categoryId,
       page: page ? Number.parseInt(page, 10) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
+      marketCode,
+      search,
+      sortBy,
     });
     return ResponseUtil.success(result, 'Services retrieved successfully');
   }
@@ -86,12 +82,18 @@ export class ServicesController {
     @Query('status') status?: ServiceStatus,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('marketId') marketId?: string,
+    @Query('search') search?: string,
+    @Query('categoryId') categoryId?: string,
   ) {
     const result = await this.servicesService.findAll({
       providerId: userId,
       status,
       page: page ? Number.parseInt(page, 10) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
+      marketId,
+      search,
+      categoryId,
     });
     return ResponseUtil.success(result, 'Your services retrieved successfully');
   }
@@ -111,11 +113,14 @@ export class ServicesController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @IsAdmin()
   async findAllAdmin(
+    @CurrentUser() actor: MarketActor,
     @Query('status') status?: ServiceStatus,
     @Query('categoryId') categoryId?: string,
     @Query('providerId') providerId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('marketId') marketId?: string,
+    @Query('search') search?: string,
   ) {
     const result = await this.servicesService.findAll({
       status,
@@ -124,6 +129,9 @@ export class ServicesController {
       page: page ? Number.parseInt(page, 10) : undefined,
       limit: limit ? Number.parseInt(limit, 10) : undefined,
       includeAll: true,
+      actor,
+      marketId,
+      search,
     });
     return ResponseUtil.success(result, 'All services retrieved successfully');
   }
@@ -142,23 +150,9 @@ export class ServicesController {
   async update(
     @Param('id') id: string,
     @CurrentUser('userId') userId: string,
-    @Body() body: any, // Use 'any' to get raw body first
+    @Body() updateServiceDto: UpdateServiceDto,
     @UploadedFile() coverImage?: Express.Multer.File,
   ) {
-    // Parse JSON strings from FormData
-    const updateServiceDto: UpdateServiceDto = {
-      ...body,
-      plans:
-        body.plans && typeof body.plans === 'string'
-          ? JSON.parse(body.plans)
-          : body.plans,
-      addons:
-        body.addons && typeof body.addons === 'string'
-          ? JSON.parse(body.addons)
-          : body.addons,
-      tags: Array.isArray(body.tags) ? body.tags : body.tags ? [body.tags] : [],
-    };
-
     const service = await this.servicesService.update(
       id,
       userId,
@@ -174,7 +168,7 @@ export class ServicesController {
   async updateStatus(
     @Param('id') id: string,
     @CurrentUser('userId') userId: string,
-    @Body('status') status: ServiceStatus,
+    @Body('status', new ParseEnumPipe(ServiceStatus)) status: ServiceStatus,
   ) {
     const service = await this.servicesService.updateStatus(id, userId, status);
     return ResponseUtil.success(service, 'Service status updated successfully');

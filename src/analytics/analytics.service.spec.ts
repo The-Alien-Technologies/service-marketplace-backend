@@ -4,19 +4,32 @@ import { AnalyticsService } from './analytics.service';
 
 describe('AnalyticsService dashboards', () => {
   const prisma = {
-    user: { count: jest.fn() },
+    user: { count: jest.fn(), findUnique: jest.fn() },
     order: {
       count: jest.fn(),
       groupBy: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
     },
-    orderSettlement: { aggregate: jest.fn(), findMany: jest.fn() },
+    orderSettlement: {
+      aggregate: jest.fn(),
+      findMany: jest.fn(),
+      groupBy: jest.fn(),
+    },
     paymentRefund: { aggregate: jest.fn() },
     review: { aggregate: jest.fn() },
     providerPayout: { findMany: jest.fn() },
     service: { groupBy: jest.fn(), aggregate: jest.fn() },
     category: { findMany: jest.fn() },
+    market: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    providerMarketMembership: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
   };
 
   let service: AnalyticsService;
@@ -24,6 +37,17 @@ describe('AnalyticsService dashboards', () => {
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-09T12:00:00Z'));
     jest.clearAllMocks();
+    const market = {
+      id: 'market-gh',
+      code: 'GH',
+      name: 'Ghana',
+      currency: 'GHS',
+    };
+    prisma.market.findFirst.mockResolvedValue(market);
+    prisma.providerMarketMembership.findFirst.mockResolvedValue({
+      marketId: market.id,
+      market,
+    });
     service = new AnalyticsService(prisma as unknown as PrismaService);
   });
 
@@ -108,6 +132,7 @@ describe('AnalyticsService dashboards', () => {
       'provider-1',
       2026,
       '2026-08',
+      'market-gh',
     );
 
     expect(result.stats).toEqual({
@@ -166,6 +191,7 @@ describe('AnalyticsService dashboards', () => {
       expect.objectContaining({
         where: {
           providerId: 'provider-1',
+          marketId: 'market-gh',
           OR: [
             { paymentStatus: { in: ['PAID', 'PARTIALLY_REFUNDED'] } },
             { status: 'REFUNDED', paymentStatus: 'REFUNDED' },
@@ -177,6 +203,7 @@ describe('AnalyticsService dashboards', () => {
       expect.objectContaining({
         where: {
           providerId: 'provider-1',
+          marketId: 'market-gh',
           order: {
             paidAt: {
               gte: new Date('2025-01-01T00:00:00Z'),
@@ -189,6 +216,7 @@ describe('AnalyticsService dashboards', () => {
     expect(prisma.order.count).toHaveBeenNthCalledWith(2, {
       where: {
         providerId: 'provider-1',
+        marketId: 'market-gh',
         paidAt: {
           gte: new Date('2026-08-01T00:00:00Z'),
           lt: new Date('2026-09-01T00:00:00Z'),
@@ -199,6 +227,7 @@ describe('AnalyticsService dashboards', () => {
     expect(prisma.order.count).toHaveBeenNthCalledWith(4, {
       where: {
         providerId: 'provider-1',
+        marketId: 'market-gh',
         completedAt: {
           gte: new Date('2026-08-01T00:00:00Z'),
           lt: new Date('2026-09-01T00:00:00Z'),
@@ -287,7 +316,11 @@ describe('AnalyticsService dashboards', () => {
       paidAt: new Date('2025-01-12T00:00:00Z'),
     });
 
-    const result = await service.getUserDashboard('client-1', 2026);
+    const result = await service.getUserDashboard(
+      'client-1',
+      2026,
+      'market-gh',
+    );
 
     expect(result.stats).toEqual({
       activeOrders: 3,
@@ -344,7 +377,7 @@ describe('AnalyticsService dashboards', () => {
       where: {
         status: 'PROCESSED',
         affectsOrderBalance: true,
-        order: { clientId: 'client-1' },
+        order: { clientId: 'client-1', marketId: 'market-gh' },
       },
       _sum: { amount: true },
     });
@@ -425,6 +458,43 @@ describe('AnalyticsService dashboards', () => {
         imageUrl: 'https://img.test/tutoring.png',
       },
     ]);
+    prisma.orderSettlement.groupBy
+      .mockResolvedValueOnce([
+        {
+          marketId: 'ghana-market',
+          _sum: { retainedAmount: new Prisma.Decimal('800') },
+        },
+        {
+          marketId: 'south-africa-market',
+          _sum: { retainedAmount: new Prisma.Decimal('200') },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          marketId: 'ghana-market',
+          _sum: { retainedAmount: new Prisma.Decimal('300') },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          marketId: 'ghana-market',
+          _sum: { retainedAmount: new Prisma.Decimal('200') },
+        },
+      ]);
+    prisma.market.findMany.mockResolvedValue([
+      {
+        id: 'ghana-market',
+        code: 'GH',
+        name: 'Ghana',
+        currency: 'GHS',
+      },
+      {
+        id: 'south-africa-market',
+        code: 'ZA',
+        name: 'South Africa',
+        currency: 'ZAR',
+      },
+    ]);
 
     const result = await service.getAdminDashboard(2026, '2026-08');
 
@@ -432,14 +502,14 @@ describe('AnalyticsService dashboards', () => {
       totalUsers: 120,
       activeProviders: 18,
       activeOrders: 7,
-      revenue: 1000.5,
+      revenue: 0,
     });
     expect(result.trends.totalUsers).toEqual({
       current: 12,
       previous: 10,
       changePercent: 20,
     });
-    expect(result.trends.revenue.changePercent).toBe(50);
+    expect(result.trends.revenue.changePercent).toBe(0);
     expect(result.totalOrders).toBe(14);
     expect(result.orderStatusBreakdown).toEqual([
       { name: 'Completed', value: 4 },
@@ -449,22 +519,31 @@ describe('AnalyticsService dashboards', () => {
       { name: 'Declined', value: 1 },
       { name: 'Refunded', value: 1 },
     ]);
-    expect(result.revenueChart[0]).toEqual({
-      name: 'Jan',
-      revenue: 200,
-      commission: 20,
-      payout: 0,
-    });
-    expect(result.revenueChart[7]).toEqual({
-      name: 'Aug',
-      revenue: 100.5,
-      commission: 10.05,
-      payout: 75.25,
-    });
+    expect(result.revenueChart).toEqual([]);
     expect(result.revenueSummary).toEqual({
-      total: 300.5,
-      bestMonth: { name: 'Jan', revenue: 200 },
+      total: 0,
+      bestMonth: null,
     });
+    expect(result.marketRevenueBreakdown).toEqual([
+      {
+        id: 'ghana-market',
+        code: 'GH',
+        name: 'Ghana',
+        currency: 'GHS',
+        total: 800,
+        currentMonth: 300,
+        previousMonth: 200,
+      },
+      {
+        id: 'south-africa-market',
+        code: 'ZA',
+        name: 'South Africa',
+        currency: 'ZAR',
+        total: 200,
+        currentMonth: 0,
+        previousMonth: 0,
+      },
+    ]);
     expect(result.availableYears).toEqual([2026, 2025]);
     expect(result.availableCategoryMonths).toEqual([
       '2026-08',

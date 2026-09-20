@@ -1,6 +1,16 @@
-import { IsString, Matches, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString, Matches, MaxLength } from 'class-validator';
+
+export class MarketIdQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  marketId: string;
+}
 
 export class ResolveRefundAccountDto {
+  @IsString()
+  @IsNotEmpty()
+  marketId: string;
+
   @IsString()
   @Matches(/^\d{7,20}$/, {
     message: 'accountNumber must contain 7 to 20 digits',
@@ -14,6 +24,6 @@ export class ResolveRefundAccountDto {
 
 export class RetryRefundDto extends ResolveRefundAccountDto {
   @IsString()
-  @Matches(/^GHS$/)
+  @Matches(/^[A-Z]{3}$/, { message: 'currency must be an ISO 4217 code' })
   currency: string;
 }

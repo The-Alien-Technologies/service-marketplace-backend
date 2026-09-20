@@ -94,8 +94,10 @@ APP_NAME="Service Marketplace"
 APP_URL="http://localhost:3000"
 SUPPORT_EMAIL="support@servicemarketplace.com"
 
-# Paystack hosted checkout
-PAYSTACK_SECRET_KEY="sk_test_..."
+# Country Paystack credentials are entered by a super admin after startup.
+# This key encrypts them at rest and must decode to exactly 32 bytes.
+PAYMENT_CREDENTIAL_ENCRYPTION_KEY="<base64-encoded-32-byte-key>"
+PAYMENT_CREDENTIAL_RETIREMENT_HOURS="72"
 PAYSTACK_BASE_URL="https://api.paystack.co"
 PAYSTACK_CALLBACK_URL="http://localhost:3001/checkout/callback"
 WEBSITE_URL="http://localhost:3001"
@@ -109,15 +111,19 @@ REFUND_RECONCILIATION_ENABLED="true"
 REFUND_RECONCILIATION_INTERVAL_MS="900000"
 ```
 
-Configure the Paystack dashboard webhook URL as:
+After seeding, open **Dashboard → Markets & payments**, stage and activate one
+Paystack key for each enabled country, then configure the
+country account with the webhook URL shown there. Its shape is:
 
 ```text
-https://<your-api-host>/api/payments/paystack/webhook
+https://<your-api-host>/api/payments/paystack/<integration-key>/webhook
 ```
 
-The same signed webhook handles charge, refund, transfer, and Paystack dispute
-events. Before setting `PAYOUTS_ENABLED="true"`, enable Ghana Transfers on the
-Paystack business, confirm the Paystack balance is funded by settlements, and
+Each country account has a different integration key. The signed webhook
+handles charge, refund, transfer, and Paystack dispute events, and accepts the
+active secret plus retiring secrets during the configured rotation grace
+period. Before setting `PAYOUTS_ENABLED="true"`, enable Transfers on every
+country business account, confirm each balance is funded by settlements, and
 choose whether Transfers OTP remains enabled. When it is enabled, admins finish
 approved payouts through the OTP prompt in the payout operations dashboard.
 Refunds with an uncertain provider response are reconciled automatically and
@@ -128,14 +134,14 @@ Paystack and its returned account name must be confirmed before submission.
 Failed automatic duplicate-charge refunds can be safely reattempted from the
 same queue without changing the order balance or provider settlement.
 
-Production startup fails when the Paystack key, HTTPS callback/web URL, or CORS
-origin configuration is missing or invalid. Keep automatic refund and payout
-reconciliation enabled so accepted provider outcomes are recovered after
-network interruptions.
+Production startup fails when the credential-encryption key, HTTPS callback/web
+URL, or CORS origin configuration is missing or invalid. Keep automatic refund
+and payout reconciliation enabled so accepted provider outcomes are recovered
+after network interruptions.
 
-Use separate test and live credentials for staging and production. The
-Paystack secret key is backend-only and must never be exposed through a
-`NEXT_PUBLIC_` variable.
+Use separate test and live credentials for staging and production. Paystack
+secrets are accepted only by the super-admin API, encrypted before storage, and
+never returned to clients.
 
 4. Set up the database
 
@@ -143,6 +149,11 @@ Paystack secret key is backend-only and must never be exposed through a
 npx prisma migrate dev
 npx prisma generate
 ```
+
+The country-market migration is intentionally pre-launch: required market and
+payment columns assume transactional tables are empty. For a disposable local
+database, use `npm run prisma:reset` and confirm the prompt, then run the seeder.
+Do not use that reset command against an environment whose data must be kept.
 
 5. Start the development server
 
@@ -180,39 +191,38 @@ JWT_REFRESH_EXPIRATION_TIME=30d   # Refresh token expiry (30 days)
 - `POST /auth/change-password` - Change password
 - `DELETE /auth/account` - Soft delete account
 
+  Summary of all WebSocket events for frontend
+  CLIENT → SERVER
 
-   Summary of all WebSocket events for frontend
-   CLIENT → SERVER
-   
-   support:join          { conversationId }  Join a room
-   support:leave         { conversationId }   Leave a room
-   support:send_message   { conversationId, content }
-   support:escalate       conversationId     Request a human
-   support:join_as_admin   conversationId     Admin claims conversation
-   support:close      conversationId      End conversation
+  support:join { conversationId } Join a room
+  support:leave { conversationId } Leave a room
+  support:send_message { conversationId, content }
+  support:escalate conversationId Request a human
+  support:join_as_admin conversationId Admin claims conversation
+  support:close conversationId End conversation
 
-   SERVER → CLIENT
-   
-   support:message         { message }       New message (any sender)
-   support:escalated        { conversation }     Status → WAITING
-   support:admin_joined   { conversation }     Admin entered room
-   support:admin_took_conversation { conversationId }  (admin room only)
-   support:new_waiting    { conversation }     (admin room only)
-   support:closed          { conversation }     Chat ended
-   support:error       { message }       Something went wrong
+  SERVER → CLIENT
 
-   Summary of REST endpoints
+  support:message { message } New message (any sender)
+  support:escalated { conversation } Status → WAITING
+  support:admin_joined { conversation } Admin entered room
+  support:admin_took_conversation { conversationId } (admin room only)
+  support:new_waiting { conversation } (admin room only)
+  support:closed { conversation } Chat ended
+  support:error { message } Something went wrong
 
-   POST /api/support/conversations            Start conversation
-   GET  /api/support/conversations/my         My conversations
-   GET     /api/support/conversations/:id          Conversation + messages
-   POST  /api/support/conversations/:id/messages Send message
-   PATCH  /api/support/conversations/:id/escalate Request human
-   PATCH /api/support/conversations/:id/close    Close
+  Summary of REST endpoints
 
-   GET    /api/support/admin/conversations        All chats (grouped)
-   PATCH /api/support/admin/conversations/:id/join   Admin joins
-   PATCH    /api/support/admin/conversations/:id/close  Admin closes
+  POST /api/support/conversations Start conversation
+  GET /api/support/conversations/my My conversations
+  GET /api/support/conversations/:id Conversation + messages
+  POST /api/support/conversations/:id/messages Send message
+  PATCH /api/support/conversations/:id/escalate Request human
+  PATCH /api/support/conversations/:id/close Close
+
+  GET /api/support/admin/conversations All chats (grouped)
+  PATCH /api/support/admin/conversations/:id/join Admin joins
+  PATCH /api/support/admin/conversations/:id/close Admin closes
 
 ### Usage Example
 

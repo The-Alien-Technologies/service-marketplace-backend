@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AdminSeeder } from './admin.seeder';
 import { CategoriesSeeder } from './categories.seeder';
+import { MarketsSeeder } from './markets.seeder';
 
 @Injectable()
 export class SeederService {
   private readonly logger = new Logger(SeederService.name);
 
   constructor(
+    private marketsSeeder: MarketsSeeder,
     private adminSeeder: AdminSeeder,
     private categoriesSeeder: CategoriesSeeder,
   ) {}
@@ -15,6 +17,7 @@ export class SeederService {
     this.logger.log('Starting database seeding...');
 
     try {
+      await this.marketsSeeder.seed();
       await this.adminSeeder.seed();
       await this.categoriesSeeder.seed();
 

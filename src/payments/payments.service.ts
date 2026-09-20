@@ -21,6 +21,7 @@ import {
   Prisma,
   ProviderPayoutStatus,
   SettlementStatus,
+  MarketStatus,
 } from '../../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -33,6 +34,11 @@ import {
   PaystackTransactionData,
 } from './paystack.service';
 import { SettlementsService } from '../settlements/settlements.service';
+import { PaymentCredentialsService } from './payment-credentials.service';
+import {
+  MarketAccessService,
+  MarketActor,
+} from '../markets/market-access.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
 import {
   applyPaystackTransferState,
@@ -62,6 +68,12 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     private readonly paystack: PaystackService,
     private readonly config: ConfigService,
     private readonly settlements: SettlementsService,
+    private readonly credentials: PaymentCredentialsService,
+    private readonly marketAccess: MarketAccessService = {
+      assertResource: () => undefined,
+      marketForAdmin: (_actor: MarketActor, marketId?: string) => marketId,
+      isStaff: () => true,
+    } as unknown as MarketAccessService,
     private readonly notificationEvents?: NotificationEventsService,
   ) {}
 
@@ -126,6 +138,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       where: { id: orderId },
       include: {
         client: { select: { id: true, email: true } },
+        market: true,
         paymentTransactions: {
           where: {
             status: {
@@ -144,6 +157,12 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
     if (order.clientId !== clientId) {
       throw new ForbiddenException('You can only pay for your own order');
+    }
+    if (
+      (order.market && order.market.status !== MarketStatus.ACTIVE) ||
+      order.market?.checkoutEnabled === false
+    ) {
+      throw new BadRequestException('Checkout is paused in this market');
     }
     if (
       order.paymentStatus === OrderPaymentStatus.PAID ||
@@ -213,12 +232,17 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     }
 
     const reference = `PAVODAH-${randomUUID().replace(/-/g, '')}`;
+    const paymentCredential = await this.credentials.resolveActive(
+      order.paymentIntegrationId,
+    );
     let transaction;
     try {
       transaction = await this.prisma.paymentTransaction.create({
         data: {
           orderId: order.id,
           clientId,
+          paymentIntegrationId: paymentCredential.integrationId,
+          credentialVersionId: paymentCredential.credentialVersionId,
           reference,
           amount: order.total,
           amountMinor,
@@ -261,20 +285,23 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     );
 
     try {
-      const initialized = await this.paystack.initialize({
-        email: order.client.email,
-        amountMinor,
-        currency: order.currency,
-        reference,
-        callbackUrl,
-        metadata: {
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          clientId,
-          source: order.source,
-          cancel_action: `${websiteUrl.replace(/\/$/, '')}/checkout?orderId=${encodeURIComponent(order.id)}`,
+      const initialized = await this.paystack.initialize(
+        {
+          email: order.client.email,
+          amountMinor,
+          currency: order.currency,
+          reference,
+          callbackUrl,
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            clientId,
+            source: order.source,
+            cancel_action: `${websiteUrl.replace(/\/$/, '')}/checkout?orderId=${encodeURIComponent(order.id)}`,
+          },
         },
-      });
+        paymentCredential.secretKey,
+      );
 
       if (initialized.reference !== reference) {
         throw new BadRequestException(
@@ -384,7 +411,10 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       };
     }
 
-    const data = await this.paystack.verify(reference);
+    const secretKey = await this.credentials.resolveByCredentialId(
+      transaction.credentialVersionId,
+    );
+    const data = await this.paystack.verify(reference, secretKey);
     return this.reconcile(transaction, data, true);
   }
 
@@ -394,6 +424,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     amount?: Prisma.Decimal | number | string,
     disputeId?: string,
     deferSubmission = false,
+    actor?: MarketActor,
   ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -432,6 +463,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (!order) throw new NotFoundException('Order not found');
+    if (actor) this.marketAccess.assertResource(actor, order.marketId);
     if (order.externalDisputes.length > 0) {
       throw new BadRequestException(
         'Resolve the Paystack payment dispute before issuing a refund',
@@ -592,14 +624,17 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async handleWebhook(event: {
-    event?: string;
-    data?:
-      | PaystackTransactionData
-      | PaystackRefundWebhookData
-      | PaystackTransferData
-      | PaystackDisputeWebhookData;
-  }): Promise<void> {
+  async handleWebhook(
+    event: {
+      event?: string;
+      data?:
+        | PaystackTransactionData
+        | PaystackRefundWebhookData
+        | PaystackTransferData
+        | PaystackDisputeWebhookData;
+    },
+    integrationId?: string,
+  ): Promise<void> {
     const eventType = event?.event;
     if (!eventType || !event.data) {
       this.logger.warn('Ignoring Paystack webhook without event/data');
@@ -610,6 +645,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       await this.handleRefundWebhook(
         eventType,
         event.data as PaystackRefundWebhookData,
+        integrationId,
       );
       return;
     }
@@ -618,6 +654,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       await this.handleTransferWebhook(
         eventType,
         event.data as PaystackTransferData,
+        integrationId,
       );
       return;
     }
@@ -626,6 +663,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       await this.handleExternalDisputeWebhook(
         eventType,
         event.data as PaystackDisputeWebhookData,
+        integrationId,
       );
       return;
     }
@@ -642,6 +680,10 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(
         `Ignoring Paystack webhook for unknown reference ${reference}`,
       );
+      return;
+    }
+    if (integrationId && transaction.paymentIntegrationId !== integrationId) {
+      this.logger.warn(`Ignoring webhook routed through the wrong integration`);
       return;
     }
 
@@ -667,6 +709,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private async handleRefundWebhook(
     eventType: string,
     data: PaystackRefundWebhookData,
+    integrationId?: string,
   ) {
     const transactionReference = data.transaction_reference;
     if (!transactionReference) {
@@ -678,6 +721,12 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     if (!transaction) {
       this.logger.warn(
         `Ignoring ${eventType} for unknown ${transactionReference}`,
+      );
+      return;
+    }
+    if (integrationId && transaction.paymentIntegrationId !== integrationId) {
+      this.logger.warn(
+        'Ignoring refund webhook routed through the wrong integration',
       );
       return;
     }
@@ -945,6 +994,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private async handleTransferWebhook(
     eventType: string,
     data: PaystackTransferData,
+    integrationId?: string,
   ) {
     if (
       eventType !== 'transfer.success' &&
@@ -952,6 +1002,18 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       eventType !== 'transfer.reversed'
     ) {
       return;
+    }
+    if (integrationId) {
+      const routedPayout = await this.prisma.providerPayout.findUnique({
+        where: { reference: data.reference },
+        select: { paymentIntegrationId: true },
+      });
+      if (routedPayout && routedPayout.paymentIntegrationId !== integrationId) {
+        this.logger.warn(
+          'Ignoring transfer webhook routed through the wrong integration',
+        );
+        return;
+      }
     }
     const payout = await applyPaystackTransferState(
       this.prisma,
@@ -965,6 +1027,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private async handleExternalDisputeWebhook(
     eventType: string,
     data: PaystackDisputeWebhookData,
+    integrationId?: string,
   ) {
     const reference = data.transaction?.reference;
     if (!reference) {
@@ -977,6 +1040,12 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     });
     if (!transaction) {
       this.logger.warn(`Ignoring ${eventType} for unknown ${reference}`);
+      return;
+    }
+    if (integrationId && transaction.paymentIntegrationId !== integrationId) {
+      this.logger.warn(
+        'Ignoring dispute webhook routed through the wrong integration',
+      );
       return;
     }
     const providerDisputeId = String(data.id);
@@ -1141,6 +1210,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
         entityType: 'externalPaymentDispute',
         entityId: providerDisputeId,
         critical: true,
+        marketId: transaction.order.marketId,
       });
       return;
     }
@@ -1268,6 +1338,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
             where: { externalDisputeId: external.id },
             create: {
               providerId: settlement.providerId,
+              marketId: settlement.marketId,
               orderId: settlement.orderId,
               externalDisputeId: external.id,
               type: BalanceAdjustmentType.CHARGEBACK,
@@ -1323,14 +1394,21 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       entityType: 'externalPaymentDispute',
       entityId: providerDisputeId,
       critical: providerLost,
+      marketId: transaction.order.marketId,
     });
   }
 
-  async getOrderPayment(orderId: string, userId: string, role: string) {
+  async getOrderPayment(
+    orderId: string,
+    userId: string,
+    role: string,
+    actor?: MarketActor,
+  ) {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       select: {
         id: true,
+        marketId: true,
         clientId: true,
         providerId: true,
         orderNumber: true,
@@ -1372,20 +1450,31 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     if (!order) throw new NotFoundException('Order not found');
     if (
       role !== 'ADMIN' &&
+      role !== 'SUPER_ADMIN' &&
       order.clientId !== userId &&
       order.providerId !== userId
     ) {
       throw new ForbiddenException('You do not have access to this payment');
     }
+    if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && actor) {
+      this.marketAccess.assertResource(actor, order.marketId);
+    }
     return order;
   }
 
-  async listForAdmin(page = 1, limit = 20, search?: string) {
+  async listForAdmin(
+    actor: MarketActor,
+    requestedMarketId: string | undefined,
+    page = 1,
+    limit = 20,
+    search?: string,
+  ) {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
     const skip = (safePage - 1) * safeLimit;
     const term = search?.trim();
-    const where: Prisma.PaymentTransactionWhereInput = term
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    const searchWhere: Prisma.PaymentTransactionWhereInput = term
       ? {
           OR: [
             { reference: { contains: term, mode: 'insensitive' } },
@@ -1414,6 +1503,12 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           ],
         }
       : {};
+    const where: Prisma.PaymentTransactionWhereInput = {
+      ...searchWhere,
+      ...(marketId
+        ? { order: { ...((searchWhere as any).order ?? {}), marketId } }
+        : {}),
+    };
     const [transactions, total] = await Promise.all([
       this.prisma.paymentTransaction.findMany({
         where,
@@ -1456,13 +1551,19 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   }
 
   async listRefundsForAdmin(
+    actor: MarketActor,
+    requestedMarketId: string | undefined,
     page = 1,
     limit = 20,
     status?: PaymentRefundStatus,
   ) {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
-    const where: Prisma.PaymentRefundWhereInput = { status };
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    const where: Prisma.PaymentRefundWhereInput = {
+      status,
+      ...(marketId ? { order: { marketId } } : {}),
+    };
     const [data, total] = await Promise.all([
       this.prisma.paymentRefund.findMany({
         where,
@@ -1477,6 +1578,8 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
             select: {
               id: true,
               orderNumber: true,
+              marketId: true,
+              currency: true,
               paymentStatus: true,
               client: {
                 select: {
@@ -1507,11 +1610,14 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   async retryRefund(
     refundId: string,
     details: { currency: string; accountNumber: string; bankCode: string },
+    actor?: MarketActor,
   ) {
     let refund = await this.prisma.paymentRefund.findUnique({
       where: { id: refundId },
+      include: { transaction: true, order: true },
     });
     if (!refund) throw new NotFoundException('Refund not found');
+    if (actor) this.marketAccess.assertResource(actor, refund.order.marketId);
     if (refund.status !== PaymentRefundStatus.NEEDS_ATTENTION) {
       throw new BadRequestException(
         'Only a refund that needs customer details can be retried',
@@ -1521,9 +1627,10 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Refund account currency does not match');
     }
     if (!refund.providerRefundId) {
-      await this.reconcilePendingRefunds();
+      await this.reconcilePendingRefunds(refund.order.marketId);
       refund = await this.prisma.paymentRefund.findUniqueOrThrow({
         where: { id: refundId },
+        include: { transaction: true, order: true },
       });
     }
     if (!refund.providerRefundId) {
@@ -1534,6 +1641,13 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     const resolved = await this.resolveRefundAccount(
       details.accountNumber,
       details.bankCode,
+      refund.order.marketId,
+    );
+    // Resolve the credential before claiming the retry. A revoked or
+    // unreadable pinned credential is a deterministic preflight failure and
+    // must not leave the refund stuck in PENDING.
+    const secretKey = await this.credentials.resolveByCredentialId(
+      refund.transaction.credentialVersionId,
     );
     const claimed = await this.prisma.paymentRefund.updateMany({
       where: {
@@ -1556,6 +1670,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           accountNumber: details.accountNumber,
           bankId: resolved.bankId,
         },
+        secretKey,
       );
       return this.applyRefundProviderData(refund.id, providerRefund);
     } catch (error) {
@@ -1572,8 +1687,24 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async listRefundInstitutions() {
-    const institutions = await this.paystack.listInstitutions('ghipss');
+  async listRefundInstitutions(marketId?: string, actor?: MarketActor) {
+    const scopedMarketId = actor
+      ? this.marketAccess.marketForAdmin(actor, marketId)
+      : marketId;
+    if (!scopedMarketId) throw new BadRequestException('Choose a market');
+    const market = await this.prisma.market.findUnique({
+      where: { id: scopedMarketId },
+    });
+    if (!market) throw new NotFoundException('Market not found');
+    const credential = await this.credentials.resolveForMarket(scopedMarketId);
+    const institutions = await this.paystack.listInstitutions(
+      market.code === 'ZA' ? 'basa' : 'ghipss',
+      {
+        country: market.paystackCountry,
+        currency: market.currency,
+        secretKey: credential.secretKey,
+      },
+    );
     return institutions
       .filter(
         (institution) =>
@@ -1586,13 +1717,27 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       }));
   }
 
-  async resolveRefundAccount(accountNumber: string, bankCode: string) {
-    const institutions = await this.listRefundInstitutions();
+  async resolveRefundAccount(
+    accountNumber: string,
+    bankCode: string,
+    marketId?: string,
+    actor?: MarketActor,
+  ) {
+    const scopedMarketId = actor
+      ? this.marketAccess.marketForAdmin(actor, marketId)
+      : marketId;
+    if (!scopedMarketId) throw new BadRequestException('Choose a market');
+    const institutions = await this.listRefundInstitutions(scopedMarketId);
     const institution = institutions.find((item) => item.code === bankCode);
     if (!institution) {
       throw new BadRequestException('Select a supported refund bank');
     }
-    const account = await this.paystack.resolveAccount(accountNumber, bankCode);
+    const credential = await this.credentials.resolveForMarket(scopedMarketId);
+    const account = await this.paystack.resolveAccount(
+      accountNumber,
+      bankCode,
+      credential.secretKey,
+    );
     if (account.account_number !== accountNumber || !account.account_name) {
       throw new BadRequestException(
         'Paystack could not verify this refund account',
@@ -1607,11 +1752,13 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async reattemptExcessRefund(refundId: string) {
+  async reattemptExcessRefund(refundId: string, actor?: MarketActor) {
     const refund = await this.prisma.paymentRefund.findUnique({
       where: { id: refundId },
+      include: { order: true },
     });
     if (!refund) throw new NotFoundException('Refund not found');
+    if (actor) this.marketAccess.assertResource(actor, refund.order.marketId);
     if (refund.affectsOrderBalance) {
       throw new BadRequestException(
         'Retry this order refund from the order payment controls',
@@ -1656,12 +1803,16 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 
     let providerRefund: PaystackRefundData;
     try {
-      providerRefund = await this.paystack.refund({
+      const secretKey = await this.credentials.resolveByCredentialId(
+        refund.transaction.credentialVersionId,
+      );
+      const refundInput = {
         reference: refund.transaction.reference,
         amountMinor: refund.amountMinor,
         currency: refund.currency,
         reason: refund.reason ?? undefined,
-      });
+      };
+      providerRefund = await this.paystack.refund(refundInput, secretKey);
     } catch (error) {
       const outcomeUnknown =
         error instanceof PaystackRequestException && error.outcomeUnknown;
@@ -1734,7 +1885,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     return this.applyRefundProviderData(refund.id, providerRefund);
   }
 
-  async reconcilePendingRefunds() {
+  async reconcilePendingRefunds(marketId?: string) {
     const staleBefore = new Date(Date.now() - 60_000);
     const refunds = await this.prisma.paymentRefund.findMany({
       where: {
@@ -1747,29 +1898,38 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           ],
         },
         updatedAt: { lte: staleBefore },
+        ...(marketId ? { order: { marketId } } : {}),
       },
       orderBy: { updatedAt: 'asc' },
       take: 100,
       include: {
         transaction: {
-          select: { providerTransactionId: true, reference: true },
+          select: {
+            providerTransactionId: true,
+            reference: true,
+            credentialVersionId: true,
+          },
         },
       },
     });
     let reconciled = 0;
     for (const refund of refunds) {
       try {
+        const secretKey = await this.credentials.resolveByCredentialId(
+          refund.transaction.credentialVersionId,
+        );
         let providerRefund;
         if (refund.providerRefundId) {
           providerRefund = await this.paystack.fetchRefund(
             refund.providerRefundId,
+            secretKey,
           );
         } else if (refund.transaction.providerTransactionId) {
-          const candidates = (
-            await this.paystack.listRefunds(
-              refund.transaction.providerTransactionId,
-            )
-          ).filter(
+          const providerRefunds = await this.paystack.listRefunds(
+            refund.transaction.providerTransactionId,
+            secretKey,
+          );
+          const candidates = providerRefunds.filter(
             (candidate) =>
               Number(candidate.amount) === refund.amountMinor &&
               candidate.currency === refund.currency,
@@ -1940,11 +2100,21 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     return updatedRefund;
   }
 
-  async listExternalDisputes(page = 1, limit = 20) {
+  async listExternalDisputes(
+    actor: MarketActor,
+    requestedMarketId: string | undefined,
+    page = 1,
+    limit = 20,
+  ) {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    const where: Prisma.ExternalPaymentDisputeWhereInput = marketId
+      ? { order: { marketId } }
+      : {};
     const [data, total] = await Promise.all([
       this.prisma.externalPaymentDispute.findMany({
+        where,
         skip: (safePage - 1) * safeLimit,
         take: safeLimit,
         orderBy: { createdAt: 'desc' },
@@ -1975,7 +2145,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           balanceAdjustment: true,
         },
       }),
-      this.prisma.externalPaymentDispute.count(),
+      this.prisma.externalPaymentDispute.count({ where }),
     ]);
     return {
       data,
@@ -1988,7 +2158,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async reconcilePendingTransfers() {
+  async reconcilePendingTransfers(marketId?: string) {
     const staleBefore = new Date(Date.now() - 5 * 60 * 1000);
     const payouts = await this.prisma.providerPayout.findMany({
       where: {
@@ -1999,15 +2169,23 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           ],
         },
         updatedAt: { lte: staleBefore },
+        ...(marketId ? { marketId } : {}),
       },
       orderBy: { updatedAt: 'asc' },
       take: 100,
-      select: { reference: true },
+      select: { reference: true, credentialVersionId: true },
     });
     let reconciled = 0;
     for (const payout of payouts) {
       try {
-        const transfer = await this.paystack.verifyTransfer(payout.reference);
+        if (!payout.credentialVersionId) continue;
+        const secretKey = await this.credentials.resolveByCredentialId(
+          payout.credentialVersionId,
+        );
+        const transfer = await this.paystack.verifyTransfer(
+          payout.reference,
+          secretKey,
+        );
         await applyPaystackTransferState(
           this.prisma,
           eventForTransferStatus(transfer.status),

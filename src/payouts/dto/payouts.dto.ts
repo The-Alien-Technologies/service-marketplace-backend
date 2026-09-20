@@ -19,6 +19,10 @@ import {
 } from '../../../generated/prisma';
 
 export class UpdatePayoutAccountDto {
+  @IsString()
+  @IsNotEmpty()
+  marketId: string;
+
   @IsEnum(PayoutDestinationType)
   type: PayoutDestinationType;
 
@@ -73,7 +77,28 @@ export class PayoutPaginationQueryDto {
   limit?: number;
 }
 
+export class MarketQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  marketId: string;
+}
+
+export class ProviderPayoutPaginationQueryDto extends PayoutPaginationQueryDto {
+  @IsString()
+  @IsNotEmpty()
+  marketId: string;
+}
+
+export class PayoutInstitutionsQueryDto extends MarketQueryDto {
+  @IsEnum(PayoutDestinationType)
+  type: PayoutDestinationType;
+}
+
 export class PayoutListQueryDto extends PayoutPaginationQueryDto {
+  @IsOptional()
+  @IsString()
+  marketId?: string;
+
   @IsOptional()
   @IsEnum(ProviderPayoutStatus)
   status?: ProviderPayoutStatus;

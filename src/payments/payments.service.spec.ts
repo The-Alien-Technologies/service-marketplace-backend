@@ -12,6 +12,41 @@ import {
 import { PaymentsService } from './payments.service';
 
 describe('PaymentsService', () => {
+  type ServiceArguments = ConstructorParameters<typeof PaymentsService>;
+  const defaultCredentials = {
+    resolveActive: jest.fn(async (integrationId: string | undefined) => ({
+      integrationId: integrationId ?? 'integration-gh',
+      credentialVersionId: 'credential-gh',
+      secretKey: 'paystack-country-secret',
+    })),
+    resolveByCredentialId: jest
+      .fn()
+      .mockResolvedValue('paystack-country-secret'),
+    resolveForMarket: jest.fn().mockResolvedValue({
+      integrationId: 'integration-gh',
+      credentialVersionId: 'credential-gh',
+      secretKey: 'paystack-country-secret',
+    }),
+  };
+  const makeService = (
+    prisma: ServiceArguments[0],
+    paystack: ServiceArguments[1],
+    config: ServiceArguments[2],
+    settlements: ServiceArguments[3],
+    credentials: ServiceArguments[4] = defaultCredentials as never,
+    marketAccess?: ServiceArguments[5],
+    notificationEvents?: ServiceArguments[6],
+  ) =>
+    new PaymentsService(
+      prisma,
+      paystack,
+      config,
+      settlements,
+      credentials,
+      marketAccess,
+      notificationEvents,
+    );
+
   const makeSettlements = () => ({
     ensureForPaidOrder: jest.fn().mockResolvedValue({}),
     recalculateAfterRefund: jest.fn().mockResolvedValue({}),
@@ -116,7 +151,7 @@ describe('PaymentsService', () => {
         key === 'WEBSITE_URL' ? 'https://pavodah.com' : fallback,
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       config as never,
@@ -132,6 +167,7 @@ describe('PaymentsService', () => {
         currency: 'GHS',
         reference: expect.stringMatching(/^PAVODAH-/),
       }),
+      'paystack-country-secret',
     );
   });
 
@@ -151,7 +187,7 @@ describe('PaymentsService', () => {
       },
     };
     const paystack = { initialize: jest.fn() };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -202,7 +238,7 @@ describe('PaymentsService', () => {
       }),
     };
     const settlements = makeSettlements();
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -313,7 +349,7 @@ describe('PaymentsService', () => {
       }),
     };
     const settlements = makeSettlements();
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -332,6 +368,7 @@ describe('PaymentsService', () => {
     );
     expect(paystack.refund).toHaveBeenCalledWith(
       expect.objectContaining({ reference: transaction.reference }),
+      'paystack-country-secret',
     );
   });
 
@@ -360,7 +397,7 @@ describe('PaymentsService', () => {
         currency: 'GHS',
       }),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -389,7 +426,7 @@ describe('PaymentsService', () => {
         currency: 'GHS',
       }),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -420,7 +457,7 @@ describe('PaymentsService', () => {
       },
     };
     const paystack = { verify: jest.fn() };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -502,7 +539,7 @@ describe('PaymentsService', () => {
         currency: 'GHS',
       }),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -511,12 +548,15 @@ describe('PaymentsService', () => {
 
     const result = await service.refund('order-1', 'Provider unavailable');
 
-    expect(paystack.refund).toHaveBeenCalledWith({
-      reference: successfulTransaction.reference,
-      amountMinor: 1234,
-      currency: 'GHS',
-      reason: 'Provider unavailable',
-    });
+    expect(paystack.refund).toHaveBeenCalledWith(
+      {
+        reference: successfulTransaction.reference,
+        amountMinor: 1234,
+        currency: 'GHS',
+        reason: 'Provider unavailable',
+      },
+      'paystack-country-secret',
+    );
     expect(result.paymentStatus).toBe(OrderPaymentStatus.REFUND_PENDING);
     expect(prisma.order.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -558,7 +598,7 @@ describe('PaymentsService', () => {
       ),
     };
     const settlements = makeSettlements();
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -619,7 +659,7 @@ describe('PaymentsService', () => {
         callback(tx),
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -682,7 +722,7 @@ describe('PaymentsService', () => {
       ),
     };
     const settlements = makeSettlements();
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -755,7 +795,7 @@ describe('PaymentsService', () => {
       ]),
     };
     const settlements = makeSettlements();
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -767,6 +807,7 @@ describe('PaymentsService', () => {
     expect(result).toEqual({ checked: 1, reconciled: 1, attention: 1 });
     expect(paystack.listRefunds).toHaveBeenCalledWith(
       'paystack-transaction-123',
+      'paystack-country-secret',
     );
     expect(settlements.recalculateAfterRefund).toHaveBeenCalledWith(
       tx,
@@ -803,7 +844,7 @@ describe('PaymentsService', () => {
         callback(tx),
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -850,7 +891,7 @@ describe('PaymentsService', () => {
         callback(tx),
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -901,7 +942,7 @@ describe('PaymentsService', () => {
         callback(tx),
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -962,7 +1003,7 @@ describe('PaymentsService', () => {
         callback(tx),
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -1029,7 +1070,7 @@ describe('PaymentsService', () => {
         currency: transaction.currency,
       }),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -1070,7 +1111,7 @@ describe('PaymentsService', () => {
         callback(tx),
       ),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       {} as never,
       {} as never,
@@ -1137,7 +1178,7 @@ describe('PaymentsService', () => {
         currency: transaction.currency,
       }),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,
@@ -1191,7 +1232,7 @@ describe('PaymentsService', () => {
         currency: transaction.currency,
       }),
     };
-    const service = new PaymentsService(
+    const service = makeService(
       prisma as never,
       paystack as never,
       {} as never,

@@ -25,6 +25,7 @@ import {
   UserInterest,
   UserInterestType,
   UserStatus,
+  ProviderMarketMembershipStatus,
 } from '../../generated/prisma';
 import { normalizePhoneNumber } from '../common/utils/phone.util';
 import { NotificationEventsService } from '../notifications/notification-events.service';
@@ -95,6 +96,66 @@ export class OnboardingService {
               isPrimary: true,
             },
           });
+
+      const countryCode = (
+        locationDto.countryIso2 ??
+        (locationDto.country?.toLowerCase() === 'ghana'
+          ? 'GH'
+          : locationDto.country?.toLowerCase() === 'south africa'
+            ? 'ZA'
+            : '')
+      ).toUpperCase();
+      const market = countryCode
+        ? await transaction.market.findUnique({ where: { code: countryCode } })
+        : null;
+      if (market) {
+        await transaction.user.update({
+          where: { id: userId },
+          data: {
+            homeMarketId: market.id,
+            // The country chosen during onboarding is the account's initial
+            // marketplace, even if a different market was browsed earlier.
+            selectedMarketId: market.id,
+          },
+        });
+        if (user.role === Role.SERVICE_PROVIDER) {
+          // Before an application is approved, changing country moves the
+          // application instead of leaving it visible in multiple review
+          // queues. Approved providers cannot edit onboarding details here.
+          await transaction.providerMarketMembership.deleteMany({
+            where: {
+              providerId: userId,
+              marketId: { not: market.id },
+              status: ProviderMarketMembershipStatus.PENDING,
+            },
+          });
+          await transaction.providerMarketMembership.updateMany({
+            where: {
+              providerId: userId,
+              isPrimary: true,
+              marketId: { not: market.id },
+            },
+            data: { isPrimary: false },
+          });
+          await transaction.providerMarketMembership.upsert({
+            where: {
+              providerId_marketId: { providerId: userId, marketId: market.id },
+            },
+            create: {
+              providerId: userId,
+              marketId: market.id,
+              isPrimary: true,
+            },
+            update: {
+              status: ProviderMarketMembershipStatus.PENDING,
+              isPrimary: true,
+              reviewedAt: null,
+              reviewedBy: null,
+              rejectionReason: null,
+            },
+          });
+        }
+      }
 
       await this.updateProfileCompleteness(userId, transaction);
       return address;
@@ -479,6 +540,36 @@ export class OnboardingService {
           },
         });
 
+        await transaction.providerMarketMembership.updateMany({
+          where: {
+            providerId: userId,
+            isPrimary: true,
+            marketId: { not: user.homeMarketId! },
+          },
+          data: { isPrimary: false },
+        });
+        await transaction.providerMarketMembership.upsert({
+          where: {
+            providerId_marketId: {
+              providerId: userId,
+              marketId: user.homeMarketId!,
+            },
+          },
+          create: {
+            providerId: userId,
+            marketId: user.homeMarketId!,
+            status: ProviderMarketMembershipStatus.PENDING,
+            isPrimary: true,
+          },
+          update: {
+            status: ProviderMarketMembershipStatus.PENDING,
+            isPrimary: true,
+            reviewedAt: null,
+            reviewedBy: null,
+            rejectionReason: null,
+          },
+        });
+
         applicationWasSubmitted = true;
         return submittedUser;
       }
@@ -504,6 +595,7 @@ export class OnboardingService {
         providerId: updatedUser.id,
         providerName,
         submittedAt,
+        marketId: updatedUser.homeMarketId,
       });
     }
 
@@ -655,6 +747,7 @@ export class OnboardingService {
 
     // Required for service providers
     if (user.role === Role.SERVICE_PROVIDER) {
+      if (!user.homeMarketId) missing.push('market');
       if (!user.emailVerified) missing.push('emailVerification');
       if (!user.phoneVerified) missing.push('phoneVerification');
       if (!user.serviceProviderExperienceLevel) missing.push('experienceLevel');

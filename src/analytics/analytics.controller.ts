@@ -12,6 +12,7 @@ import { ResponseUtil } from '../common/utils/response.util';
 import { AdminAnalyticsQueryDto } from './dto/admin-analytics-query.dto';
 import { ProviderAnalyticsQueryDto } from './dto/provider-analytics-query.dto';
 import { UserAnalyticsQueryDto } from './dto/user-analytics-query.dto';
+import { MarketActor } from '../markets/market-access.service';
 
 @Controller('analytics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,6 +28,7 @@ export class AnalyticsController {
     const data = await this.analyticsService.getUserDashboard(
       userId,
       query.year,
+      query.marketId,
     );
     return ResponseUtil.success(data, 'User analytics retrieved');
   }
@@ -41,16 +43,22 @@ export class AnalyticsController {
       userId,
       query.year,
       query.orderMonth,
+      query.marketId,
     );
     return ResponseUtil.success(data, 'Provider analytics retrieved');
   }
 
   @Get('admin')
   @IsAdmin()
-  async adminDashboard(@Query() query: AdminAnalyticsQueryDto) {
+  async adminDashboard(
+    @CurrentUser() actor: MarketActor,
+    @Query() query: AdminAnalyticsQueryDto,
+  ) {
     const data = await this.analyticsService.getAdminDashboard(
       query.year,
       query.categoryMonth,
+      actor,
+      query.marketId,
     );
     return ResponseUtil.success(data, 'Admin analytics retrieved');
   }

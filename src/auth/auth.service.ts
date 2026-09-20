@@ -37,6 +37,7 @@ import {
 import { normalizePhoneNumber } from '../common/utils/phone.util';
 import { randomInt } from 'crypto';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import { FileUploadService } from '../common/services/file-upload.service';
 
 const PHONE_OTP_EXPIRY_MS = 10 * 60 * 1000;
 const PHONE_OTP_COOLDOWN_MS = 60 * 1000;
@@ -68,6 +69,7 @@ export class AuthService {
     private onboardingStatusService: OnboardingStatusService,
     private googleAuthService: GoogleAuthService,
     private prisma: PrismaService,
+    private fileUploadService: FileUploadService,
     @Optional()
     private notificationEvents?: NotificationEventsService,
   ) {}
@@ -539,7 +541,11 @@ export class AuthService {
   async sendPhoneVerificationOtp(
     userId: string,
     phoneNumber: string,
-  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+  ): Promise<{
+    phoneNumber: string;
+    expiresAt?: Date;
+    alreadyVerified?: boolean;
+  }> {
     const normalized = normalizePhoneNumber(phoneNumber);
     if (!normalized) {
       throw new BadRequestException({
@@ -551,9 +557,10 @@ export class AuthService {
       where: { phoneNumber: normalized.phoneNumber },
     });
     if (existingClaim?.userId === userId) {
-      throw new ConflictException({
-        message: 'This phone number is already verified for your account.',
-      });
+      return {
+        phoneNumber: normalized.phoneNumber,
+        alreadyVerified: true,
+      };
     }
     if (existingClaim) {
       throw new ConflictException({
@@ -745,7 +752,11 @@ export class AuthService {
   async resendPhoneVerificationOtp(
     userId: string,
     phoneNumber: string,
-  ): Promise<{ phoneNumber: string; expiresAt: Date }> {
+  ): Promise<{
+    phoneNumber: string;
+    expiresAt?: Date;
+    alreadyVerified?: boolean;
+  }> {
     return this.sendPhoneVerificationOtp(userId, phoneNumber);
   }
 
@@ -938,6 +949,37 @@ export class AuthService {
   ): Promise<Partial<User>> {
     const user = await this.usersService.updateProfile(userId, updateData);
     return this.sanitizeUser(user);
+  }
+
+  async updateAvatar(
+    userId: string,
+    avatarFile: Express.Multer.File,
+  ): Promise<Partial<User>> {
+    if (!avatarFile) throw new BadRequestException('Choose an image to upload');
+    const current = await this.usersService.findById(userId);
+    if (!current)
+      throw new UnauthorizedException({ message: 'User not found' });
+
+    const uploaded = await this.fileUploadService.uploadAvatar(
+      avatarFile,
+      userId,
+    );
+    try {
+      const user = await this.usersService.updateProfile(userId, {
+        avatar: uploaded.url,
+      });
+      if (current.avatar && current.avatar !== uploaded.url) {
+        await this.fileUploadService
+          .deleteFile(current.avatar)
+          .catch(() => undefined);
+      }
+      return this.sanitizeUser(user);
+    } catch (error) {
+      await this.fileUploadService
+        .deleteFile(uploaded.url)
+        .catch(() => undefined);
+      throw error;
+    }
   }
 
   async changePassword(

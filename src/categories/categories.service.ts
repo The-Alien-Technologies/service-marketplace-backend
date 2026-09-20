@@ -12,7 +12,11 @@ import {
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { FilterServicesDto } from './dto/filter-services.dto';
-import { UserStatus } from '../../generated/prisma';
+import {
+  ServiceAvailability,
+  ServiceStatus,
+  UserStatus,
+} from '../../generated/prisma';
 
 @Injectable()
 export class CategoriesService {
@@ -93,8 +97,28 @@ export class CategoriesService {
     });
   }
 
-  async findAll(includeInactive = false) {
-    const where = includeInactive ? {} : { isActive: true };
+  async findAll(options?: {
+    includeInactive?: boolean;
+    search?: string;
+    featured?: boolean;
+  }) {
+    const search = options?.search?.trim();
+    const where = {
+      ...(options?.includeInactive ? {} : { isActive: true }),
+      ...(options?.featured !== undefined
+        ? { featured: options.featured }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              {
+                description: { contains: search, mode: 'insensitive' as const },
+              },
+            ],
+          }
+        : {}),
+    };
 
     return this.prisma.category.findMany({
       where,
@@ -117,6 +141,7 @@ export class CategoriesService {
         _count: {
           select: {
             subCategories: true,
+            services: { where: { status: ServiceStatus.PUBLISHED } },
           },
         },
       },
@@ -224,6 +249,7 @@ export class CategoriesService {
       sortBy = 'best_match',
       page = 1,
       limit = 20,
+      market,
     } = filters;
 
     const skip = (page - 1) * limit;
@@ -237,6 +263,18 @@ export class CategoriesService {
         isServiceProviderVerified: true,
       },
     };
+
+    if (market?.toUpperCase() === 'GLOBAL') {
+      where.availability = ServiceAvailability.GLOBAL;
+      where.market = { status: { not: 'INACTIVE' } };
+    } else if (market) {
+      where.market = {
+        code: market.toUpperCase(),
+        status: { not: 'INACTIVE' },
+      };
+    } else {
+      where.market = { status: { not: 'INACTIVE' } };
+    }
 
     // Search filter (title, overview, tags)
     if (search) {
@@ -279,6 +317,7 @@ export class CategoriesService {
             name: true,
           },
         },
+        market: true,
         plans: {
           orderBy: {
             price: 'asc',
@@ -287,14 +326,37 @@ export class CategoriesService {
         _count: {
           select: {
             orders: true,
+            reviews: true,
           },
+        },
+        reviews: {
+          select: { rating: true },
         },
       },
     });
 
+    let enrichedServices = services.map((service) => {
+      const reviews = service.reviews ?? [];
+      const { reviews: _reviews, _count, ...serviceData } = service;
+      return {
+        ...serviceData,
+        averageRating:
+          reviews.length > 0
+            ? Number(
+                (
+                  reviews.reduce((sum, review) => sum + review.rating, 0) /
+                  reviews.length
+                ).toFixed(1),
+              )
+            : 0,
+        reviewCount: _count.reviews ?? 0,
+        orderCount: _count.orders,
+      };
+    });
+
     // Apply price filter (based on minimum plan price)
     if (minPrice !== undefined || maxPrice !== undefined) {
-      services = services.filter((service) => {
+      enrichedServices = enrichedServices.filter((service) => {
         const minPlanPrice = Math.min(
           ...service.plans.map((p) => Number(p.price)),
         );
@@ -304,37 +366,38 @@ export class CategoriesService {
       });
     }
 
-    // Apply rating filter
-    // Note: Rating functionality will be implemented when review system is added
-    // For now, we'll skip rating filter
-    // if (minRating !== undefined) {
-    //   services = services.filter((service) => {
-    //     return (service.averageRating || 0) >= minRating;
-    //   });
-    // }
+    if (minRating !== undefined) {
+      enrichedServices = enrichedServices.filter(
+        (service) => service.averageRating >= minRating,
+      );
+    }
 
     // Apply sorting
     switch (sortBy) {
       case 'price_asc':
-        services.sort((a, b) => {
+        enrichedServices.sort((a, b) => {
           const minPriceA = Math.min(...a.plans.map((p) => Number(p.price)));
           const minPriceB = Math.min(...b.plans.map((p) => Number(p.price)));
           return minPriceA - minPriceB;
         });
         break;
       case 'price_desc':
-        services.sort((a, b) => {
+        enrichedServices.sort((a, b) => {
           const minPriceA = Math.min(...a.plans.map((p) => Number(p.price)));
           const minPriceB = Math.min(...b.plans.map((p) => Number(p.price)));
           return minPriceB - minPriceA;
         });
         break;
       case 'rating':
+        enrichedServices.sort((a, b) => {
+          return (
+            b.averageRating - a.averageRating || b.reviewCount - a.reviewCount
+          );
+        });
+        break;
       case 'popular':
-        // Note: Rating sort will be implemented when review system is added
-        // For now, sort by order count as a proxy for popularity
-        services.sort((a, b) => {
-          return b._count.orders - a._count.orders;
+        enrichedServices.sort((a, b) => {
+          return b.orderCount - a.orderCount;
         });
         break;
       case 'best_match':
@@ -344,10 +407,10 @@ export class CategoriesService {
     }
 
     // Get total count before pagination
-    const total = services.length;
+    const total = enrichedServices.length;
 
     // Apply pagination
-    const paginatedServices = services.slice(skip, skip + limit);
+    const paginatedServices = enrichedServices.slice(skip, skip + limit);
 
     return {
       services: paginatedServices,

@@ -27,6 +27,7 @@ import { PayoutsModule } from './payouts/payouts.module';
 import { validateEnvironment } from './config/environment';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ProviderApprovalGuard } from './auth/guards/provider-approval.guard';
+import { MarketsModule } from './markets/markets.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ProviderApprovalGuard } from './auth/guards/provider-approval.guard';
     PaymentsModule,
     PayoutsModule,
     NotificationsModule,
+    MarketsModule,
   ],
   controllers: [AppController],
   providers: [
