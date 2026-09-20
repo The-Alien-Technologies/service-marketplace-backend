@@ -12,6 +12,7 @@ declare global {
         homeMarketId?: string | null;
         selectedMarketId?: string | null;
         adminMarketId?: string | null;
+        sessionId: string;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;

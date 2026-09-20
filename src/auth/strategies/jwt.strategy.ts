@@ -13,6 +13,10 @@ export interface JwtPayload {
   id: string;
   email: string;
   role: string;
+  tokenVersion: number;
+  tokenType: 'access' | 'refresh';
+  sessionId: string;
+  jti: string;
 }
 
 @Injectable()
@@ -48,6 +52,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       homeMarketId: user.homeMarketId,
       selectedMarketId: user.selectedMarketId,
       adminMarketId: user.adminMarketId,
+      sessionId: payload.sessionId,
       isActive: user.status === 'ACTIVE',
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

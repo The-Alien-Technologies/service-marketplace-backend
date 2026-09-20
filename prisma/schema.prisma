@@ -63,6 +63,7 @@ model User {
   emailVerificationOtp               String?
   emailNotificationsEnabled          Boolean                     @default(true)
   smsNotificationsEnabled            Boolean                     @default(false)
+  tokenVersion                       Int                         @default(0)
   homeMarketId                       String?
   selectedMarketId                   String?
   adminMarketId                      String?
@@ -101,11 +102,27 @@ model User {
   reviewedMarketMemberships          ProviderMarketMembership[]  @relation("MembershipReviewer")
   createdCredentialVersions          PaymentCredentialVersion[]  @relation("CredentialCreator")
   adminAuditLogs                     AdminAuditLog[]             @relation("AuditActor")
+  authSessions                       AuthSession[]
 
   @@index([role, status, providerApplicationSubmittedAt])
   @@index([homeMarketId, role, status])
   @@index([adminMarketId, role])
   @@map("users")
+}
+
+model AuthSession {
+  id               String    @id @default(uuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  userId           String
+  refreshTokenHash String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("auth_sessions")
 }
 
 model UserAddress {

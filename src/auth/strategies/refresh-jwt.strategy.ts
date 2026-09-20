@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService, UserPayload } from '../auth.service';
 
 @Injectable()
-export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'refresh-jwt') {
+export class RefreshJwtStrategy extends PassportStrategy(
+  Strategy,
+  'refresh-jwt',
+) {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
@@ -13,11 +16,12 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'refresh-jwt'
     super({
       jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_REFRESH_EXPIRATION_TIME'),
+      secretOrKey: configService.get('JWT_SECRET'),
     });
   }
 
   async validate(payload: UserPayload) {
-    return await this.authService.validateUser(payload);
+    if (payload.tokenType !== 'refresh') return null;
+    return await this.authService.validateRefreshUser(payload);
   }
 }

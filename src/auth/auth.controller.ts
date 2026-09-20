@@ -239,6 +239,17 @@ export class AuthController {
     );
   }
 
+  @Post('logout')
+  @HttpCode(200)
+  @AllowUnapprovedProvider()
+  async logout(@Req() req: Request) {
+    await this.authService.logout(
+      req.currentUser.id,
+      req.currentUser.sessionId,
+    );
+    return ResponseUtil.success(null, 'Signed out successfully');
+  }
+
   @Get('me')
   @AllowUnapprovedProvider()
   async getProfile(@Req() req: Request) {
