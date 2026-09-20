@@ -51,12 +51,28 @@ export class UsersController {
     @Query('status') status?: string,
     @Query('marketId') marketId?: string,
     @Query('marketplaceOnly') marketplaceOnly?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('orderBy') orderBy?: string,
   ) {
     if (role && !Object.values(Role).includes(role as Role)) {
       throw new BadRequestException('Invalid user role filter');
     }
     if (status && !Object.values(UserStatus).includes(status as UserStatus)) {
       throw new BadRequestException('Invalid user status filter');
+    }
+    const allowedSorts = new Set([
+      'name',
+      'email',
+      'role',
+      'status',
+      'emailVerified',
+      'createdAt',
+    ]);
+    if (sortBy && !allowedSorts.has(sortBy)) {
+      throw new BadRequestException('Invalid user sort field');
+    }
+    if (orderBy && orderBy !== 'asc' && orderBy !== 'desc') {
+      throw new BadRequestException('Invalid user sort direction');
     }
     const pageNum = Number.parseInt(page || '1', 10);
     const limitNum = Number.parseInt(limit || '10', 10);
@@ -70,6 +86,8 @@ export class UsersController {
       actor,
       marketId,
       marketplaceOnly: marketplaceOnly === 'true',
+      sortBy,
+      orderBy: orderBy as 'asc' | 'desc' | undefined,
     });
 
     return ResponseUtil.success(result, 'Users retrieved successfully');

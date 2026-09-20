@@ -115,6 +115,8 @@ export class OrdersController {
     @Query('marketId') marketId?: string,
     @Query('paidOnly') paidOnly?: string,
     @Query('settledOnly') settledOnly?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('orderBy') orderBy?: string,
   ) {
     const parsedStatus = status
       ? (status.split(',') as OrderStatus[])
@@ -123,6 +125,25 @@ export class OrdersController {
       parsedStatus?.some((value) => !Object.values(OrderStatus).includes(value))
     ) {
       throw new BadRequestException('Invalid order status filter');
+    }
+    const allowedSorts = new Set([
+      'orderNumber',
+      'service',
+      'category',
+      'provider',
+      'total',
+      'status',
+      'grossAmount',
+      'refundedAmount',
+      'commissionAmount',
+      'retainedAmount',
+      'createdAt',
+    ]);
+    if (sortBy && !allowedSorts.has(sortBy)) {
+      throw new BadRequestException('Invalid order sort field');
+    }
+    if (orderBy && orderBy !== 'asc' && orderBy !== 'desc') {
+      throw new BadRequestException('Invalid order sort direction');
     }
     const result = await this.ordersService.findAll({
       status:
@@ -136,6 +157,8 @@ export class OrdersController {
       marketId,
       paidOnly: paidOnly === 'true',
       settledOnly: settledOnly === 'true',
+      sortBy,
+      orderBy: orderBy as 'asc' | 'desc' | undefined,
     });
     return ResponseUtil.success(result, 'All orders retrieved successfully');
   }

@@ -412,6 +412,8 @@ export class OrdersService {
         orderBy: { createdAt: 'desc' },
         include: {
           settlement: true,
+          review: { select: { id: true } },
+          dispute: { select: { id: true, status: true } },
           addOns: true,
           service: {
             include: {
@@ -546,6 +548,8 @@ export class OrdersService {
     actor?: MarketActor;
     paidOnly?: boolean;
     settledOnly?: boolean;
+    sortBy?: string;
+    orderBy?: 'asc' | 'desc';
   }) {
     const page = options?.page || 1;
     const limit = options?.limit || 10;
@@ -621,14 +625,34 @@ export class OrdersService {
       ];
     }
 
+    const direction = options?.orderBy ?? 'desc';
+    const sortMap: Record<string, any> = {
+      orderNumber: { orderNumber: direction },
+      service: { service: { title: direction } },
+      category: { service: { category: { name: direction } } },
+      provider: { service: { provider: { displayName: direction } } },
+      total: { total: direction },
+      status: { status: direction },
+      grossAmount: { settlement: { grossAmount: direction } },
+      refundedAmount: { settlement: { refundedAmount: direction } },
+      commissionAmount: { settlement: { commissionAmount: direction } },
+      retainedAmount: { settlement: { retainedAmount: direction } },
+      createdAt: { createdAt: direction },
+    };
+    const orderBy = options?.sortBy
+      ? sortMap[options.sortBy]
+      : { createdAt: 'desc' };
+
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           settlement: true,
+          review: { select: { id: true } },
+          dispute: { select: { id: true, status: true } },
           addOns: true,
           service: {
             include: {
@@ -674,6 +698,8 @@ export class OrdersService {
       where: { id },
       include: {
         settlement: true,
+        review: { select: { id: true } },
+        dispute: { select: { id: true, status: true } },
         refunds: {
           orderBy: { createdAt: 'desc' },
           select: {

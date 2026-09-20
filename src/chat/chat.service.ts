@@ -10,11 +10,26 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ChatService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getConversations(userId: string) {
+  async getConversations(userId: string, search?: string) {
+    const term = search?.trim();
+    const matchingName = term
+      ? {
+          OR: [
+            { firstName: { contains: term, mode: 'insensitive' as const } },
+            { lastName: { contains: term, mode: 'insensitive' as const } },
+            { displayName: { contains: term, mode: 'insensitive' as const } },
+          ],
+        }
+      : undefined;
     const conversations = await this.prisma.conversation.findMany({
-      where: {
-        OR: [{ userId }, { providerId: userId }],
-      },
+      where: term
+        ? {
+            OR: [
+              { userId, provider: matchingName },
+              { providerId: userId, user: matchingName },
+            ],
+          }
+        : { OR: [{ userId }, { providerId: userId }] },
       include: {
         user: {
           select: { id: true, firstName: true, lastName: true, avatar: true },

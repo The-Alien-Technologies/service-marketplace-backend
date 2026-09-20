@@ -171,6 +171,8 @@ export class UsersService {
     actor?: MarketActor;
     marketId?: string;
     marketplaceOnly?: boolean;
+    sortBy?: string;
+    orderBy?: 'asc' | 'desc';
   }): Promise<{
     users: User[];
     total: number;
@@ -233,12 +235,24 @@ export class UsersService {
     // Status filter
     if (status) where.status = status;
 
+    const direction = options.orderBy ?? 'desc';
+    const orderBy: any =
+      options.sortBy === 'name'
+        ? [
+            { displayName: direction },
+            { firstName: direction },
+            { lastName: direction },
+          ]
+        : options.sortBy
+          ? { [options.sortBy]: direction }
+          : { createdAt: 'desc' };
+
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         select: {
           id: true,
           email: true,

@@ -32,9 +32,10 @@ export class ChatController {
   ) {}
 
   @Get('conversations')
-  async getConversations(@Req() req: any) {
+  async getConversations(@Req() req: any, @Query('search') search?: string) {
     const conversations = await this.chatService.getConversations(
       req.currentUser.id,
+      search,
     );
     return ResponseUtil.success(
       { conversations },

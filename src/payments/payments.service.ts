@@ -1468,6 +1468,8 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     page = 1,
     limit = 20,
     search?: string,
+    sortBy?: string,
+    orderBy: 'asc' | 'desc' = 'desc',
   ) {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
@@ -1509,12 +1511,22 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
         ? { order: { ...((searchWhere as any).order ?? {}), marketId } }
         : {}),
     };
+    const sortMap: Record<string, any> = {
+      reference: { reference: orderBy },
+      client: { client: { displayName: orderBy } },
+      service: { order: { service: { title: orderBy } } },
+      amount: { amount: orderBy },
+      channel: { channel: orderBy },
+      status: { status: orderBy },
+      createdAt: { createdAt: orderBy },
+    };
+
     const [transactions, total] = await Promise.all([
       this.prisma.paymentTransaction.findMany({
         where,
         skip,
         take: safeLimit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: sortBy ? sortMap[sortBy] : { createdAt: 'desc' },
         include: {
           client: {
             select: {

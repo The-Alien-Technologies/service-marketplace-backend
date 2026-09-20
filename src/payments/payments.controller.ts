@@ -98,6 +98,8 @@ export class PaymentsController {
       query.page,
       query.limit,
       query.search,
+      query.sortBy,
+      query.orderBy,
     );
     return ResponseUtil.success(payments, 'Payments retrieved successfully');
   }
