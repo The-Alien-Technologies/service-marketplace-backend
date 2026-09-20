@@ -62,6 +62,188 @@ export async function applyPaystackTransferState(
         FOR UPDATE
       `);
       if (locked.length === 0) {
+        const lockedPartner = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "market_partner_payouts"
+            WHERE "reference" = ${data.reference}
+            FOR UPDATE
+          `,
+        );
+        if (lockedPartner.length > 0) {
+          const payout = await tx.marketPartnerPayout.findUnique({
+            where: { id: lockedPartner[0].id },
+            include: { items: true, adjustmentItems: true },
+          });
+          if (!payout) return null;
+          if (
+            !Number.isSafeInteger(Number(data.amount)) ||
+            Number(data.amount) !== payout.amountMinor ||
+            data.currency !== payout.currency
+          ) {
+            const message = `Partner transfer mismatch for ${data.reference}: expected ${payout.amountMinor} ${payout.currency}, received ${data.amount} ${data.currency}`;
+            if (options.strict) throw new BadRequestException(message);
+            options.logger?.error(message);
+            return null;
+          }
+          if (eventType === 'transfer.success') {
+            if (payout.status === ProviderPayoutStatus.SUCCESS) {
+              return options.strict ? payout : null;
+            }
+            if (
+              payout.status !== ProviderPayoutStatus.PROCESSING &&
+              payout.status !== ProviderPayoutStatus.OTP_REQUIRED
+            ) {
+              return options.strict ? payout : null;
+            }
+            await tx.marketPartnerPayout.update({
+              where: { id: payout.id },
+              data: {
+                status: ProviderPayoutStatus.SUCCESS,
+                transferCode: data.transfer_code,
+                providerFeeMinor: data.fees,
+                processedAt: data.transferred_at
+                  ? new Date(data.transferred_at)
+                  : new Date(),
+                rawData: data as unknown as Prisma.InputJsonValue,
+                failureMessage: null,
+              },
+            });
+            await tx.orderSettlement.updateMany({
+              where: {
+                id: { in: payout.items.map((item) => item.settlementId) },
+                partnerStatus: SettlementStatus.RESERVED,
+              },
+              data: { partnerStatus: SettlementStatus.PAID },
+            });
+            for (const item of payout.adjustmentItems) {
+              await tx.marketCommissionAdjustment.updateMany({
+                where: {
+                  id: item.adjustmentId,
+                  partnerStatus: BalanceAdjustmentStatus.RESERVED,
+                },
+                data: {
+                  partnerRecoveredAmount: { increment: item.amount },
+                  partnerStatus: BalanceAdjustmentStatus.RECOVERED,
+                },
+              });
+            }
+            return tx.marketPartnerPayout.findUnique({
+              where: { id: payout.id },
+            });
+          }
+          if (
+            eventType === 'transfer.failed' ||
+            eventType === 'transfer.reversed'
+          ) {
+            const reversed = eventType === 'transfer.reversed';
+            const wasSuccessful =
+              payout.status === ProviderPayoutStatus.SUCCESS;
+            const canApply = reversed
+              ? wasSuccessful ||
+                payout.status === ProviderPayoutStatus.PROCESSING ||
+                payout.status === ProviderPayoutStatus.OTP_REQUIRED
+              : payout.status === ProviderPayoutStatus.PROCESSING ||
+                payout.status === ProviderPayoutStatus.OTP_REQUIRED;
+            if (!canApply) return options.strict ? payout : null;
+            await tx.marketPartnerPayout.update({
+              where: { id: payout.id },
+              data: {
+                status: reversed
+                  ? ProviderPayoutStatus.REVERSED
+                  : ProviderPayoutStatus.FAILED,
+                transferCode: data.transfer_code,
+                processedAt: new Date(),
+                failureMessage:
+                  data.failure_reason ||
+                  data.reason ||
+                  `Paystack concluded the transfer as ${data.status}`,
+                rawData: data as unknown as Prisma.InputJsonValue,
+              },
+            });
+            const partnerStatusFilter = reversed
+              ? { in: [SettlementStatus.RESERVED, SettlementStatus.PAID] }
+              : SettlementStatus.RESERVED;
+            await Promise.all([
+              tx.orderSettlement.updateMany({
+                where: {
+                  id: { in: payout.items.map((item) => item.settlementId) },
+                  partnerStatus: partnerStatusFilter,
+                  order: {
+                    externalDisputes: {
+                      none: {
+                        affectsOrderBalance: true,
+                        status: { in: ACTIVE_EXTERNAL_DISPUTE_STATUSES },
+                      },
+                    },
+                  },
+                },
+                data: { partnerStatus: SettlementStatus.ELIGIBLE },
+              }),
+              tx.orderSettlement.updateMany({
+                where: {
+                  id: { in: payout.items.map((item) => item.settlementId) },
+                  partnerStatus: partnerStatusFilter,
+                  order: {
+                    externalDisputes: {
+                      some: {
+                        affectsOrderBalance: true,
+                        status: { in: ACTIVE_EXTERNAL_DISPUTE_STATUSES },
+                      },
+                    },
+                  },
+                },
+                data: { partnerStatus: SettlementStatus.HELD },
+              }),
+            ]);
+            if (!wasSuccessful) {
+              await tx.marketCommissionAdjustment.updateMany({
+                where: {
+                  id: {
+                    in: payout.adjustmentItems.map((item) => item.adjustmentId),
+                  },
+                  partnerStatus: BalanceAdjustmentStatus.RESERVED,
+                },
+                data: { partnerStatus: BalanceAdjustmentStatus.OPEN },
+              });
+            } else {
+              for (const item of payout.adjustmentItems) {
+                await tx.marketCommissionAdjustment.updateMany({
+                  where: {
+                    id: item.adjustmentId,
+                    partnerStatus: BalanceAdjustmentStatus.RECOVERED,
+                    partnerRecoveredAmount: { gte: item.amount },
+                  },
+                  data: {
+                    partnerRecoveredAmount: { decrement: item.amount },
+                    partnerStatus: BalanceAdjustmentStatus.OPEN,
+                  },
+                });
+              }
+            }
+            return tx.marketPartnerPayout.findUnique({
+              where: { id: payout.id },
+            });
+          }
+          if (
+            payout.status !== ProviderPayoutStatus.PROCESSING &&
+            payout.status !== ProviderPayoutStatus.OTP_REQUIRED
+          ) {
+            return options.strict ? payout : null;
+          }
+          return tx.marketPartnerPayout.update({
+            where: { id: payout.id },
+            data: {
+              status:
+                eventType === 'transfer.otp'
+                  ? ProviderPayoutStatus.OTP_REQUIRED
+                  : ProviderPayoutStatus.PROCESSING,
+              transferCode: data.transfer_code,
+              providerFeeMinor: data.fees,
+              rawData: data as unknown as Prisma.InputJsonValue,
+            },
+          });
+        }
         if (options.strict) {
           throw new BadRequestException(
             'Paystack returned an unknown transfer',

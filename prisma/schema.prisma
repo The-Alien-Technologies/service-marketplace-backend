@@ -94,6 +94,7 @@ model User {
   approvedPayouts                    ProviderPayout[]            @relation("PayoutApprover")
   rejectedPayouts                    ProviderPayout[]            @relation("PayoutRejector")
   balanceAdjustments                 ProviderBalanceAdjustment[]
+  partnerPayoutsApproved             MarketPartnerPayout[]       @relation("PartnerPayoutApprover")
   notifications                      Notification[]
   homeMarket                         Market?                     @relation("UserHomeMarket", fields: [homeMarketId], references: [id], onDelete: SetNull)
   selectedMarket                     Market?                     @relation("UserSelectedMarket", fields: [selectedMarketId], references: [id], onDelete: SetNull)
@@ -147,23 +148,23 @@ model UserAddress {
 }
 
 model Market {
-  id                        String                      @id @default(cuid())
-  createdAt                 DateTime                    @default(now())
-  updatedAt                 DateTime                    @updatedAt
-  code                      String                      @unique
+  id                        String                       @id @default(cuid())
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
+  code                      String                       @unique
   name                      String
   currency                  String
   locale                    String
-  minorUnit                 Int                         @default(2)
+  minorUnit                 Int                          @default(2)
   paystackCountry           String
-  status                    MarketStatus                @default(ACTIVE)
-  checkoutEnabled           Boolean                     @default(true)
-  providerOnboardingEnabled Boolean                     @default(true)
-  servicePublishingEnabled  Boolean                     @default(true)
-  sortOrder                 Int                         @default(0)
-  homeUsers                 User[]                      @relation("UserHomeMarket")
-  selectedUsers             User[]                      @relation("UserSelectedMarket")
-  admins                    User[]                      @relation("CountryAdmins")
+  status                    MarketStatus                 @default(ACTIVE)
+  checkoutEnabled           Boolean                      @default(true)
+  providerOnboardingEnabled Boolean                      @default(true)
+  servicePublishingEnabled  Boolean                      @default(true)
+  sortOrder                 Int                          @default(0)
+  homeUsers                 User[]                       @relation("UserHomeMarket")
+  selectedUsers             User[]                       @relation("UserSelectedMarket")
+  admins                    User[]                       @relation("CountryAdmins")
   providerMemberships       ProviderMarketMembership[]
   services                  Service[]
   orders                    Order[]
@@ -175,6 +176,9 @@ model Market {
   payouts                   ProviderPayout[]
   settlements               OrderSettlement[]
   balanceAdjustments        ProviderBalanceAdjustment[]
+  partnerPayoutAccount      MarketPartnerPayoutAccount?
+  partnerPayouts            MarketPartnerPayout[]
+  commissionAdjustments     MarketCommissionAdjustment[]
   categorySettings          MarketCategory[]
   auditLogs                 AdminAuditLog[]
 
@@ -371,48 +375,50 @@ model ServiceImage {
 }
 
 model Order {
-  id                   String                      @id @default(cuid())
-  orderNumber          String                      @unique
-  createdAt            DateTime                    @default(now())
-  updatedAt            DateTime                    @updatedAt
-  clientId             String
-  providerId           String
-  serviceId            String
-  marketId             String
-  paymentIntegrationId String
-  planId               String?
-  planTitle            String
-  planPrice            Decimal                     @db.Decimal(10, 2)
-  planInclusions       String
-  subtotal             Decimal                     @db.Decimal(10, 2)
-  addOnsTotal          Decimal                     @default(0) @db.Decimal(10, 2)
-  couponCode           String?
-  couponDiscount       Decimal                     @default(0) @db.Decimal(10, 2)
-  total                Decimal                     @db.Decimal(10, 2)
-  currency             String                      @default("GHS")
-  status               OrderStatus                 @default(PENDING)
-  paymentStatus        OrderPaymentStatus          @default(UNPAID)
-  source               OrderSource                 @default(SERVICE_PLAN)
-  checkoutKey          String?                     @unique
-  quoteRequestId       String?                     @unique
-  paidAt               DateTime?
-  startedAt            DateTime?
-  completedAt          DateTime?
-  commissionRate       Decimal                     @default(10.00) @db.Decimal(5, 2)
-  dispute              Dispute?
-  settlement           OrderSettlement?
-  refunds              PaymentRefund[]
-  externalDisputes     ExternalPaymentDispute[]
-  balanceAdjustments   ProviderBalanceAdjustment[]
-  addOns               OrderAddOn[]
-  paymentTransactions  PaymentTransaction[]
-  client               User                        @relation("ClientOrders", fields: [clientId], references: [id])
-  provider             User                        @relation("ProviderOrders", fields: [providerId], references: [id])
-  service              Service                     @relation(fields: [serviceId], references: [id])
-  market               Market                      @relation(fields: [marketId], references: [id], onDelete: Restrict)
-  paymentIntegration   PaymentIntegration          @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
-  quoteRequest         QuoteRequest?               @relation(fields: [quoteRequestId], references: [id])
-  review               Review?
+  id                    String                       @id @default(cuid())
+  orderNumber           String                       @unique
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  clientId              String
+  providerId            String
+  serviceId             String
+  marketId              String
+  paymentIntegrationId  String
+  planId                String?
+  planTitle             String
+  planPrice             Decimal                      @db.Decimal(10, 2)
+  planInclusions        String
+  subtotal              Decimal                      @db.Decimal(10, 2)
+  addOnsTotal           Decimal                      @default(0) @db.Decimal(10, 2)
+  couponCode            String?
+  couponDiscount        Decimal                      @default(0) @db.Decimal(10, 2)
+  total                 Decimal                      @db.Decimal(10, 2)
+  currency              String                       @default("GHS")
+  status                OrderStatus                  @default(PENDING)
+  paymentStatus         OrderPaymentStatus           @default(UNPAID)
+  source                OrderSource                  @default(SERVICE_PLAN)
+  checkoutKey           String?                      @unique
+  quoteRequestId        String?                      @unique
+  paidAt                DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  commissionRate        Decimal                      @default(10.00) @db.Decimal(5, 2)
+  pavodahShareRate      Decimal                      @default(50.00) @db.Decimal(5, 2)
+  dispute               Dispute?
+  settlement            OrderSettlement?
+  refunds               PaymentRefund[]
+  externalDisputes      ExternalPaymentDispute[]
+  balanceAdjustments    ProviderBalanceAdjustment[]
+  commissionAdjustments MarketCommissionAdjustment[]
+  addOns                OrderAddOn[]
+  paymentTransactions   PaymentTransaction[]
+  client                User                         @relation("ClientOrders", fields: [clientId], references: [id])
+  provider              User                         @relation("ProviderOrders", fields: [providerId], references: [id])
+  service               Service                      @relation(fields: [serviceId], references: [id])
+  market                Market                       @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration    PaymentIntegration           @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  quoteRequest          QuoteRequest?                @relation(fields: [quoteRequestId], references: [id])
+  review                Review?
 
   @@index([providerId, createdAt])
   @@index([providerId, paymentStatus, status, createdAt])
@@ -669,31 +675,34 @@ model Dispute {
 }
 
 model PaymentSetting {
-  id             String   @id @default(cuid())
-  marketId       String   @unique
-  commissionRate Decimal  @default(10.00) @db.Decimal(5, 2)
-  updatedBy      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  market         Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  marketId         String   @unique
+  commissionRate   Decimal  @default(10.00) @db.Decimal(5, 2)
+  pavodahShareRate Decimal  @default(50.00) @db.Decimal(5, 2)
+  updatedBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  market           Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
 
   @@map("payment_settings")
 }
 
 model PaymentIntegration {
-  id             String                     @id @default(cuid())
-  createdAt      DateTime                   @default(now())
-  updatedAt      DateTime                   @updatedAt
-  marketId       String
-  provider       PaymentProvider            @default(PAYSTACK)
-  webhookKey     String                     @unique @default(cuid())
-  status         PaymentIntegrationStatus   @default(ACTIVE)
-  market         Market                     @relation(fields: [marketId], references: [id], onDelete: Restrict)
-  credentials    PaymentCredentialVersion[]
-  orders         Order[]
-  transactions   PaymentTransaction[]
-  payoutAccounts ProviderPayoutAccount[]
-  payouts        ProviderPayout[]
+  id                    String                       @id @default(cuid())
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  marketId              String
+  provider              PaymentProvider              @default(PAYSTACK)
+  webhookKey            String                       @unique @default(cuid())
+  status                PaymentIntegrationStatus     @default(ACTIVE)
+  market                Market                       @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  credentials           PaymentCredentialVersion[]
+  orders                Order[]
+  transactions          PaymentTransaction[]
+  payoutAccounts        ProviderPayoutAccount[]
+  payouts               ProviderPayout[]
+  partnerPayoutAccounts MarketPartnerPayoutAccount[]
+  partnerPayouts        MarketPartnerPayout[]
 
   @@unique([marketId, provider])
   @@index([status])
@@ -701,26 +710,29 @@ model PaymentIntegration {
 }
 
 model PaymentCredentialVersion {
-  id                String                  @id @default(cuid())
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  integrationId     String
-  version           Int
-  encryptedSecret   String                  @db.Text
-  encryptionIv      String
-  encryptionAuthTag String
-  fingerprint       String
-  status            PaymentCredentialStatus @default(STAGED)
-  validatedAt       DateTime?
-  activatedAt       DateTime?
-  retiringAt        DateTime?
-  expiresAt         DateTime?
-  revokedAt         DateTime?
-  createdById       String
-  integration       PaymentIntegration      @relation(fields: [integrationId], references: [id], onDelete: Restrict)
-  createdBy         User                    @relation("CredentialCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  transactions      PaymentTransaction[]
-  payouts           ProviderPayout[]
+  id                  String                  @id @default(cuid())
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  integrationId       String
+  version             Int
+  encryptedSecret     String                  @db.Text
+  encryptionIv        String
+  encryptionAuthTag   String
+  fingerprint         String
+  status              PaymentCredentialStatus @default(STAGED)
+  validatedAt         DateTime?
+  activatedAt         DateTime?
+  retiringAt          DateTime?
+  expiresAt           DateTime?
+  revokedAt           DateTime?
+  ownershipAttestedAt DateTime?
+  ownershipAttestedBy String?
+  createdById         String
+  integration         PaymentIntegration      @relation(fields: [integrationId], references: [id], onDelete: Restrict)
+  createdBy           User                    @relation("CredentialCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  transactions        PaymentTransaction[]
+  payouts             ProviderPayout[]
+  partnerPayouts      MarketPartnerPayout[]
 
   @@unique([integrationId, version])
   @@index([integrationId, status, createdAt])
@@ -745,32 +757,150 @@ model AdminAuditLog {
 }
 
 model OrderSettlement {
-  id                       String                @id @default(cuid())
-  createdAt                DateTime              @default(now())
-  updatedAt                DateTime              @updatedAt
-  orderId                  String                @unique
+  id                       String                       @id @default(cuid())
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  orderId                  String                       @unique
   providerId               String
   marketId                 String
-  grossAmount              Decimal               @db.Decimal(10, 2)
-  refundedAmount           Decimal               @default(0) @db.Decimal(10, 2)
-  retainedAmount           Decimal               @db.Decimal(10, 2)
-  commissionRate           Decimal               @db.Decimal(5, 2)
-  commissionAmount         Decimal               @db.Decimal(10, 2)
-  providerAmount           Decimal               @db.Decimal(10, 2)
-  status                   SettlementStatus      @default(HELD)
+  grossAmount              Decimal                      @db.Decimal(10, 2)
+  refundedAmount           Decimal                      @default(0) @db.Decimal(10, 2)
+  retainedAmount           Decimal                      @db.Decimal(10, 2)
+  commissionRate           Decimal                      @db.Decimal(5, 2)
+  commissionAmount         Decimal                      @db.Decimal(10, 2)
+  pavodahShareRate         Decimal                      @default(50.00) @db.Decimal(5, 2)
+  pavodahAmount            Decimal                      @default(0) @db.Decimal(10, 2)
+  partnerAmount            Decimal                      @default(0) @db.Decimal(10, 2)
+  providerAmount           Decimal                      @db.Decimal(10, 2)
+  status                   SettlementStatus             @default(HELD)
+  partnerStatus            SettlementStatus             @default(HELD)
   acceptedAt               DateTime?
   acceptedBy               SettlementAcceptedBy?
-  releaseReviewStatus      ReleaseReviewStatus   @default(NONE)
+  releaseReviewStatus      ReleaseReviewStatus          @default(NONE)
   releaseReviewRequestedAt DateTime?
   releaseReviewNote        String?
-  order                    Order                 @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  provider                 User                  @relation(fields: [providerId], references: [id], onDelete: Restrict)
-  market                   Market                @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  order                    Order                        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  provider                 User                         @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  market                   Market                       @relation(fields: [marketId], references: [id], onDelete: Restrict)
   payoutItems              ProviderPayoutItem[]
+  partnerPayoutItems       MarketPartnerPayoutItem[]
+  commissionAdjustments    MarketCommissionAdjustment[]
 
   @@index([providerId, status, createdAt])
   @@index([marketId, status, createdAt])
+  @@index([marketId, partnerStatus, createdAt])
   @@map("order_settlements")
+}
+
+model MarketPartnerPayoutAccount {
+  id                   String                @id @default(cuid())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  marketId             String                @unique
+  paymentIntegrationId String
+  type                 PayoutDestinationType
+  recipientCode        String
+  institutionCode      String
+  institutionName      String
+  accountName          String?
+  accountNumberLast4   String
+  currency             String
+  status               PayoutAccountStatus   @default(ACTIVE)
+  verifiedAt           DateTime              @default(now())
+  market               Market                @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration   PaymentIntegration    @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  payouts              MarketPartnerPayout[]
+
+  @@unique([paymentIntegrationId, recipientCode])
+  @@map("market_partner_payout_accounts")
+}
+
+model MarketPartnerPayout {
+  id                    String                              @id @default(cuid())
+  createdAt             DateTime                            @default(now())
+  updatedAt             DateTime                            @updatedAt
+  marketId              String
+  paymentIntegrationId  String
+  credentialVersionId   String
+  payoutAccountId       String
+  reference             String                              @unique
+  amount                Decimal                             @db.Decimal(10, 2)
+  grossCommissionAmount Decimal                             @db.Decimal(10, 2)
+  adjustmentAmount      Decimal                             @default(0) @db.Decimal(10, 2)
+  amountMinor           Int
+  currency              String
+  status                ProviderPayoutStatus                @default(REQUESTED)
+  transferCode          String?
+  recipientCode         String
+  destinationType       PayoutDestinationType
+  institutionName       String
+  accountName           String?
+  accountNumberLast4    String
+  approvedAt            DateTime?
+  approvedBy            String?
+  processedAt           DateTime?
+  failureMessage        String?
+  providerFeeMinor      Int?
+  rawData               Json?
+  market                Market                              @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  paymentIntegration    PaymentIntegration                  @relation(fields: [paymentIntegrationId], references: [id], onDelete: Restrict)
+  credentialVersion     PaymentCredentialVersion            @relation(fields: [credentialVersionId], references: [id], onDelete: Restrict)
+  payoutAccount         MarketPartnerPayoutAccount          @relation(fields: [payoutAccountId], references: [id], onDelete: Restrict)
+  approver              User?                               @relation("PartnerPayoutApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  items                 MarketPartnerPayoutItem[]
+  adjustmentItems       MarketPartnerPayoutAdjustmentItem[]
+
+  @@index([marketId, status, createdAt])
+  @@map("market_partner_payouts")
+}
+
+model MarketPartnerPayoutItem {
+  id           String              @id @default(cuid())
+  payoutId     String
+  settlementId String
+  amount       Decimal             @db.Decimal(10, 2)
+  payout       MarketPartnerPayout @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  settlement   OrderSettlement     @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, settlementId])
+  @@index([settlementId])
+  @@map("market_partner_payout_items")
+}
+
+model MarketCommissionAdjustment {
+  id                     String                              @id @default(cuid())
+  createdAt              DateTime                            @default(now())
+  updatedAt              DateTime                            @updatedAt
+  marketId               String
+  orderId                String
+  settlementId           String
+  refundId               String?                             @unique
+  externalDisputeId      String?                             @unique
+  partnerAmount          Decimal                             @default(0) @db.Decimal(10, 2)
+  pavodahAmount          Decimal                             @default(0) @db.Decimal(10, 2)
+  partnerRecoveredAmount Decimal                             @default(0) @db.Decimal(10, 2)
+  partnerStatus          BalanceAdjustmentStatus             @default(OPEN)
+  reason                 String
+  market                 Market                              @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  order                  Order                               @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  settlement             OrderSettlement                     @relation(fields: [settlementId], references: [id], onDelete: Restrict)
+  payoutItems            MarketPartnerPayoutAdjustmentItem[]
+
+  @@index([marketId, partnerStatus, createdAt])
+  @@map("market_commission_adjustments")
+}
+
+model MarketPartnerPayoutAdjustmentItem {
+  id           String                     @id @default(cuid())
+  payoutId     String
+  adjustmentId String
+  amount       Decimal                    @db.Decimal(10, 2)
+  payout       MarketPartnerPayout        @relation(fields: [payoutId], references: [id], onDelete: Cascade)
+  adjustment   MarketCommissionAdjustment @relation(fields: [adjustmentId], references: [id], onDelete: Restrict)
+
+  @@unique([payoutId, adjustmentId])
+  @@index([adjustmentId])
+  @@map("market_partner_payout_adjustment_items")
 }
 
 model ProviderPayoutAccount {
@@ -869,6 +999,7 @@ model ProviderBalanceAdjustment {
   marketId          String
   orderId           String
   externalDisputeId String?                        @unique
+  refundId          String?                        @unique
   type              BalanceAdjustmentType
   amount            Decimal                        @db.Decimal(10, 2)
   recoveredAmount   Decimal                        @default(0) @db.Decimal(10, 2)

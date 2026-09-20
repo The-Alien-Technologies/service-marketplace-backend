@@ -300,7 +300,7 @@ export class CategoriesService {
     }
 
     // Get services with basic filters
-    let services = await this.prisma.service.findMany({
+    const services = await this.prisma.service.findMany({
       where,
       include: {
         provider: {

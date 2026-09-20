@@ -41,7 +41,11 @@ export class MarketsSeeder {
 
       await this.prisma.paymentSetting.upsert({
         where: { marketId: market.id },
-        create: { marketId: market.id, commissionRate: 10 },
+        create: {
+          marketId: market.id,
+          commissionRate: 10,
+          pavodahShareRate: 50,
+        },
         update: {},
       });
 

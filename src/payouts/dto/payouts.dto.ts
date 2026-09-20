@@ -48,6 +48,31 @@ export class UpdatePayoutAccountDto {
   otpCode: string;
 }
 
+export class UpdatePartnerPayoutAccountDto {
+  @IsString()
+  @IsNotEmpty()
+  marketId: string;
+
+  @IsEnum(PayoutDestinationType)
+  type: PayoutDestinationType;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  institutionCode: string;
+
+  @IsString()
+  @Matches(/^\d{7,20}$/, {
+    message: 'accountNumber must contain 7 to 20 digits',
+  })
+  accountNumber: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  accountName: string;
+}
+
 export class RejectPayoutDto {
   @IsString()
   @IsNotEmpty()
@@ -115,6 +140,13 @@ export class UpdatePaymentSettingsDto {
   @Min(0)
   @Max(100)
   commissionRate: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(100)
+  pavodahShareRate?: number;
 }
 
 export class ReviewReleaseDto {

@@ -22,6 +22,9 @@ describe('PaymentCredentialsService', () => {
       providerPayoutAccount: {
         updateMany: jest.fn().mockResolvedValue({ count: 3 }),
       },
+      marketPartnerPayoutAccount: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       adminAuditLog: { create: jest.fn().mockResolvedValue({}) },
     };
     const prisma = {
@@ -39,7 +42,7 @@ describe('PaymentCredentialsService', () => {
       {} as never,
     );
 
-    await service.activate('credential-2', 'super-1');
+    await service.activate('credential-2', 'super-1', true);
 
     expect(tx.providerPayoutAccount.updateMany).toHaveBeenCalledWith({
       where: {
@@ -51,7 +54,11 @@ describe('PaymentCredentialsService', () => {
     expect(tx.adminAuditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          metadata: expect.objectContaining({ invalidatedPayoutAccounts: 3 }),
+          metadata: expect.objectContaining({
+            invalidatedPayoutAccounts: 3,
+            invalidatedPartnerPayoutAccounts: 1,
+            pavodahOwnershipAttested: true,
+          }),
         }),
       }),
     );

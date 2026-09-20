@@ -2,7 +2,10 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { IsSuperAdmin } from '../common/decorators/roles.decorator';
 import { ResponseUtil } from '../common/utils/response.util';
-import { StagePaymentCredentialDto } from './dto/payment-credential.dto';
+import {
+  ActivatePaymentCredentialDto,
+  StagePaymentCredentialDto,
+} from './dto/payment-credential.dto';
 import { PaymentCredentialsService } from './payment-credentials.service';
 
 @Controller('payments/admin/integrations')
@@ -34,9 +37,14 @@ export class PaymentCredentialsController {
   async activate(
     @Param('credentialId') credentialId: string,
     @CurrentUser('userId') actorId: string,
+    @Body() dto: ActivatePaymentCredentialDto,
   ) {
     return ResponseUtil.success(
-      await this.credentials.activate(credentialId, actorId),
+      await this.credentials.activate(
+        credentialId,
+        actorId,
+        dto.confirmPavodahOwnership,
+      ),
       'Credential activated',
     );
   }

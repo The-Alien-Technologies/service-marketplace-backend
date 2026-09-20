@@ -23,19 +23,27 @@ type DbClient = PrismaService | Prisma.TransactionClient;
 export class SettlementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getCommissionRate(marketId: string, db: DbClient = this.prisma) {
+  async getPaymentPolicy(marketId: string, db: DbClient = this.prisma) {
     const setting = await db.paymentSetting.upsert({
       where: { marketId },
-      create: { marketId, commissionRate: new Prisma.Decimal(10) },
+      create: {
+        marketId,
+        commissionRate: new Prisma.Decimal(10),
+        pavodahShareRate: new Prisma.Decimal(50),
+      },
       update: {},
     });
-    return setting.commissionRate;
+    return {
+      commissionRate: setting.commissionRate,
+      pavodahShareRate: setting.pavodahShareRate,
+    };
   }
 
   calculate(
     grossAmount: Prisma.Decimal,
     refundedAmount: Prisma.Decimal,
     commissionRate: Prisma.Decimal,
+    pavodahShareRate = new Prisma.Decimal(50),
   ) {
     const retainedAmount = Prisma.Decimal.max(
       grossAmount.minus(refundedAmount),
@@ -45,9 +53,15 @@ export class SettlementsService {
       .mul(commissionRate)
       .div(100)
       .toDecimalPlaces(2);
+    const pavodahAmount = commissionAmount
+      .mul(pavodahShareRate)
+      .div(100)
+      .toDecimalPlaces(2);
     return {
       retainedAmount,
       commissionAmount,
+      pavodahAmount,
+      partnerAmount: commissionAmount.minus(pavodahAmount),
       providerAmount: retainedAmount.minus(commissionAmount),
     };
   }
@@ -60,12 +74,14 @@ export class SettlementsService {
       marketId: string;
       total: Prisma.Decimal;
       commissionRate: Prisma.Decimal;
+      pavodahShareRate: Prisma.Decimal;
     },
   ) {
     const amounts = this.calculate(
       order.total,
       new Prisma.Decimal(0),
       order.commissionRate,
+      order.pavodahShareRate,
     );
     return db.orderSettlement.upsert({
       where: { orderId: order.id },
@@ -76,6 +92,7 @@ export class SettlementsService {
         grossAmount: order.total,
         refundedAmount: 0,
         commissionRate: order.commissionRate,
+        pavodahShareRate: order.pavodahShareRate,
         ...amounts,
       },
       update: {},
@@ -193,6 +210,7 @@ export class SettlementsService {
           where: { id: settlement.id },
           data: {
             status: SettlementStatus.ELIGIBLE,
+            partnerStatus: SettlementStatus.ELIGIBLE,
             acceptedAt,
             acceptedBy: SettlementAcceptedBy.CUSTOMER,
             releaseReviewStatus: ReleaseReviewStatus.NONE,
@@ -393,6 +411,7 @@ export class SettlementsService {
           data: approve
             ? {
                 status: SettlementStatus.ELIGIBLE,
+                partnerStatus: SettlementStatus.ELIGIBLE,
                 acceptedAt: reviewedAt,
                 acceptedBy: SettlementAcceptedBy.ADMIN,
                 releaseReviewStatus: ReleaseReviewStatus.APPROVED,
@@ -446,6 +465,7 @@ export class SettlementsService {
       order.total,
       refundedAmount,
       order.commissionRate,
+      order.pavodahShareRate,
     );
     const fullyRefunded = amounts.retainedAmount.lessThanOrEqualTo(0);
     const settlement =
@@ -461,47 +481,88 @@ export class SettlementsService {
         : { paymentStatus: OrderPaymentStatus.PARTIALLY_REFUNDED },
     });
 
+    const previousRefundedAmount = context?.refundAmount
+      ? Prisma.Decimal.max(
+          refundedAmount.minus(context.refundAmount),
+          new Prisma.Decimal(0),
+        )
+      : settlement.refundedAmount;
+    const previousAmounts = this.calculate(
+      order.total,
+      previousRefundedAmount,
+      order.commissionRate,
+      order.pavodahShareRate,
+    );
+    const providerWasTransferred = (
+      [SettlementStatus.RESERVED, SettlementStatus.PAID] as SettlementStatus[]
+    ).includes(settlement.status);
+    const partnerWasTransferred = (
+      [SettlementStatus.RESERVED, SettlementStatus.PAID] as SettlementStatus[]
+    ).includes(settlement.partnerStatus);
+    const providerLoss = Prisma.Decimal.max(
+      previousAmounts.providerAmount.minus(amounts.providerAmount),
+      new Prisma.Decimal(0),
+    );
+    const partnerLoss = Prisma.Decimal.max(
+      previousAmounts.partnerAmount.minus(amounts.partnerAmount),
+      new Prisma.Decimal(0),
+    );
+    const pavodahLoss = Prisma.Decimal.max(
+      previousAmounts.pavodahAmount.minus(amounts.pavodahAmount),
+      new Prisma.Decimal(0),
+    );
+    const refundLabel = context?.refundId || 'recorded after payout';
+
+    if (providerWasTransferred && providerLoss.greaterThan(0)) {
+      const adjustmentData = {
+        providerId: settlement.providerId,
+        marketId: order.marketId,
+        orderId,
+        refundId: context?.refundId,
+        type: BalanceAdjustmentType.ADMIN,
+        amount: providerLoss,
+        reason: `Provider recovery for Paystack refund ${refundLabel}`,
+      };
+      if (context?.refundId) {
+        await db.providerBalanceAdjustment.upsert({
+          where: { refundId: context.refundId },
+          create: adjustmentData,
+          update: { amount: providerLoss, reason: adjustmentData.reason },
+        });
+      } else {
+        await db.providerBalanceAdjustment.create({ data: adjustmentData });
+      }
+    }
+
     if (
-      settlement.status === SettlementStatus.RESERVED ||
-      settlement.status === SettlementStatus.PAID
+      (providerWasTransferred || partnerWasTransferred) &&
+      (pavodahLoss.greaterThan(0) ||
+        (partnerWasTransferred && partnerLoss.greaterThan(0)))
     ) {
-      const previousRefundedAmount = context?.refundAmount
-        ? Prisma.Decimal.max(
-            refundedAmount.minus(context.refundAmount),
-            new Prisma.Decimal(0),
-          )
-        : settlement.refundedAmount;
-      const previousAmounts = this.calculate(
-        order.total,
-        previousRefundedAmount,
-        order.commissionRate,
-      );
-      const providerLoss = Prisma.Decimal.max(
-        previousAmounts.providerAmount.minus(amounts.providerAmount),
-        new Prisma.Decimal(0),
-      );
-      if (providerLoss.greaterThan(0)) {
-        await db.providerBalanceAdjustment.create({
-          data: {
-            providerId: settlement.providerId,
-            marketId: order.marketId,
-            orderId,
-            type: BalanceAdjustmentType.ADMIN,
-            amount: providerLoss,
-            reason: `Provider recovery for Paystack refund ${context?.refundId || 'recorded after payout'}`,
+      const adjustmentData = {
+        marketId: order.marketId,
+        orderId,
+        settlementId: settlement.id,
+        refundId: context?.refundId,
+        partnerAmount: partnerWasTransferred
+          ? partnerLoss
+          : new Prisma.Decimal(0),
+        pavodahAmount: pavodahLoss,
+        reason: `Commission reversal for Paystack refund ${refundLabel}`,
+      };
+      if (context?.refundId) {
+        await db.marketCommissionAdjustment.upsert({
+          where: { refundId: context.refundId },
+          create: adjustmentData,
+          update: {
+            partnerAmount: adjustmentData.partnerAmount,
+            pavodahAmount: pavodahLoss,
+            reason: adjustmentData.reason,
           },
         });
+      } else {
+        await db.marketCommissionAdjustment.create({ data: adjustmentData });
       }
-      if (context?.disputeId && order.dispute?.id === context.disputeId) {
-        await db.dispute.update({
-          where: { id: context.disputeId },
-          data: {
-            status: DisputeStatus.RESOLVED,
-            resolvedAt: new Date(),
-          },
-        });
-      }
-      return settlement;
     }
 
     const updated = await db.orderSettlement.update({
@@ -509,12 +570,22 @@ export class SettlementsService {
       data: {
         refundedAmount,
         ...amounts,
-        status: fullyRefunded
-          ? SettlementStatus.VOID
-          : context?.releaseRemainder ||
-              settlement.status === SettlementStatus.ELIGIBLE
-            ? SettlementStatus.ELIGIBLE
-            : SettlementStatus.HELD,
+        status: providerWasTransferred
+          ? settlement.status
+          : fullyRefunded
+            ? SettlementStatus.VOID
+            : context?.releaseRemainder ||
+                settlement.status === SettlementStatus.ELIGIBLE
+              ? SettlementStatus.ELIGIBLE
+              : SettlementStatus.HELD,
+        partnerStatus: partnerWasTransferred
+          ? settlement.partnerStatus
+          : fullyRefunded
+            ? SettlementStatus.VOID
+            : context?.releaseRemainder ||
+                settlement.partnerStatus === SettlementStatus.ELIGIBLE
+              ? SettlementStatus.ELIGIBLE
+              : SettlementStatus.HELD,
         acceptedAt: fullyRefunded
           ? null
           : context?.releaseRemainder

@@ -27,6 +27,7 @@ import {
   RejectPayoutDto,
   ReviewReleaseDto,
   UpdatePaymentSettingsDto,
+  UpdatePartnerPayoutAccountDto,
   UpdatePayoutAccountDto,
 } from './dto/payouts.dto';
 import { PayoutsService } from './payouts.service';
@@ -232,6 +233,106 @@ export class PayoutsController {
     );
   }
 
+  @Get('admin/partner-institutions')
+  @IsAdmin()
+  async partnerInstitutions(
+    @CurrentUser() actor: MarketActor,
+    @Query() query: PayoutInstitutionsQueryDto,
+  ) {
+    const marketId = query.marketId;
+    this.payouts.assertAdminMarket(actor, marketId);
+    return ResponseUtil.success(
+      await this.payouts.listInstitutions(query.type, marketId),
+      'Partner payout institutions retrieved',
+    );
+  }
+
+  @Get('admin/partner-account')
+  @IsAdmin()
+  async partnerAccount(
+    @CurrentUser() actor: MarketActor,
+    @Query('marketId') marketId?: string,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.getPartnerPayoutAccount(actor, marketId),
+      'Partner payout account retrieved',
+    );
+  }
+
+  @Put('admin/partner-account')
+  @IsAdmin()
+  async updatePartnerAccount(
+    @CurrentUser() actor: MarketActor,
+    @Body() dto: UpdatePartnerPayoutAccountDto,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.updatePartnerPayoutAccount(actor, dto),
+      'Partner payout destination verified',
+    );
+  }
+
+  @Get('admin/partner-payouts')
+  @IsAdmin()
+  async partnerPayouts(
+    @CurrentUser() actor: MarketActor,
+    @Query('marketId') marketId?: string,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.listPartnerPayouts(actor, marketId),
+      'Partner payouts retrieved',
+    );
+  }
+
+  @Post('admin/partner-payouts/request')
+  @IsAdmin()
+  async requestPartnerPayout(
+    @CurrentUser() actor: MarketActor,
+    @Query('marketId') marketId?: string,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.requestPartnerPayout(actor, marketId),
+      'Partner payout requested',
+    );
+  }
+
+  @Post('admin/partner-payouts/:id/approve')
+  @IsAdmin()
+  async approvePartnerPayout(
+    @Param('id') payoutId: string,
+    @CurrentUser() actor: MarketActor,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.approvePartnerPayout(payoutId, actor),
+      'Partner payout approval submitted',
+    );
+  }
+
+  @Post('admin/partner-payouts/:id/finalize')
+  @IsAdmin()
+  async finalizePartnerPayout(
+    @Param('id') payoutId: string,
+    @Body() dto: FinalizePayoutDto,
+    @CurrentUser() actor: MarketActor,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.finalizePartnerPayout(payoutId, dto.otp, actor),
+      'Partner payout OTP submitted',
+    );
+  }
+
+  @Post('admin/partner-payouts/:id/reject')
+  @IsAdmin()
+  async rejectPartnerPayout(
+    @Param('id') payoutId: string,
+    @Body() dto: RejectPayoutDto,
+    @CurrentUser() actor: MarketActor,
+  ) {
+    return ResponseUtil.success(
+      await this.payouts.rejectPartnerPayout(payoutId, dto.reason, actor),
+      'Partner payout rejected',
+    );
+  }
+
   @Patch('admin/settings')
   @IsAdmin()
   async updateSettings(
@@ -240,7 +341,7 @@ export class PayoutsController {
     @Body() dto: UpdatePaymentSettingsDto,
   ) {
     return ResponseUtil.success(
-      await this.payouts.updateSettings(actor, marketId, dto.commissionRate),
+      await this.payouts.updateSettings(actor, marketId, dto),
       'Payment settings updated',
     );
   }

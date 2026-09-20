@@ -28,6 +28,8 @@ const CREDENTIAL_SELECT = {
   retiringAt: true,
   expiresAt: true,
   revokedAt: true,
+  ownershipAttestedAt: true,
+  ownershipAttestedBy: true,
   createdAt: true,
   createdBy: {
     select: { id: true, firstName: true, lastName: true, email: true },
@@ -115,18 +117,31 @@ export class PaymentCredentialsService {
     );
   }
 
-  async activate(credentialId: string, actorId: string) {
+  async activate(
+    credentialId: string,
+    actorId: string,
+    confirmPavodahOwnership: boolean,
+  ) {
     const candidate = await this.prisma.paymentCredentialVersion.findUnique({
       where: { id: credentialId },
       include: { integration: true },
     });
     if (!candidate) throw new NotFoundException('Payment credential not found');
-    if (candidate.status !== PaymentCredentialStatus.STAGED) {
+    if (!confirmPavodahOwnership) {
+      throw new BadRequestException(
+        'Confirm that this is a Pavodah-controlled collection account',
+      );
+    }
+    if (
+      candidate.status !== PaymentCredentialStatus.STAGED &&
+      candidate.status !== PaymentCredentialStatus.ACTIVE
+    ) {
       throw new BadRequestException(
         'Only a staged credential can be activated',
       );
     }
     const now = new Date();
+    const isRotation = candidate.status === PaymentCredentialStatus.STAGED;
     const retirementHours = Math.max(
       1,
       Number(this.config.get('PAYMENT_CREDENTIAL_RETIREMENT_HOURS', '72')) ||
@@ -138,11 +153,18 @@ export class PaymentCredentialsService {
         const claimed = await tx.paymentCredentialVersion.updateMany({
           where: {
             id: credentialId,
-            status: PaymentCredentialStatus.STAGED,
+            status: {
+              in: [
+                PaymentCredentialStatus.STAGED,
+                PaymentCredentialStatus.ACTIVE,
+              ],
+            },
           },
           data: {
             status: PaymentCredentialStatus.ACTIVE,
             activatedAt: now,
+            ownershipAttestedAt: now,
+            ownershipAttestedBy: actorId,
             retiringAt: null,
             expiresAt: null,
           },
@@ -150,25 +172,38 @@ export class PaymentCredentialsService {
         if (claimed.count !== 1) {
           throw new BadRequestException('This credential is no longer staged');
         }
-        await tx.paymentCredentialVersion.updateMany({
-          where: {
-            integrationId: candidate.integrationId,
-            status: PaymentCredentialStatus.ACTIVE,
-            id: { not: credentialId },
-          },
-          data: {
-            status: PaymentCredentialStatus.RETIRING,
-            retiringAt: now,
-            expiresAt,
-          },
-        });
-        const invalidatedAccounts = await tx.providerPayoutAccount.updateMany({
-          where: {
-            paymentIntegrationId: candidate.integrationId,
-            status: PayoutAccountStatus.ACTIVE,
-          },
-          data: { status: PayoutAccountStatus.INACTIVE },
-        });
+        if (isRotation) {
+          await tx.paymentCredentialVersion.updateMany({
+            where: {
+              integrationId: candidate.integrationId,
+              status: PaymentCredentialStatus.ACTIVE,
+              id: { not: credentialId },
+            },
+            data: {
+              status: PaymentCredentialStatus.RETIRING,
+              retiringAt: now,
+              expiresAt,
+            },
+          });
+        }
+        const invalidatedAccounts = isRotation
+          ? await tx.providerPayoutAccount.updateMany({
+              where: {
+                paymentIntegrationId: candidate.integrationId,
+                status: PayoutAccountStatus.ACTIVE,
+              },
+              data: { status: PayoutAccountStatus.INACTIVE },
+            })
+          : { count: 0 };
+        const invalidatedPartnerAccounts = isRotation
+          ? await tx.marketPartnerPayoutAccount.updateMany({
+              where: {
+                paymentIntegrationId: candidate.integrationId,
+                status: PayoutAccountStatus.ACTIVE,
+              },
+              data: { status: PayoutAccountStatus.INACTIVE },
+            })
+          : { count: 0 };
         const activated = await tx.paymentCredentialVersion.findUniqueOrThrow({
           where: { id: credentialId },
           select: CREDENTIAL_SELECT,
@@ -184,6 +219,9 @@ export class PaymentCredentialsService {
               integrationId: candidate.integrationId,
               version: candidate.version,
               invalidatedPayoutAccounts: invalidatedAccounts.count,
+              invalidatedPartnerPayoutAccounts:
+                invalidatedPartnerAccounts.count,
+              pavodahOwnershipAttested: true,
             },
           },
         });
@@ -248,6 +286,7 @@ export class PaymentCredentialsService {
       where: {
         integrationId,
         status: PaymentCredentialStatus.ACTIVE,
+        ownershipAttestedAt: { not: null },
       },
       orderBy: { version: 'desc' },
     });
@@ -267,7 +306,11 @@ export class PaymentCredentialsService {
     const credential = await this.prisma.paymentCredentialVersion.findUnique({
       where: { id: credentialVersionId },
     });
-    if (!credential || credential.status === PaymentCredentialStatus.REVOKED) {
+    if (
+      !credential ||
+      credential.status === PaymentCredentialStatus.REVOKED ||
+      !credential.ownershipAttestedAt
+    ) {
       throw new ServiceUnavailableException(
         'Payment credential is unavailable',
       );

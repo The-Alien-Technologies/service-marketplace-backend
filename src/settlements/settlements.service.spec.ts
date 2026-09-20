@@ -19,13 +19,50 @@ describe('SettlementsService', () => {
 
     expect(result.retainedAmount.toFixed(2)).toBe('75.00');
     expect(result.commissionAmount.toFixed(2)).toBe('7.50');
+    expect(result.pavodahAmount.toFixed(2)).toBe('3.75');
+    expect(result.partnerAmount.toFixed(2)).toBe('3.75');
     expect(result.providerAmount.toFixed(2)).toBe('67.50');
+  });
+
+  it('splits only the commission between Pavodah and the country partner', () => {
+    const service = new SettlementsService({} as never);
+
+    const result = service.calculate(
+      new Prisma.Decimal('100.00'),
+      new Prisma.Decimal('0.00'),
+      new Prisma.Decimal('10.00'),
+      new Prisma.Decimal('40.00'),
+    );
+
+    expect(result.providerAmount.toFixed(2)).toBe('90.00');
+    expect(result.commissionAmount.toFixed(2)).toBe('10.00');
+    expect(result.pavodahAmount.toFixed(2)).toBe('4.00');
+    expect(result.partnerAmount.toFixed(2)).toBe('6.00');
+  });
+
+  it('uses one canonical rounding path for very small refunds', () => {
+    const service = new SettlementsService({} as never);
+    const result = service.calculate(
+      new Prisma.Decimal('0.05'),
+      new Prisma.Decimal(0),
+      new Prisma.Decimal(10),
+      new Prisma.Decimal(50),
+    );
+
+    expect(result.providerAmount.toFixed(2)).toBe('0.04');
+    expect(result.providerAmount.add(result.commissionAmount).toFixed(2)).toBe(
+      result.retainedAmount.toFixed(2),
+    );
+    expect(result.pavodahAmount.add(result.partnerAmount).toFixed(2)).toBe(
+      result.commissionAmount.toFixed(2),
+    );
   });
 
   it('makes held earnings eligible only when the customer accepts completed work', async () => {
     const settlement = {
       id: 'settlement-1',
       status: SettlementStatus.HELD,
+      partnerStatus: SettlementStatus.HELD,
     };
     const tx = {
       order: {
@@ -121,7 +158,7 @@ describe('SettlementsService', () => {
           ...data,
         })),
       },
-      providerBalanceAdjustment: { create: jest.fn() },
+      providerBalanceAdjustment: { create: jest.fn(), upsert: jest.fn() },
     };
     const service = new SettlementsService({} as never);
 
@@ -144,6 +181,7 @@ describe('SettlementsService', () => {
       id: 'settlement-1',
       providerId: 'provider-1',
       status: SettlementStatus.PAID,
+      partnerStatus: SettlementStatus.PAID,
       refundedAmount: new Prisma.Decimal(0),
       acceptedAt: new Date(),
       acceptedBy: 'CUSTOMER',
@@ -164,9 +202,17 @@ describe('SettlementsService', () => {
           _sum: { amount: new Prisma.Decimal('25.00') },
         }),
       },
-      orderSettlement: { update: jest.fn() },
+      orderSettlement: {
+        update: jest.fn().mockImplementation(async ({ data }) => ({
+          ...settlement,
+          ...data,
+        })),
+      },
       providerBalanceAdjustment: {
-        create: jest.fn().mockResolvedValue({}),
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      marketCommissionAdjustment: {
+        upsert: jest.fn().mockResolvedValue({}),
       },
     };
     const service = new SettlementsService({} as never);
@@ -180,11 +226,12 @@ describe('SettlementsService', () => {
       },
     );
 
-    expect(result).toBe(settlement);
-    expect(db.orderSettlement.update).not.toHaveBeenCalled();
-    expect(db.providerBalanceAdjustment.create).toHaveBeenCalledWith(
+    expect(result.status).toBe(SettlementStatus.PAID);
+    expect(result.partnerStatus).toBe(SettlementStatus.PAID);
+    expect(db.orderSettlement.update).toHaveBeenCalled();
+    expect(db.providerBalanceAdjustment.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
+        create: expect.objectContaining({
           amount: new Prisma.Decimal('22.50'),
         }),
       }),

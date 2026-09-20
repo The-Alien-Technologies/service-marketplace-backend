@@ -31,7 +31,12 @@ import {
 } from '../payments/transfer-state';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettlementsService } from '../settlements/settlements.service';
-import { PayoutListQueryDto, UpdatePayoutAccountDto } from './dto/payouts.dto';
+import {
+  PayoutListQueryDto,
+  UpdatePaymentSettingsDto,
+  UpdatePartnerPayoutAccountDto,
+  UpdatePayoutAccountDto,
+} from './dto/payouts.dto';
 import { NotificationEventsService } from '../notifications/notification-events.service';
 import { PaymentCredentialsService } from '../payments/payment-credentials.service';
 import {
@@ -77,6 +82,10 @@ export class PayoutsService {
         'Provider payouts are not enabled yet. Your earnings remain safely recorded.',
       );
     }
+  }
+
+  assertAdminMarket(actor: MarketActor, marketId: string) {
+    this.marketAccess.assertResource(actor, marketId);
   }
 
   async listInstitutions(type: PayoutDestinationType, marketId: string) {
@@ -793,7 +802,6 @@ export class PayoutsService {
       }
       return current;
     }
-
     try {
       const transfer = await this.paystack.initiateTransfer(
         {
@@ -951,7 +959,9 @@ export class PayoutsService {
       normalizedTransfer,
       { logger: this.logger, strict: true },
     );
-    if (payout) await this.notificationEvents?.payoutUpdated(payout);
+    if (payout && 'providerId' in payout) {
+      await this.notificationEvents?.payoutUpdated(payout);
+    }
     return payout;
   }
 
@@ -1105,6 +1115,553 @@ export class PayoutsService {
     return this.settlements.reviewRelease(orderId, approve, note);
   }
 
+  async getPartnerPayoutAccount(
+    actor: MarketActor,
+    requestedMarketId?: string,
+  ) {
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    if (!marketId) throw new BadRequestException('Choose a market');
+    return this.prisma.marketPartnerPayoutAccount.findUnique({
+      where: { marketId },
+      select: {
+        id: true,
+        type: true,
+        institutionCode: true,
+        institutionName: true,
+        accountName: true,
+        accountNumberLast4: true,
+        currency: true,
+        status: true,
+        verifiedAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async updatePartnerPayoutAccount(
+    actor: MarketActor,
+    dto: UpdatePartnerPayoutAccountDto,
+  ) {
+    const marketId = this.marketAccess.marketForAdmin(actor, dto.marketId);
+    if (!marketId) throw new BadRequestException('Choose a market');
+    const active = await this.prisma.marketPartnerPayout.findFirst({
+      where: { marketId, status: { in: ACTIVE_PAYOUT_STATUSES } },
+      select: { id: true },
+    });
+    if (active) {
+      throw new BadRequestException(
+        'The partner destination cannot change while a payout is pending',
+      );
+    }
+    const [market, credential, institutions] = await Promise.all([
+      this.prisma.market.findUnique({ where: { id: marketId } }),
+      this.credentials.resolveForMarket(marketId),
+      this.listInstitutions(dto.type, marketId),
+    ]);
+    if (!market) throw new NotFoundException('Market not found');
+    const institution = institutions.find(
+      (item) => item.code === dto.institutionCode,
+    );
+    if (!institution) {
+      throw new BadRequestException('Select a supported payout institution');
+    }
+    const paystackType =
+      dto.type === PayoutDestinationType.GHIPSS
+        ? 'ghipss'
+        : dto.type === PayoutDestinationType.BASA
+          ? 'basa'
+          : 'mobile_money';
+    const recipient = await this.paystack.createTransferRecipient(
+      {
+        type: paystackType,
+        name: dto.accountName.trim(),
+        accountNumber: dto.accountNumber,
+        institutionCode: dto.institutionCode,
+        currency: market.currency,
+        metadata: { marketId, purpose: 'market-partner-payout' },
+      },
+      credential.secretKey,
+    );
+    if (!recipient.active || !recipient.recipient_code) {
+      throw new BadRequestException(
+        'Paystack could not verify the partner payout destination',
+      );
+    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        const account = await tx.marketPartnerPayoutAccount.upsert({
+          where: { marketId },
+          create: {
+            marketId,
+            paymentIntegrationId: credential.integrationId,
+            type: dto.type,
+            recipientCode: recipient.recipient_code,
+            institutionCode: dto.institutionCode,
+            institutionName: institution.name,
+            accountName: recipient.name || dto.accountName.trim(),
+            accountNumberLast4: dto.accountNumber.slice(-4),
+            currency: market.currency,
+          },
+          update: {
+            paymentIntegrationId: credential.integrationId,
+            type: dto.type,
+            recipientCode: recipient.recipient_code,
+            institutionCode: dto.institutionCode,
+            institutionName: institution.name,
+            accountName: recipient.name || dto.accountName.trim(),
+            accountNumberLast4: dto.accountNumber.slice(-4),
+            currency: market.currency,
+            status: PayoutAccountStatus.ACTIVE,
+            verifiedAt: new Date(),
+          },
+        });
+        await tx.adminAuditLog.create({
+          data: {
+            actorId: actor.id,
+            marketId,
+            action: 'MARKET_PARTNER_PAYOUT_ACCOUNT_UPDATED',
+            entityType: 'MarketPartnerPayoutAccount',
+            entityId: account.id,
+            metadata: {
+              institutionName: institution.name,
+              accountNumberLast4: dto.accountNumber.slice(-4),
+              currency: market.currency,
+            },
+          },
+        });
+        return account;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
+  async requestPartnerPayout(actor: MarketActor, requestedMarketId?: string) {
+    this.assertEnabled();
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    if (!marketId) throw new BadRequestException('Choose a market');
+    const credential = await this.credentials.resolveForMarket(marketId);
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT "id" FROM "markets" WHERE "id" = ${marketId} FOR UPDATE
+        `);
+        const account = await tx.marketPartnerPayoutAccount.findUnique({
+          where: { marketId },
+        });
+        if (
+          !account ||
+          account.status !== PayoutAccountStatus.ACTIVE ||
+          account.paymentIntegrationId !== credential.integrationId
+        ) {
+          throw new BadRequestException(
+            'Set up a verified partner payout destination first',
+          );
+        }
+        const active = await tx.marketPartnerPayout.findFirst({
+          where: { marketId, status: { in: ACTIVE_PAYOUT_STATUSES } },
+        });
+        if (active) {
+          throw new BadRequestException(
+            'A partner payout request is already active',
+          );
+        }
+        const [settlements, adjustments] = await Promise.all([
+          tx.orderSettlement.findMany({
+            where: {
+              marketId,
+              partnerStatus: SettlementStatus.ELIGIBLE,
+              partnerAmount: { gt: 0 },
+              order: {
+                externalDisputes: {
+                  none: {
+                    affectsOrderBalance: true,
+                    status: { in: ACTIVE_EXTERNAL_DISPUTE_STATUSES },
+                  },
+                },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+          }),
+          tx.marketCommissionAdjustment.findMany({
+            where: {
+              marketId,
+              partnerStatus: BalanceAdjustmentStatus.OPEN,
+              partnerAmount: { gt: 0 },
+            },
+            orderBy: { createdAt: 'asc' },
+          }),
+        ]);
+        const gross = settlements.reduce(
+          (sum, item) => sum.add(item.partnerAmount),
+          new Prisma.Decimal(0),
+        );
+        const adjustmentAmount = adjustments.reduce(
+          (sum, item) =>
+            sum.add(item.partnerAmount.minus(item.partnerRecoveredAmount)),
+          new Prisma.Decimal(0),
+        );
+        const amount = gross.minus(adjustmentAmount);
+        const amountMinor = amount.mul(100);
+        if (
+          gross.lessThanOrEqualTo(0) ||
+          amount.lessThanOrEqualTo(0) ||
+          !amountMinor.isInteger() ||
+          !Number.isSafeInteger(amountMinor.toNumber()) ||
+          amountMinor.greaterThan(MAX_DATABASE_MINOR_AMOUNT)
+        ) {
+          throw new BadRequestException(
+            'There is no positive eligible partner balance',
+          );
+        }
+        const payout = await tx.marketPartnerPayout.create({
+          data: {
+            marketId,
+            paymentIntegrationId: credential.integrationId,
+            credentialVersionId: credential.credentialVersionId,
+            payoutAccountId: account.id,
+            reference: `pavodah-partner-${randomUUID().replace(/-/g, '')}`,
+            amount,
+            grossCommissionAmount: gross,
+            adjustmentAmount,
+            amountMinor: amountMinor.toNumber(),
+            currency: account.currency,
+            recipientCode: account.recipientCode,
+            destinationType: account.type,
+            institutionName: account.institutionName,
+            accountName: account.accountName,
+            accountNumberLast4: account.accountNumberLast4,
+            items: {
+              create: settlements.map((item) => ({
+                settlementId: item.id,
+                amount: item.partnerAmount,
+              })),
+            },
+            adjustmentItems: adjustments.length
+              ? {
+                  create: adjustments.map((item) => ({
+                    adjustmentId: item.id,
+                    amount: item.partnerAmount.minus(
+                      item.partnerRecoveredAmount,
+                    ),
+                  })),
+                }
+              : undefined,
+          },
+          include: { items: true, adjustmentItems: true },
+        });
+        const reserved = await tx.orderSettlement.updateMany({
+          where: {
+            id: { in: settlements.map((item) => item.id) },
+            partnerStatus: SettlementStatus.ELIGIBLE,
+          },
+          data: { partnerStatus: SettlementStatus.RESERVED },
+        });
+        if (reserved.count !== settlements.length) {
+          throw new BadRequestException(
+            'The partner balance changed while it was being reserved',
+          );
+        }
+        if (adjustments.length) {
+          const reservedAdjustments =
+            await tx.marketCommissionAdjustment.updateMany({
+              where: {
+                id: { in: adjustments.map((item) => item.id) },
+                partnerStatus: BalanceAdjustmentStatus.OPEN,
+              },
+              data: { partnerStatus: BalanceAdjustmentStatus.RESERVED },
+            });
+          if (reservedAdjustments.count !== adjustments.length) {
+            throw new BadRequestException(
+              'A partner balance recovery changed during reservation',
+            );
+          }
+        }
+        await tx.adminAuditLog.create({
+          data: {
+            actorId: actor.id,
+            marketId,
+            action: 'MARKET_PARTNER_PAYOUT_REQUESTED',
+            entityType: 'MarketPartnerPayout',
+            entityId: payout.id,
+            metadata: {
+              amount: amount.toString(),
+              currency: account.currency,
+              settlementCount: settlements.length,
+              adjustmentAmount: adjustmentAmount.toString(),
+            },
+          },
+        });
+        return payout;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
+  async listPartnerPayouts(actor: MarketActor, requestedMarketId?: string) {
+    const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    if (!marketId) throw new BadRequestException('Choose a market');
+    return this.prisma.marketPartnerPayout.findMany({
+      where: { marketId },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: { items: true, adjustmentItems: true },
+    });
+  }
+
+  async approvePartnerPayout(payoutId: string, actor: MarketActor) {
+    this.assertEnabled();
+    if (actor.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Only a super administrator can approve partner payouts',
+      );
+    }
+    const payout = await this.prisma.marketPartnerPayout.findUnique({
+      where: { id: payoutId },
+    });
+    if (!payout) throw new NotFoundException('Partner payout not found');
+    if (payout.status === ProviderPayoutStatus.SUCCESS) return payout;
+    if (payout.status !== ProviderPayoutStatus.REQUESTED) {
+      throw new BadRequestException(
+        'This partner payout can no longer be approved',
+      );
+    }
+    const secretKey = await this.credentials.resolveByCredentialId(
+      payout.credentialVersionId,
+    );
+    const claimed = await this.prisma.marketPartnerPayout.updateMany({
+      where: {
+        id: payout.id,
+        status: ProviderPayoutStatus.REQUESTED,
+        market: {
+          commissionAdjustments: {
+            none: {
+              partnerStatus: BalanceAdjustmentStatus.OPEN,
+              partnerAmount: { gt: 0 },
+            },
+          },
+        },
+        items: {
+          some: {},
+          every: {
+            settlement: {
+              partnerStatus: SettlementStatus.RESERVED,
+              order: {
+                externalDisputes: {
+                  none: {
+                    affectsOrderBalance: true,
+                    status: { in: ACTIVE_EXTERNAL_DISPUTE_STATUSES },
+                  },
+                },
+              },
+            },
+          },
+        },
+        adjustmentItems: {
+          every: {
+            adjustment: {
+              partnerStatus: BalanceAdjustmentStatus.RESERVED,
+            },
+          },
+        },
+      },
+      data: {
+        status: ProviderPayoutStatus.PROCESSING,
+        approvedAt: new Date(),
+        approvedBy: actor.id,
+        failureMessage: null,
+      },
+    });
+    if (claimed.count !== 1) {
+      throw new BadRequestException(
+        'The partner payout balance is no longer reserved',
+      );
+    }
+    await this.prisma.adminAuditLog.create({
+      data: {
+        actorId: actor.id,
+        marketId: payout.marketId,
+        action: 'MARKET_PARTNER_PAYOUT_APPROVED',
+        entityType: 'MarketPartnerPayout',
+        entityId: payout.id,
+        metadata: {
+          amount: payout.amount.toString(),
+          currency: payout.currency,
+          accountNumberLast4: payout.accountNumberLast4,
+        },
+      },
+    });
+    try {
+      const transfer = await this.paystack.initiateTransfer(
+        {
+          amountMinor: payout.amountMinor,
+          recipientCode: payout.recipientCode,
+          reference: payout.reference,
+          reason: 'Pavodah market partner commission payout',
+          currency: payout.currency,
+        },
+        secretKey,
+      );
+      return this.savePartnerTransferResponse(payout.id, transfer);
+    } catch (error) {
+      if (error instanceof PaystackRequestException && !error.outcomeUnknown) {
+        await this.prisma.marketPartnerPayout.updateMany({
+          where: {
+            id: payout.id,
+            status: ProviderPayoutStatus.PROCESSING,
+          },
+          data: {
+            status: ProviderPayoutStatus.REQUESTED,
+            approvedAt: null,
+            approvedBy: null,
+            failureMessage: error.providerMessage.slice(0, 500),
+          },
+        });
+      }
+      throw error;
+    }
+  }
+
+  async finalizePartnerPayout(
+    payoutId: string,
+    otp: string,
+    actor: MarketActor,
+  ) {
+    if (actor.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Only a super administrator can finalize partner payouts',
+      );
+    }
+    const payout = await this.prisma.marketPartnerPayout.findUnique({
+      where: { id: payoutId },
+    });
+    if (
+      !payout ||
+      payout.status !== ProviderPayoutStatus.OTP_REQUIRED ||
+      !payout.transferCode
+    ) {
+      throw new BadRequestException(
+        'This partner payout is not waiting for an OTP',
+      );
+    }
+    const secretKey = await this.credentials.resolveByCredentialId(
+      payout.credentialVersionId,
+    );
+    const transfer = await this.paystack.finalizeTransfer(
+      payout.transferCode,
+      otp,
+      secretKey,
+    );
+    return this.savePartnerTransferResponse(payout.id, transfer);
+  }
+
+  async rejectPartnerPayout(
+    payoutId: string,
+    reason: string,
+    actor: MarketActor,
+  ) {
+    if (actor.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Only a super administrator can reject partner payouts',
+      );
+    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        const payout = await tx.marketPartnerPayout.findUnique({
+          where: { id: payoutId },
+          include: { items: true, adjustmentItems: true },
+        });
+        if (!payout) throw new NotFoundException('Partner payout not found');
+        if (payout.status !== ProviderPayoutStatus.REQUESTED) {
+          throw new BadRequestException(
+            'Only an unsent partner payout can be rejected',
+          );
+        }
+        await Promise.all([
+          tx.orderSettlement.updateMany({
+            where: {
+              id: { in: payout.items.map((item) => item.settlementId) },
+              partnerStatus: SettlementStatus.RESERVED,
+              order: {
+                externalDisputes: {
+                  none: {
+                    affectsOrderBalance: true,
+                    status: { in: ACTIVE_EXTERNAL_DISPUTE_STATUSES },
+                  },
+                },
+              },
+            },
+            data: { partnerStatus: SettlementStatus.ELIGIBLE },
+          }),
+          tx.orderSettlement.updateMany({
+            where: {
+              id: { in: payout.items.map((item) => item.settlementId) },
+              partnerStatus: SettlementStatus.RESERVED,
+              order: {
+                externalDisputes: {
+                  some: {
+                    affectsOrderBalance: true,
+                    status: { in: ACTIVE_EXTERNAL_DISPUTE_STATUSES },
+                  },
+                },
+              },
+            },
+            data: { partnerStatus: SettlementStatus.HELD },
+          }),
+          tx.marketCommissionAdjustment.updateMany({
+            where: {
+              id: {
+                in: payout.adjustmentItems.map((item) => item.adjustmentId),
+              },
+              partnerStatus: BalanceAdjustmentStatus.RESERVED,
+            },
+            data: { partnerStatus: BalanceAdjustmentStatus.OPEN },
+          }),
+        ]);
+        const rejected = await tx.marketPartnerPayout.update({
+          where: { id: payout.id },
+          data: {
+            status: ProviderPayoutStatus.REJECTED,
+            failureMessage: reason.trim().slice(0, 500),
+          },
+        });
+        await tx.adminAuditLog.create({
+          data: {
+            actorId: actor.id,
+            marketId: payout.marketId,
+            action: 'MARKET_PARTNER_PAYOUT_REJECTED',
+            entityType: 'MarketPartnerPayout',
+            entityId: payout.id,
+            metadata: { reason: reason.trim().slice(0, 500) },
+          },
+        });
+        return rejected;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
+  private async savePartnerTransferResponse(
+    payoutId: string,
+    transfer: PaystackTransferData,
+  ) {
+    const current = await this.prisma.marketPartnerPayout.findUnique({
+      where: { id: payoutId },
+      select: { reference: true },
+    });
+    if (!current) throw new NotFoundException('Partner payout not found');
+    if (transfer.reference && transfer.reference !== current.reference) {
+      throw new BadRequestException(
+        'Paystack returned an unexpected partner transfer reference',
+      );
+    }
+    return applyPaystackTransferState(
+      this.prisma,
+      eventForTransferStatus(transfer.status),
+      { ...transfer, reference: transfer.reference || current.reference },
+      { logger: this.logger, strict: true },
+    );
+  }
+
   getSettings(actor: MarketActor, requestedMarketId?: string) {
     const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
     if (!marketId) {
@@ -1112,7 +1669,7 @@ export class PayoutsService {
     }
     return this.prisma.paymentSetting.upsert({
       where: { marketId },
-      create: { marketId, commissionRate: 10 },
+      create: { marketId, commissionRate: 10, pavodahShareRate: 50 },
       update: {},
       include: {
         market: {
@@ -1122,22 +1679,72 @@ export class PayoutsService {
     });
   }
 
-  updateSettings(
+  async updateSettings(
     actor: MarketActor,
     requestedMarketId: string | undefined,
-    commissionRate: number,
+    settings: UpdatePaymentSettingsDto,
   ) {
     const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
     if (!marketId) throw new BadRequestException('Choose a market');
-    return this.prisma.paymentSetting.upsert({
-      where: { marketId },
-      create: { marketId, commissionRate, updatedBy: actor.id },
-      update: { commissionRate, updatedBy: actor.id },
-      include: {
-        market: {
-          select: { id: true, name: true, currency: true, locale: true },
-        },
+    if (
+      settings.pavodahShareRate !== undefined &&
+      actor.role !== Role.SUPER_ADMIN
+    ) {
+      throw new ForbiddenException(
+        'Only a super administrator can change the Pavodah share',
+      );
+    }
+    const data = {
+      commissionRate: settings.commissionRate,
+      ...(settings.pavodahShareRate === undefined
+        ? {}
+        : { pavodahShareRate: settings.pavodahShareRate }),
+      updatedBy: actor.id,
+    };
+    return this.prisma.$transaction(
+      async (tx) => {
+        const before = await tx.paymentSetting.findUnique({
+          where: { marketId },
+        });
+        const updated = await tx.paymentSetting.upsert({
+          where: { marketId },
+          create: {
+            marketId,
+            commissionRate: settings.commissionRate,
+            pavodahShareRate: settings.pavodahShareRate ?? 50,
+            updatedBy: actor.id,
+          },
+          update: data,
+          include: {
+            market: {
+              select: { id: true, name: true, currency: true, locale: true },
+            },
+          },
+        });
+        await tx.adminAuditLog.create({
+          data: {
+            actorId: actor.id,
+            marketId,
+            action: 'PAYMENT_SETTINGS_UPDATED',
+            entityType: 'PaymentSetting',
+            entityId: updated.id,
+            metadata: {
+              before: before
+                ? {
+                    commissionRate: before.commissionRate.toString(),
+                    pavodahShareRate: before.pavodahShareRate.toString(),
+                  }
+                : null,
+              after: {
+                commissionRate: updated.commissionRate.toString(),
+                pavodahShareRate: updated.pavodahShareRate.toString(),
+              },
+            },
+          },
+        });
+        return updated;
       },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 }

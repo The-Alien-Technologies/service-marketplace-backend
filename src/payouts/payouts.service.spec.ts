@@ -4,6 +4,7 @@ import {
   PayoutDestinationType,
   Prisma,
   ProviderPayoutStatus,
+  Role,
   SettlementStatus,
 } from '../../generated/prisma';
 import { PayoutsService } from './payouts.service';
@@ -40,6 +41,88 @@ describe('PayoutsService', () => {
       marketAccess,
       notificationEvents,
     );
+
+  it('allows only super admins to change the Pavodah commission share', async () => {
+    const upsert = jest.fn();
+    const marketAccess = {
+      marketForAdmin: jest.fn().mockReturnValue('market-gh'),
+    };
+    const service = makeService(
+      { paymentSetting: { upsert } } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      marketAccess as never,
+    );
+
+    await expect(
+      service.updateSettings(
+        { id: 'admin-1', role: Role.ADMIN, adminMarketId: 'market-gh' },
+        undefined,
+        { commissionRate: 10, pavodahShareRate: 50 },
+      ),
+    ).rejects.toThrow('Only a super administrator');
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it('persists the super-admin Pavodah commission share per market', async () => {
+    const upsert = jest.fn().mockResolvedValue({
+      id: 'setting-1',
+      commissionRate: new Prisma.Decimal(10),
+      pavodahShareRate: new Prisma.Decimal(60),
+      market: { id: 'market-gh' },
+    });
+    const tx = {
+      paymentSetting: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert,
+      },
+      adminAuditLog: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const marketAccess = {
+      marketForAdmin: jest.fn().mockReturnValue('market-gh'),
+    };
+    const service = makeService(
+      {
+        $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+          callback(tx),
+        ),
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      marketAccess as never,
+    );
+
+    await service.updateSettings(
+      { id: 'super-1', role: Role.SUPER_ADMIN },
+      'market-gh',
+      { commissionRate: 10, pavodahShareRate: 60 },
+    );
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { marketId: 'market-gh' },
+        update: expect.objectContaining({
+          commissionRate: 10,
+          pavodahShareRate: 60,
+          updatedBy: 'super-1',
+        }),
+      }),
+    );
+    expect(tx.adminAuditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'PAYMENT_SETTINGS_UPDATED',
+          actorId: 'super-1',
+        }),
+      }),
+    );
+  });
 
   it('atomically reserves the full eligible balance less open adjustments', async () => {
     const settlements = [

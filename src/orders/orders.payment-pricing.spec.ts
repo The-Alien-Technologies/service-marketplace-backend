@@ -9,7 +9,10 @@ import { OrdersService } from './orders.service';
 
 describe('OrdersService payment pricing', () => {
   const settlements = {
-    getCommissionRate: jest.fn().mockResolvedValue(new Prisma.Decimal(10)),
+    getPaymentPolicy: jest.fn().mockResolvedValue({
+      commissionRate: new Prisma.Decimal(10),
+      pavodahShareRate: new Prisma.Decimal(50),
+    }),
   };
   it('builds the payable total from database plan and add-on prices', async () => {
     const prisma = {
@@ -68,6 +71,7 @@ describe('OrdersService payment pricing', () => {
           marketId: 'market-gh',
           currency: 'GHS',
           commissionRate: new Prisma.Decimal(10),
+          pavodahShareRate: new Prisma.Decimal(50),
         }),
       }),
     );

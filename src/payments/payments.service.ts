@@ -1004,10 +1004,15 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     if (integrationId) {
-      const routedPayout = await this.prisma.providerPayout.findUnique({
-        where: { reference: data.reference },
-        select: { paymentIntegrationId: true },
-      });
+      const routedPayout =
+        (await this.prisma.providerPayout.findUnique({
+          where: { reference: data.reference },
+          select: { paymentIntegrationId: true },
+        })) ??
+        (await this.prisma.marketPartnerPayout.findUnique({
+          where: { reference: data.reference },
+          select: { paymentIntegrationId: true },
+        }));
       if (routedPayout && routedPayout.paymentIntegrationId !== integrationId) {
         this.logger.warn(
           'Ignoring transfer webhook routed through the wrong integration',
@@ -1021,7 +1026,9 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       data,
       { logger: this.logger },
     );
-    if (payout) await this.notificationEvents?.payoutUpdated(payout);
+    if (payout && 'providerId' in payout) {
+      await this.notificationEvents?.payoutUpdated(payout);
+    }
   }
 
   private async handleExternalDisputeWebhook(
@@ -1117,6 +1124,60 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           const settlement = await tx.orderSettlement.findUnique({
             where: { orderId: transaction.orderId },
           });
+          if (settlement?.partnerStatus === SettlementStatus.RESERVED) {
+            const partnerItem = await tx.marketPartnerPayoutItem.findFirst({
+              where: {
+                settlementId: settlement.id,
+                payout: { status: ProviderPayoutStatus.REQUESTED },
+              },
+              include: {
+                payout: { include: { items: true, adjustmentItems: true } },
+              },
+            });
+            if (partnerItem) {
+              await Promise.all([
+                tx.marketPartnerPayout.update({
+                  where: { id: partnerItem.payout.id },
+                  data: {
+                    status: ProviderPayoutStatus.REJECTED,
+                    failureMessage:
+                      'Automatically cancelled because Paystack opened a payment dispute',
+                  },
+                }),
+                tx.orderSettlement.updateMany({
+                  where: {
+                    id: {
+                      in: partnerItem.payout.items.map(
+                        (item) => item.settlementId,
+                      ),
+                    },
+                    partnerStatus: SettlementStatus.RESERVED,
+                  },
+                  data: { partnerStatus: SettlementStatus.ELIGIBLE },
+                }),
+                tx.marketCommissionAdjustment.updateMany({
+                  where: {
+                    id: {
+                      in: partnerItem.payout.adjustmentItems.map(
+                        (item) => item.adjustmentId,
+                      ),
+                    },
+                    partnerStatus: BalanceAdjustmentStatus.RESERVED,
+                  },
+                  data: { partnerStatus: BalanceAdjustmentStatus.OPEN },
+                }),
+              ]);
+              await tx.orderSettlement.update({
+                where: { id: settlement.id },
+                data: { partnerStatus: SettlementStatus.HELD },
+              });
+            }
+          } else if (settlement?.partnerStatus === SettlementStatus.ELIGIBLE) {
+            await tx.orderSettlement.update({
+              where: { id: settlement.id },
+              data: { partnerStatus: SettlementStatus.HELD },
+            });
+          }
           if (settlement?.status === SettlementStatus.RESERVED) {
             const payoutItem = await tx.providerPayoutItem.findFirst({
               where: {
@@ -1190,13 +1251,25 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
               ]);
               await tx.orderSettlement.update({
                 where: { id: settlement.id },
-                data: { status: SettlementStatus.HELD },
+                data: {
+                  status: SettlementStatus.HELD,
+                  partnerStatus:
+                    settlement.partnerStatus === SettlementStatus.ELIGIBLE
+                      ? SettlementStatus.HELD
+                      : settlement.partnerStatus,
+                },
               });
             }
           } else if (settlement?.status === SettlementStatus.ELIGIBLE) {
             await tx.orderSettlement.update({
               where: { id: settlement.id },
-              data: { status: SettlementStatus.HELD },
+              data: {
+                status: SettlementStatus.HELD,
+                partnerStatus:
+                  settlement.partnerStatus === SettlementStatus.ELIGIBLE
+                    ? SettlementStatus.HELD
+                    : settlement.partnerStatus,
+              },
             });
           }
         },
@@ -1316,7 +1389,13 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           ) {
             await tx.orderSettlement.update({
               where: { id: settlement.id },
-              data: { status: SettlementStatus.ELIGIBLE },
+              data: {
+                status: SettlementStatus.ELIGIBLE,
+                partnerStatus:
+                  settlement.partnerStatus === SettlementStatus.HELD
+                    ? SettlementStatus.ELIGIBLE
+                    : settlement.partnerStatus,
+              },
             });
           }
           return;
@@ -1326,14 +1405,47 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           settlement.grossAmount,
           Prisma.Decimal.max(refundAmount, new Prisma.Decimal(0)),
         );
-        const providerShare = disputedAmount
-          .mul(new Prisma.Decimal(100).minus(settlement.commissionRate))
-          .div(100)
-          .toDecimalPlaces(2);
-        if (
-          settlement.status === SettlementStatus.PAID ||
-          settlement.status === SettlementStatus.RESERVED
-        ) {
+        const refundedAmount = Prisma.Decimal.min(
+          settlement.grossAmount,
+          settlement.refundedAmount.add(disputedAmount),
+        );
+        const previousAmounts = this.settlements.calculate(
+          settlement.grossAmount,
+          settlement.refundedAmount,
+          settlement.commissionRate,
+          settlement.pavodahShareRate,
+        );
+        const amounts = this.settlements.calculate(
+          settlement.grossAmount,
+          refundedAmount,
+          settlement.commissionRate,
+          settlement.pavodahShareRate,
+        );
+        const providerTransferred = (
+          [
+            SettlementStatus.PAID,
+            SettlementStatus.RESERVED,
+          ] as SettlementStatus[]
+        ).includes(settlement.status);
+        const partnerTransferred = (
+          [
+            SettlementStatus.PAID,
+            SettlementStatus.RESERVED,
+          ] as SettlementStatus[]
+        ).includes(settlement.partnerStatus);
+        const providerLoss = Prisma.Decimal.max(
+          previousAmounts.providerAmount.minus(amounts.providerAmount),
+          new Prisma.Decimal(0),
+        );
+        const partnerLoss = Prisma.Decimal.max(
+          previousAmounts.partnerAmount.minus(amounts.partnerAmount),
+          new Prisma.Decimal(0),
+        );
+        const pavodahLoss = Prisma.Decimal.max(
+          previousAmounts.pavodahAmount.minus(amounts.pavodahAmount),
+          new Prisma.Decimal(0),
+        );
+        if (providerTransferred && providerLoss.greaterThan(0)) {
           await tx.providerBalanceAdjustment.upsert({
             where: { externalDisputeId: external.id },
             create: {
@@ -1342,23 +1454,38 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
               orderId: settlement.orderId,
               externalDisputeId: external.id,
               type: BalanceAdjustmentType.CHARGEBACK,
-              amount: providerShare,
+              amount: providerLoss,
               reason: `Paystack chargeback for order ${transaction.order.orderNumber}`,
             },
-            update: { amount: providerShare },
+            update: { amount: providerLoss },
           });
-          return;
         }
-
-        const refundedAmount = Prisma.Decimal.min(
-          settlement.grossAmount,
-          settlement.refundedAmount.add(disputedAmount),
-        );
-        const amounts = this.settlements.calculate(
-          settlement.grossAmount,
-          refundedAmount,
-          settlement.commissionRate,
-        );
+        if (
+          (providerTransferred || partnerTransferred) &&
+          (pavodahLoss.greaterThan(0) ||
+            (partnerTransferred && partnerLoss.greaterThan(0)))
+        ) {
+          await tx.marketCommissionAdjustment.upsert({
+            where: { externalDisputeId: external.id },
+            create: {
+              marketId: settlement.marketId,
+              orderId: settlement.orderId,
+              settlementId: settlement.id,
+              externalDisputeId: external.id,
+              partnerAmount: partnerTransferred
+                ? partnerLoss
+                : new Prisma.Decimal(0),
+              pavodahAmount: pavodahLoss,
+              reason: `Paystack chargeback for order ${transaction.order.orderNumber}`,
+            },
+            update: {
+              partnerAmount: partnerTransferred
+                ? partnerLoss
+                : new Prisma.Decimal(0),
+              pavodahAmount: pavodahLoss,
+            },
+          });
+        }
         const fullyRefunded = amounts.retainedAmount.lessThanOrEqualTo(0);
         await Promise.all([
           tx.orderSettlement.update({
@@ -1366,11 +1493,20 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
             data: {
               refundedAmount,
               ...amounts,
-              status: fullyRefunded
-                ? SettlementStatus.VOID
-                : settlement.acceptedAt
-                  ? SettlementStatus.ELIGIBLE
-                  : SettlementStatus.HELD,
+              status: providerTransferred
+                ? settlement.status
+                : fullyRefunded
+                  ? SettlementStatus.VOID
+                  : settlement.acceptedAt
+                    ? SettlementStatus.ELIGIBLE
+                    : SettlementStatus.HELD,
+              partnerStatus: partnerTransferred
+                ? settlement.partnerStatus
+                : fullyRefunded
+                  ? SettlementStatus.VOID
+                  : settlement.acceptedAt
+                    ? SettlementStatus.ELIGIBLE
+                    : SettlementStatus.HELD,
             },
           }),
           tx.order.update({
@@ -2172,21 +2308,35 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 
   async reconcilePendingTransfers(marketId?: string) {
     const staleBefore = new Date(Date.now() - 5 * 60 * 1000);
-    const payouts = await this.prisma.providerPayout.findMany({
-      where: {
-        status: {
-          in: [
-            ProviderPayoutStatus.PROCESSING,
-            ProviderPayoutStatus.OTP_REQUIRED,
-          ],
-        },
-        updatedAt: { lte: staleBefore },
-        ...(marketId ? { marketId } : {}),
+    const where = {
+      status: {
+        in: [
+          ProviderPayoutStatus.PROCESSING,
+          ProviderPayoutStatus.OTP_REQUIRED,
+        ],
       },
-      orderBy: { updatedAt: 'asc' },
-      take: 100,
-      select: { reference: true, credentialVersionId: true },
-    });
+      updatedAt: { lte: staleBefore },
+      ...(marketId ? { marketId } : {}),
+    };
+    const [providerPayouts, partnerPayouts] = await Promise.all([
+      this.prisma.providerPayout.findMany({
+        where,
+        orderBy: { updatedAt: 'asc' },
+        take: 100,
+        select: { reference: true, credentialVersionId: true, updatedAt: true },
+      }),
+      this.prisma.marketPartnerPayout.findMany({
+        where,
+        orderBy: { updatedAt: 'asc' },
+        take: 100,
+        select: { reference: true, credentialVersionId: true, updatedAt: true },
+      }),
+    ]);
+    const payouts = [...providerPayouts, ...partnerPayouts]
+      .sort(
+        (left, right) => left.updatedAt.getTime() - right.updatedAt.getTime(),
+      )
+      .slice(0, 100);
     let reconciled = 0;
     for (const payout of payouts) {
       try {

@@ -151,7 +151,7 @@ export class OrdersService {
     );
     const subtotal = plan.price.add(addOnsTotal);
     const orderNumber = await this.createUniqueOrderNumber();
-    const commissionRate = await this.settlements.getCommissionRate(
+    const paymentPolicy = await this.settlements.getPaymentPolicy(
       service.marketId,
     );
     const paymentIntegration = await this.paymentIntegration(service.marketId);
@@ -174,7 +174,8 @@ export class OrdersService {
         couponDiscount: 0,
         total: subtotal,
         currency: service.currency,
-        commissionRate,
+        commissionRate: paymentPolicy.commissionRate,
+        pavodahShareRate: paymentPolicy.pavodahShareRate,
         paymentStatus: OrderPaymentStatus.UNPAID,
         source: OrderSource.SERVICE_PLAN,
         status: OrderStatus.PENDING,
@@ -290,7 +291,7 @@ export class OrdersService {
     }
 
     const orderNumber = await this.createUniqueOrderNumber();
-    const commissionRate = await this.settlements.getCommissionRate(
+    const paymentPolicy = await this.settlements.getPaymentPolicy(
       quote.marketId,
     );
     const paymentIntegration = await this.paymentIntegration(quote.marketId);
@@ -326,7 +327,8 @@ export class OrdersService {
           couponDiscount: 0,
           total: quote.budget,
           currency: quote.currency,
-          commissionRate,
+          commissionRate: paymentPolicy.commissionRate,
+          pavodahShareRate: paymentPolicy.pavodahShareRate,
           status: OrderStatus.PENDING,
           paymentStatus: OrderPaymentStatus.UNPAID,
           source: OrderSource.QUOTE,
