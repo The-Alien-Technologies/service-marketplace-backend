@@ -18,7 +18,7 @@ describe('AnalyticsService dashboards', () => {
     },
     paymentRefund: { aggregate: jest.fn() },
     review: { aggregate: jest.fn() },
-    providerPayout: { findMany: jest.fn() },
+    providerPayout: { findMany: jest.fn(), groupBy: jest.fn() },
     service: { groupBy: jest.fn(), aggregate: jest.fn() },
     category: { findMany: jest.fn() },
     market: {
@@ -414,23 +414,25 @@ describe('AnalyticsService dashboards', () => {
     ]);
     prisma.orderSettlement.aggregate
       .mockResolvedValueOnce({
-        _sum: { retainedAmount: new Prisma.Decimal('1000.50') },
+        _sum: { pavodahAmount: new Prisma.Decimal('100.05') },
       })
       .mockResolvedValueOnce({
-        _sum: { retainedAmount: new Prisma.Decimal('300') },
+        _sum: { pavodahAmount: new Prisma.Decimal('30') },
       })
       .mockResolvedValueOnce({
-        _sum: { retainedAmount: new Prisma.Decimal('200') },
+        _sum: { pavodahAmount: new Prisma.Decimal('20') },
       });
     prisma.orderSettlement.findMany.mockResolvedValue([
       {
         retainedAmount: new Prisma.Decimal('200'),
         commissionAmount: new Prisma.Decimal('20'),
+        pavodahAmount: new Prisma.Decimal('10'),
         order: { paidAt: new Date('2026-01-10T00:00:00Z') },
       },
       {
         retainedAmount: new Prisma.Decimal('100.50'),
         commissionAmount: new Prisma.Decimal('10.05'),
+        pavodahAmount: new Prisma.Decimal('5.03'),
         order: { paidAt: new Date('2026-08-05T00:00:00Z') },
       },
     ]);
@@ -462,25 +464,43 @@ describe('AnalyticsService dashboards', () => {
       .mockResolvedValueOnce([
         {
           marketId: 'ghana-market',
-          _sum: { retainedAmount: new Prisma.Decimal('800') },
+          _sum: {
+            retainedAmount: new Prisma.Decimal('800'),
+            commissionAmount: new Prisma.Decimal('80'),
+            pavodahAmount: new Prisma.Decimal('40'),
+          },
         },
         {
           marketId: 'south-africa-market',
-          _sum: { retainedAmount: new Prisma.Decimal('200') },
+          _sum: {
+            retainedAmount: new Prisma.Decimal('200'),
+            commissionAmount: new Prisma.Decimal('20'),
+            pavodahAmount: new Prisma.Decimal('10'),
+          },
         },
       ])
       .mockResolvedValueOnce([
         {
           marketId: 'ghana-market',
-          _sum: { retainedAmount: new Prisma.Decimal('300') },
+          _sum: { pavodahAmount: new Prisma.Decimal('15') },
         },
       ])
       .mockResolvedValueOnce([
         {
           marketId: 'ghana-market',
-          _sum: { retainedAmount: new Prisma.Decimal('200') },
+          _sum: { pavodahAmount: new Prisma.Decimal('10') },
         },
       ]);
+    prisma.providerPayout.groupBy.mockResolvedValue([
+      {
+        marketId: 'ghana-market',
+        _sum: { amount: new Prisma.Decimal('620') },
+      },
+      {
+        marketId: 'south-africa-market',
+        _sum: { amount: new Prisma.Decimal('150') },
+      },
+    ]);
     prisma.market.findMany.mockResolvedValue([
       {
         id: 'ghana-market',
@@ -530,18 +550,30 @@ describe('AnalyticsService dashboards', () => {
         code: 'GH',
         name: 'Ghana',
         currency: 'GHS',
-        total: 800,
-        currentMonth: 300,
-        previousMonth: 200,
+        grossVolume: 800,
+        commission: 80,
+        netRevenue: 40,
+        payout: 620,
+        currentMonthNetRevenue: 15,
+        previousMonthNetRevenue: 10,
+        growthPercent: 50,
+        comparisonMonth: '2026-08',
+        previousComparisonMonth: '2026-07',
       },
       {
         id: 'south-africa-market',
         code: 'ZA',
         name: 'South Africa',
         currency: 'ZAR',
-        total: 200,
-        currentMonth: 0,
-        previousMonth: 0,
+        grossVolume: 200,
+        commission: 20,
+        netRevenue: 10,
+        payout: 150,
+        currentMonthNetRevenue: 0,
+        previousMonthNetRevenue: 0,
+        growthPercent: 0,
+        comparisonMonth: '2026-08',
+        previousComparisonMonth: '2026-07',
       },
     ]);
     expect(result.availableYears).toEqual([2026, 2025]);
@@ -592,5 +624,87 @@ describe('AnalyticsService dashboards', () => {
         },
       }),
     );
+    expect(prisma.market.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: { not: 'INACTIVE' } },
+      }),
+    );
+  });
+
+  it('uses Pavodah share for a market-scoped revenue card and chart', async () => {
+    prisma.market.findUnique.mockResolvedValue({ currency: 'GHS' });
+    prisma.user.count.mockResolvedValue(0);
+    prisma.order.count.mockResolvedValue(0);
+    prisma.order.groupBy.mockResolvedValue([]);
+    prisma.orderSettlement.aggregate
+      .mockResolvedValueOnce({
+        _sum: { pavodahAmount: new Prisma.Decimal('250') },
+      })
+      .mockResolvedValueOnce({
+        _sum: { pavodahAmount: new Prisma.Decimal('50') },
+      })
+      .mockResolvedValueOnce({
+        _sum: { pavodahAmount: new Prisma.Decimal('25') },
+      });
+    prisma.orderSettlement.findMany.mockResolvedValue([
+      {
+        retainedAmount: new Prisma.Decimal('100'),
+        commissionAmount: new Prisma.Decimal('20'),
+        pavodahAmount: new Prisma.Decimal('10'),
+        order: { paidAt: new Date('2026-08-05T00:00:00Z') },
+      },
+    ]);
+    prisma.providerPayout.findMany.mockResolvedValue([
+      {
+        processedAt: new Date('2026-08-06T00:00:00Z'),
+        amount: new Prisma.Decimal('70'),
+      },
+    ]);
+    prisma.service.groupBy.mockResolvedValue([]);
+    prisma.order.findFirst.mockResolvedValue(null);
+    prisma.service.aggregate.mockResolvedValue({ _min: { createdAt: null } });
+
+    const result = await service.getAdminDashboard(
+      2026,
+      '2026-08',
+      { id: 'super-admin', role: 'SUPER_ADMIN' },
+      'market-gh',
+    );
+
+    expect(result.currency).toBe('GHS');
+    expect(result.stats.revenue).toBe(250);
+    expect(result.trends.revenue).toEqual({
+      current: 50,
+      previous: 25,
+      changePercent: 100,
+    });
+    expect(result.revenueSummary).toEqual({
+      total: 10,
+      bestMonth: { name: 'Aug', revenue: 10 },
+    });
+    expect(result.revenueChart[7]).toEqual({
+      name: 'Aug',
+      grossVolume: 100,
+      commission: 20,
+      netRevenue: 10,
+      payout: 70,
+    });
+    expect(result.marketRevenueBreakdown).toEqual([]);
+  });
+
+  it('rejects an unknown market before returning a misleading empty scope', async () => {
+    prisma.market.findUnique.mockResolvedValue(null);
+
+    await expect(
+      service.getAdminDashboard(
+        2026,
+        '2026-08',
+        { id: 'super-admin', role: 'SUPER_ADMIN' },
+        'missing-market',
+      ),
+    ).rejects.toThrow('Market not found');
+
+    expect(prisma.order.count).not.toHaveBeenCalled();
+    expect(prisma.orderSettlement.aggregate).not.toHaveBeenCalled();
   });
 });

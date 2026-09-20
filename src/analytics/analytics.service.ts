@@ -874,6 +874,15 @@ export class AnalyticsService {
     requestedMarketId?: string,
   ) {
     const marketId = this.marketAccess.marketForAdmin(actor, requestedMarketId);
+    const scopedMarket = marketId
+      ? await this.prisma.market.findUnique({
+          where: { id: marketId },
+          select: { currency: true },
+        })
+      : null;
+    if (marketId && !scopedMarket) {
+      throw new BadRequestException('Market not found');
+    }
     const orderMarketWhere: Prisma.OrderWhereInput = marketId
       ? { marketId }
       : {};
@@ -913,6 +922,15 @@ export class AnalyticsService {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1),
     );
     const categoryRange = monthRange(selectedCategoryMonth);
+    const comparisonMonthStart = new Date(
+      Date.UTC(selectedYear, now.getUTCMonth(), 1),
+    );
+    const comparisonNextMonthStart = new Date(
+      Date.UTC(selectedYear, now.getUTCMonth() + 1, 1),
+    );
+    const comparisonPreviousMonthStart = new Date(
+      Date.UTC(selectedYear, now.getUTCMonth() - 1, 1),
+    );
 
     const [
       totalUsers,
@@ -954,7 +972,7 @@ export class AnalyticsService {
       }),
       this.prisma.orderSettlement.aggregate({
         where: settlementMarketWhere,
-        _sum: { retainedAmount: true },
+        _sum: { pavodahAmount: true },
       }),
       this.prisma.user.count({
         where: {
@@ -1005,7 +1023,7 @@ export class AnalyticsService {
           ...settlementMarketWhere,
           order: { paidAt: { gte: currentMonthStart, lt: nextMonthStart } },
         },
-        _sum: { retainedAmount: true },
+        _sum: { pavodahAmount: true },
       }),
       this.prisma.orderSettlement.aggregate({
         where: {
@@ -1014,7 +1032,7 @@ export class AnalyticsService {
             paidAt: { gte: previousMonthStart, lt: currentMonthStart },
           },
         },
-        _sum: { retainedAmount: true },
+        _sum: { pavodahAmount: true },
       }),
       this.prisma.orderSettlement.findMany({
         where: {
@@ -1024,6 +1042,7 @@ export class AnalyticsService {
         select: {
           retainedAmount: true,
           commissionAmount: true,
+          pavodahAmount: true,
           order: { select: { paidAt: true } },
         },
       }),
@@ -1091,15 +1110,17 @@ export class AnalyticsService {
 
     const revenueChart = MONTH_NAMES.map((name) => ({
       name,
-      revenue: 0,
+      grossVolume: 0,
       commission: 0,
+      netRevenue: 0,
       payout: 0,
     }));
     yearlySettlements.forEach((settlement) => {
       if (!settlement.order.paidAt) return;
       const bucket = revenueChart[settlement.order.paidAt.getUTCMonth()];
-      bucket.revenue += Number(settlement.retainedAmount);
+      bucket.grossVolume += Number(settlement.retainedAmount);
       bucket.commission += Number(settlement.commissionAmount);
+      bucket.netRevenue += Number(settlement.pavodahAmount);
     });
     yearlyPayouts.forEach((payout) => {
       if (!payout.processedAt) return;
@@ -1108,14 +1129,15 @@ export class AnalyticsService {
       );
     });
     revenueChart.forEach((item) => {
-      item.revenue = money(item.revenue);
+      item.grossVolume = money(item.grossVolume);
       item.commission = money(item.commission);
+      item.netRevenue = money(item.netRevenue);
       item.payout = money(item.payout);
     });
 
     const bestMonth = revenueChart.reduce<(typeof revenueChart)[number] | null>(
       (best, item) =>
-        item.revenue > 0 && (!best || item.revenue > best.revenue)
+        item.netRevenue > 0 && (!best || item.netRevenue > best.netRevenue)
           ? item
           : best,
       null,
@@ -1133,23 +1155,18 @@ export class AnalyticsService {
       ]),
     ).sort((a, b) => b - a);
 
-    const currentRevenueValue = money(currentRevenue._sum.retainedAmount);
-    const previousRevenueValue = money(previousRevenue._sum.retainedAmount);
+    const currentRevenueValue = money(currentRevenue._sum.pavodahAmount);
+    const previousRevenueValue = money(previousRevenue._sum.pavodahAmount);
 
     const marketRevenueBreakdown = marketId
       ? []
       : await this.marketRevenueBreakdown(
-          currentMonthStart,
-          nextMonthStart,
-          previousMonthStart,
+          selectedYearStart,
+          selectedYearEnd,
+          comparisonMonthStart,
+          comparisonNextMonthStart,
+          comparisonPreviousMonthStart,
         );
-
-    const scopedMarket = marketId
-      ? await this.prisma.market.findUnique({
-          where: { id: marketId },
-          select: { currency: true },
-        })
-      : null;
 
     return {
       currency: scopedMarket?.currency ?? 'MULTI',
@@ -1159,7 +1176,7 @@ export class AnalyticsService {
         totalUsers,
         activeProviders,
         activeOrders,
-        revenue: marketId ? money(totalRevenue._sum.retainedAmount) : 0,
+        revenue: marketId ? money(totalRevenue._sum.pavodahAmount) : 0,
       },
       trends: {
         totalUsers: trend(currentUsers, previousUsers),
@@ -1194,11 +1211,11 @@ export class AnalyticsService {
       availableYears,
       revenueSummary: {
         total: marketId
-          ? money(revenueChart.reduce((sum, item) => sum + item.revenue, 0))
+          ? money(revenueChart.reduce((sum, item) => sum + item.netRevenue, 0))
           : 0,
         bestMonth:
           marketId && bestMonth
-            ? { name: bestMonth.name, revenue: bestMonth.revenue }
+            ? { name: bestMonth.name, revenue: bestMonth.netRevenue }
             : null,
       },
       revenueChart: marketId ? revenueChart : [],
@@ -1206,56 +1223,89 @@ export class AnalyticsService {
   }
 
   private async marketRevenueBreakdown(
+    selectedYearStart: Date,
+    selectedYearEnd: Date,
     currentMonthStart: Date,
     nextMonthStart: Date,
     previousMonthStart: Date,
   ) {
-    const [allTime, currentMonth, previousMonth, markets] = await Promise.all([
-      this.prisma.orderSettlement.groupBy({
-        by: ['marketId'],
-        _sum: { retainedAmount: true },
-      }),
-      this.prisma.orderSettlement.groupBy({
-        by: ['marketId'],
-        where: {
-          order: { paidAt: { gte: currentMonthStart, lt: nextMonthStart } },
-        },
-        _sum: { retainedAmount: true },
-      }),
-      this.prisma.orderSettlement.groupBy({
-        by: ['marketId'],
-        where: {
-          order: {
-            paidAt: { gte: previousMonthStart, lt: currentMonthStart },
+    const [yearly, currentMonth, previousMonth, yearlyPayouts, markets] =
+      await Promise.all([
+        this.prisma.orderSettlement.groupBy({
+          by: ['marketId'],
+          where: {
+            order: {
+              paidAt: { gte: selectedYearStart, lt: selectedYearEnd },
+            },
           },
-        },
-        _sum: { retainedAmount: true },
-      }),
-      this.prisma.market.findMany({
-        select: { id: true, code: true, name: true, currency: true },
-        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-      }),
-    ]);
-    const totals = new Map(
-      allTime.map((item) => [item.marketId, money(item._sum.retainedAmount)]),
+          _sum: {
+            retainedAmount: true,
+            commissionAmount: true,
+            pavodahAmount: true,
+          },
+        }),
+        this.prisma.orderSettlement.groupBy({
+          by: ['marketId'],
+          where: {
+            order: { paidAt: { gte: currentMonthStart, lt: nextMonthStart } },
+          },
+          _sum: { pavodahAmount: true },
+        }),
+        this.prisma.orderSettlement.groupBy({
+          by: ['marketId'],
+          where: {
+            order: {
+              paidAt: { gte: previousMonthStart, lt: currentMonthStart },
+            },
+          },
+          _sum: { pavodahAmount: true },
+        }),
+        this.prisma.providerPayout.groupBy({
+          by: ['marketId'],
+          where: {
+            status: ProviderPayoutStatus.SUCCESS,
+            processedAt: { gte: selectedYearStart, lt: selectedYearEnd },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.market.findMany({
+          where: { status: { not: MarketStatus.INACTIVE } },
+          select: { id: true, code: true, name: true, currency: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        }),
+      ]);
+    const yearlyByMarket = new Map(
+      yearly.map((item) => [item.marketId, item._sum]),
     );
     const current = new Map(
       currentMonth.map((item) => [
         item.marketId,
-        money(item._sum.retainedAmount),
+        money(item._sum.pavodahAmount),
       ]),
     );
     const previous = new Map(
       previousMonth.map((item) => [
         item.marketId,
-        money(item._sum.retainedAmount),
+        money(item._sum.pavodahAmount),
       ]),
+    );
+    const payouts = new Map(
+      yearlyPayouts.map((item) => [item.marketId, money(item._sum.amount)]),
     );
     return markets.map((market) => ({
       ...market,
-      total: totals.get(market.id) ?? 0,
-      currentMonth: current.get(market.id) ?? 0,
-      previousMonth: previous.get(market.id) ?? 0,
+      grossVolume: money(yearlyByMarket.get(market.id)?.retainedAmount),
+      commission: money(yearlyByMarket.get(market.id)?.commissionAmount),
+      netRevenue: money(yearlyByMarket.get(market.id)?.pavodahAmount),
+      payout: payouts.get(market.id) ?? 0,
+      currentMonthNetRevenue: current.get(market.id) ?? 0,
+      previousMonthNetRevenue: previous.get(market.id) ?? 0,
+      growthPercent: percentageChange(
+        current.get(market.id) ?? 0,
+        previous.get(market.id) ?? 0,
+      ),
+      comparisonMonth: `${currentMonthStart.getUTCFullYear()}-${String(currentMonthStart.getUTCMonth() + 1).padStart(2, '0')}`,
+      previousComparisonMonth: `${previousMonthStart.getUTCFullYear()}-${String(previousMonthStart.getUTCMonth() + 1).padStart(2, '0')}`,
     }));
   }
 }
