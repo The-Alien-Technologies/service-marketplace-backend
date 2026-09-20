@@ -48,6 +48,7 @@ export interface AuthResponse {
   user: Partial<User>;
   token: string;
   refreshToken: string;
+  emailVerificationSent?: boolean;
 }
 
 export interface UserPayload {
@@ -115,7 +116,10 @@ export class AuthService {
     await this.usersService.updateLastActivity(user.id);
 
     // Generate and send email verification OTP
-    await this.sendEmailVerificationOtp(user.id, user.email);
+    const emailVerificationSent = await this.sendEmailVerificationOtp(
+      user.id,
+      user.email,
+    );
 
     // Send welcome email (async, don't wait for it to complete)
     this.sendWelcomeEmailAsync(user.email, 'User');
@@ -124,6 +128,7 @@ export class AuthService {
       user: this.sanitizeUser(user),
       token,
       refreshToken,
+      emailVerificationSent,
     };
   }
 
@@ -427,7 +432,10 @@ export class AuthService {
     return { token, refreshToken };
   }
 
-  async sendEmailVerificationOtp(userId: string, email: string): Promise<void> {
+  async sendEmailVerificationOtp(
+    userId: string,
+    email: string,
+  ): Promise<boolean> {
     // Generate 6-digit OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -446,12 +454,25 @@ export class AuthService {
     try {
       await this.emailService.sendEmailVerificationOtp(email, otpCode);
       this.logger.log(`Email verification OTP sent to ${email}`);
+      return true;
     } catch (error) {
       this.logger.error(
         `Failed to send email verification OTP to ${email}:`,
         error,
       );
-      // Don't throw error - user can request resend
+      await this.usersService
+        .updateProfile(userId, {
+          emailVerificationOtp: null,
+          emailVerificationExpires: null,
+          emailVerificationAttempts: 0,
+        } as any)
+        .catch((cleanupError) =>
+          this.logger.error(
+            `Failed to clear undelivered verification OTP for ${email}:`,
+            cleanupError,
+          ),
+        );
+      return false;
     }
   }
 
@@ -535,7 +556,12 @@ export class AuthService {
     }
 
     // Send new OTP
-    await this.sendEmailVerificationOtp(user.id, user.email);
+    const sent = await this.sendEmailVerificationOtp(user.id, user.email);
+    if (!sent) {
+      throw new BadGatewayException({
+        message: 'We could not send the verification code. Please try again.',
+      });
+    }
   }
 
   async sendPhoneVerificationOtp(

@@ -208,6 +208,7 @@ export class OrdersService {
         service: {
           include: {
             category: true,
+            market: true,
             provider: {
               select: {
                 id: true,

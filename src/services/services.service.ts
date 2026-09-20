@@ -60,13 +60,8 @@ export class ServicesService {
         'You need an active provider membership in this market',
       );
     }
-    if (
-      membership.market.status !== MarketStatus.ACTIVE ||
-      !membership.market.servicePublishingEnabled
-    ) {
-      throw new BadRequestException(
-        'Service publishing is paused in this market',
-      );
+    if (membership.market.status !== MarketStatus.ACTIVE) {
+      throw new BadRequestException('Services are unavailable in this market');
     }
     const categoryEnabled = await this.prisma.marketCategory.findUnique({
       where: {

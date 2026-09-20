@@ -48,6 +48,7 @@ export class AuthController {
         token: result.token,
         refreshToken: result.refreshToken,
         user: result.user,
+        emailVerificationSent: result.emailVerificationSent,
       },
       'User registered successfully',
     );
